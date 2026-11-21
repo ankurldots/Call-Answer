@@ -19,6 +19,7 @@ The Agent also tells callers which colony gate to use. From 22:30 to 05:30 only 
 - Call recording is done by the phone's built-in call recorder (the Samsung Phone app auto-record, enabled for unknown numbers by the User in the phone's settings), not by the App. No public API exists to start or stop that recorder, and the App cannot control its file format, start time, or storage location. The App only finds the finished Phone_Recording and links it to the Call_Log entry. The design phase must verify that the recorder starts for calls answered through the call screening role, and must verify whether the Agent's speech is captured in the Phone_Recording.
 - The Agent's calls are answered on the phone's speakerphone so that the User can hear the call and speak into it. Because the Agent's synthesized speech then plays through the phone's loudspeaker, and the Caller's audio is captured through the phone's microphone, the design must handle the Agent's own voice being picked up by the microphone (echo) so that the Agent's speech is not treated as Caller speech. The design must also decide how the User's own speech is separated from the Caller's speech in the transcript.
 - Because the connection may be poor, the design should favor on-device speech recognition, language identification, and speech synthesis, with cloud services used only as an optional enhancement.
+- The target device is a Samsung Galaxy M34 5G (Exynos 1280, One UI, India model) with the Samsung Phone app as the default dialer. The on-device models and all timing limits in these requirements must be validated on this device.
 
 ## Glossary
 
@@ -58,6 +59,7 @@ The Agent also tells callers which colony gate to use. From 22:30 to 05:30 only 
 - **Speaker_Setting**: The User setting that turns the automatic speakerphone on for answered calls on or off, on by default.
 - **Live_Call_Screen**: The App's notification and screen shown during a call, displaying the live transcript, the detected Intent_Category and language, and the call controls.
 - **Take_Over**: The state in which the Agent has stopped speaking and generating responses so that the User talks to the Caller directly, entered with the "Take over" control. The call is not transferred.
+- **Takeover_Alert**: A high-priority alert on the User's phone (a full-screen notification with sound and vibration, audible on the speaker) that asks the User to take over the call, with a "Take over" control.
 - **Agent_Muted**: The state in which the Agent does not speak but keeps listening, entered with the "Mute Agent" control.
 - **Quick_Reply**: A short phrase, from a User-configured list (defaults: "Please wait", "I am coming"), that the User can send during a call for the Agent to speak.
 - **Bridging_Phrase**: A fixed short phrase (for example "One moment") that the Agent speaks in the Caller's language when the User chooses "Resume Agent".
@@ -133,11 +135,16 @@ The Agent also tells callers which colony gate to use. From 22:30 to 05:30 only 
 #### Acceptance Criteria
 
 1. WHEN the Intent_Category is DOOR_NOT_OPENED, THE Agent SHALL tell the Caller, in the Caller's language, that the Agent is transferring the call to a person.
-2. WHEN the Agent has finished telling the Caller about the transfer, THE App SHALL start the transfer of the call to the Transfer_Target within 2 seconds.
-3. IF the Transfer_Target does not answer within 30 seconds of the transfer starting, THEN THE Agent SHALL tell the Caller, in the Caller's language, that nobody is available and ask the Caller to wait or call again, and THE App SHALL keep the Caller connected to the Agent.
-4. IF the transfer fails, THEN THE App SHALL notify the User within 10 seconds that the transfer failed, including the Caller's number, and THE Agent SHALL tell the Caller, in the Caller's language, to call again shortly.
-5. IF the Transfer_Target is not configured, THEN THE App SHALL NOT start a transfer, THE App SHALL notify the User within 10 seconds that a Transfer_Target is required, including the Caller's number, and THE Agent SHALL ask the Caller, in the Caller's language, to call again shortly.
+2. WHEN the Agent has finished telling the Caller about the transfer, THE App SHALL start the transfer within 2 seconds, by connecting the Transfer_Target to the call WHERE the phone supports connecting a second call into the call, and otherwise by raising the Takeover_Alert.
+3. IF the Transfer_Target does not answer within 30 seconds of the transfer starting and the User does not take over within 30 seconds of the Takeover_Alert raised under criterion 7, THEN THE Agent SHALL tell the Caller, in the Caller's language, that nobody is available and ask the Caller to call again shortly, and THE App SHALL keep the Caller connected to the Agent.
+4. IF connecting the Transfer_Target fails, THEN THE App SHALL notify the User within 10 seconds that connecting the Transfer_Target failed, including the Caller's number, and THE App SHALL continue the transfer with the Takeover_Alert as specified in criterion 7, with the request to call again made only under criterion 9.
+5. IF the Transfer_Target is not configured, THEN THE App SHALL raise the Takeover_Alert within 2 seconds of the Agent finishing telling the Caller about the transfer, THE App SHALL notify the User within 10 seconds that a Transfer_Target is not configured, including the Caller's number, and THE Agent SHALL ask the Caller, in the Caller's language, to call again shortly only if the User does not take over within 30 seconds of the Takeover_Alert, as specified in criterion 9.
 6. WHEN a transfer starts, THE App SHALL notify the User within 10 seconds that a call was transferred, including the Caller's number.
+7. IF connecting the Transfer_Target fails or the Transfer_Target does not answer within 30 seconds, THEN THE App SHALL raise the Takeover_Alert within 2 seconds and THE Agent SHALL keep the Caller on the line with a short "please wait" message in the Caller's language at intervals of no more than 15 seconds.
+8. WHEN the User activates "Take over" from the Takeover_Alert, THE App SHALL enter Take_Over as specified in Requirement 13 and SHALL record the transfer as completed by the User in the Call_Log.
+9. IF the User does not take over within 30 seconds of the Takeover_Alert, THEN THE Agent SHALL tell the Caller, in the Caller's language, that nobody is available and ask the Caller to call again shortly, and THE App SHALL keep the Takeover_Alert visible until the call ends.
+10. IF the Transfer_Target is not configured, THEN THE App SHALL raise the Takeover_Alert instead of rejecting the transfer.
+11. WHEN the App raises the Takeover_Alert under criterion 2 or criterion 5, THE Agent SHALL keep the Caller on the line with a short "please wait" message in the Caller's language at intervals of no more than 15 seconds until the User takes over or criterion 9 applies.
 
 ### Requirement 5: Keep solicitation callers busy
 
@@ -207,7 +214,7 @@ The Agent also tells callers which colony gate to use. From 22:30 to 05:30 only 
 7. IF the Speech_Recognizer cannot produce a transcript of the Caller's last statement because the audio is interrupted or garbled, THEN THE Agent SHALL ask the Caller to repeat the last statement in the Caller's last detected language, and SHALL ask at most 3 consecutive times before treating the call as interrupted under criterion 8.
 8. IF no usable Caller audio is received for more than 10 consecutive seconds, THEN THE Agent SHALL end the call, and THE App SHALL record the interruption, including its start time and duration, in the Call_Log.
 9. IF the Agent fails to complete a response due to a processing error, THEN THE Agent SHALL speak a pre-recorded fallback phrase in the Caller's last detected language within 3 seconds of the failure, and the call SHALL remain active.
-10. IF the transfer in Requirement 4 requires network connectivity and connectivity is unavailable, THEN THE App SHALL attempt the transfer through the cellular voice network, and IF the transfer attempt fails, THEN THE Agent SHALL inform the Caller that the transfer failed and THE App SHALL record the failure in the Call_Log.
+10. IF connecting the Transfer_Target under Requirement 4 requires network connectivity and connectivity is unavailable, THEN THE App SHALL attempt the connection through the cellular voice network, and IF the attempt fails, THEN THE App SHALL raise the Takeover_Alert as specified in Requirement 4 criterion 7, which requires no network connectivity, and THE App SHALL record the failure in the Call_Log.
 11. THE App SHALL bundle the on-device models for Hindi and English, including a male voice and a female voice for each language, so that Offline_Mode is usable immediately after installation, with no network connection and no additional download required.
 12. WHEN connectivity returns after one or more calls were handled while connectivity was unavailable, THE App SHALL deliver the User notifications and Call_Log entries for those calls no later than 60 seconds after connectivity returns, and SHALL retain them on the device until delivered.
 
@@ -338,7 +345,8 @@ The Agent also tells callers which colony gate to use. From 22:30 to 05:30 only 
 17. IF the speakerphone cannot be turned on, THEN THE App SHALL notify the User within 5 seconds and SHALL continue the call.
 18. WHEN a call ends in which the User activated "Take over", THE App SHALL record in the Call_Log entry that the User took over, the time of each takeover start (date and time with timezone), and the duration of each takeover in whole seconds, within 2 seconds of call end.
 19. WHEN the Agent answers a call, THE App SHALL show the Live_Call_Screen notification within 2 seconds of the call being answered.
-20. WHEN the Requirement 4 transfer of a call starts, THE App SHALL perform the transfer as specified in Requirement 4, and the controls of this requirement SHALL NOT change the transfer behavior.
+20. WHEN the Requirement 4 transfer of a call starts, THE App SHALL perform the transfer as specified in Requirement 4, and the controls of this requirement SHALL NOT change the transfer behavior, except that "Take over" completes the transfer as specified in Requirement 4 criterion 8.
+21. WHEN the User activates "Take over" from the Takeover_Alert, THE App SHALL perform the same actions as when the User activates "Take over" on the Live_Call_Screen, as specified in criteria 6, 8, 9, and 18.
 
 ### Requirement 14: Report spam calls to 1909 by SMS
 

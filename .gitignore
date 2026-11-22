@@ -40,3 +40,6 @@ app/libs/*.aar
 # Bundled models (large); fetched by tools/fetch_models.sh
 app/src/main/assets/models/asr/vosk-small-*/
 app/src/main/assets/models/vad/*.onnx
+
+# AWS SAM build output
+.aws-sam/

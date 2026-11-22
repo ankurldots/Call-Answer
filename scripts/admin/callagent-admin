@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Admin CLI for number assignment. Credentials come from the named AWS profile; nothing is embedded here.
+# Usage: callagent-admin [--profile ldots] [--region ap-northeast-1] [--dry-run] <command> ...
+# Commands: assign <number> <sub> | unassign <sub> | deactivate <sub> | list | bootstrap-user <sub> | create-user <email> [--user-pool-id ID]
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT"
+exec ./gradlew --quiet --console=plain :agent:runAdminCli --args="$*"

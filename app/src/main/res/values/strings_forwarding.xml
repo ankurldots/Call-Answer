@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fwd_setup_title">Forward unanswered calls</string>
+    <string name="fwd_turnoff_title">Turn off forwarding</string>
+    <string name="fwd_test_title">Test call</string>
+    <string name="fwd_loading">Loading…</string>
+    <string name="fwd_retry">Try again</string>
+    <string name="fwd_err_network">Could not reach the server. Check your connection and try again.</string>
+    <string name="fwd_err_other">Could not load your account. Try again later.</string>
+    <string name="fwd_locked">Accept the privacy consent first. The forwarding codes appear after that.</string>
+    <string name="fwd_open_consent">Open privacy consent</string>
+    <string name="fwd_no_number">No number is assigned to your account yet, so there are no codes to show.</string>
+    <string name="fwd_your_number">Your assigned number: %1$s</string>
+    <string name="fwd_intro">Dial each code below from this phone (Airtel postpaid). The dialer opens with the code filled in. Press call yourself to send it.</string>
+    <string name="fwd_step_noreply">Forward when you do not answer</string>
+    <string name="fwd_step_busy">Forward when busy</string>
+    <string name="fwd_step_unreachable">Forward when unreachable</string>
+    <string name="fwd_ring_time">Ring time before forwarding: %1$d seconds</string>
+    <string name="fwd_open_dialer">Open dialer</string>
+    <string name="fwd_no_dialer">No dialer app was found on this phone.</string>
+    <string name="fwd_unconditional_title">Forward every call</string>
+    <string name="fwd_unconditional_warning">Warning: this sends all calls to the assistant. Your phone will not ring at all. Turn it off when you are done.</string>
+    <string name="fwd_unconditional_step">Forward all calls</string>
+    <string name="fwd_charges">Your carrier may charge for forwarded calls. Check your plan. Wi-Fi calling may change how forwarding behaves, so test with Wi-Fi calling on and off.</string>
+    <string name="fwd_open_turnoff">Turn off forwarding</string>
+    <string name="fwd_open_test">Send test call</string>
+    <string name="fwd_turnoff_intro">Dial these codes to stop forwarding. The last code clears all conditional forwarding at once.</string>
+    <string name="fwd_off_noreply">Stop forwarding when unanswered</string>
+    <string name="fwd_off_busy">Stop forwarding when busy</string>
+    <string name="fwd_off_unreachable">Stop forwarding when unreachable</string>
+    <string name="fwd_off_all">Clear all conditional forwarding</string>
+    <string name="fwd_off_unconditional">Stop forwarding every call (all forwarding)</string>
+    <string name="fwd_test_intro">Press Send test call, then call this phone from another phone and do not answer. The assistant should pick up. We wait up to 10 minutes.</string>
+    <string name="fwd_test_start">Send test call</string>
+    <string name="fwd_test_waiting">Waiting for the test call. Time left: %1$s</string>
+    <string name="fwd_test_passed">The assistant answered your test call.</string>
+    <string name="fwd_test_timeout">No test call arrived within 10 minutes. Check the codes and try again.</string>
+    <string name="fwd_test_poll_error">Could not check for the call. Retrying.</string>
+    <string name="fwd_test_again">Try again</string>
+</resources>

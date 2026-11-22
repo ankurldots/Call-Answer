@@ -146,6 +146,20 @@ class UserScopedRepository(
         store.queryAll(StoreQuery(pk, SortCondition.Between(TableKeys.callSkFrom(), TableKeys.callSkUpTo(startedAtOrBeforeMs))))
             .mapNotNull { TableKeys.parseCallSk(it.sk)?.let { (ms, id) -> CallRef(ms, id) } }
 
+    /** Replaces the spam report of one call and keeps every other attribute (TTL, transcript pointer). False when the call is absent. */
+    suspend fun updateCallReport(startedAtEpochMs: Long, callId: String, report: com.callanswer.core.model.SpamReportInfo): Boolean {
+        val k = key(TableKeys.callSk(startedAtEpochMs, callId))
+        val item = store.get(k) ?: return false
+        val entry = CoreJson.decodeFromString(CallLogEntry.serializer(), item.str("json") ?: return false)
+        val json = CoreJson.encodeToString(CallLogEntry.serializer(), entry.copy(report = report))
+        return try {
+            store.update(k, ItemUpdate(set = mapOf("json" to AttrValue.S(json))), Condition.Exists)
+            true
+        } catch (e: ConditionFailedException) {
+            false
+        }
+    }
+
     /** Deletes the call item and its S3 transcript, if any. Returns false when the call does not exist. */
     suspend fun deleteCall(startedAtEpochMs: Long, callId: String): Boolean {
         val k = key(TableKeys.callSk(startedAtEpochMs, callId))

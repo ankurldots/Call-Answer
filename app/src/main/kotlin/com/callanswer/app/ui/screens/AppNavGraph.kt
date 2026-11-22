@@ -59,6 +59,26 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
             CallDetailScreen(id, resumeTick, back)
         }
         composable(Routes.SETTINGS_SPAM) { SpamSettingsScreen(back) }
+        composable(Routes.FORWARDING_SETUP) {
+            ForwardingSetupScreen(
+                (LocalContext.current.applicationContext as CallAnswerApp).companionApi, back,
+                onOpenConsent = { navController.navigate(Routes.CONSENT) },
+                onOpenTurnOff = { navController.navigate(Routes.FORWARDING_TURN_OFF) },
+                onOpenTest = { navController.navigate(Routes.FORWARDING_TEST) },
+            )
+        }
+        composable(Routes.FORWARDING_TURN_OFF) {
+            ForwardingTurnOffScreen(
+                (LocalContext.current.applicationContext as CallAnswerApp).companionApi, back,
+                onOpenConsent = { navController.navigate(Routes.CONSENT) },
+            )
+        }
+        composable(Routes.FORWARDING_TEST) {
+            ForwardingTestScreen(
+                (LocalContext.current.applicationContext as CallAnswerApp).companionApi, back,
+                onOpenConsent = { navController.navigate(Routes.CONSENT) },
+            )
+        }
         composable(Routes.CONSENT) {
             ConsentScreen((LocalContext.current.applicationContext as CallAnswerApp).companionApi, back)
         }

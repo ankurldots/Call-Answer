@@ -23,4 +23,21 @@ object ForwardingCodes {
     /** Unconditional forwarding to the number. Null for a bad number. */
     fun unconditional(virtualNumber: String): String? =
         if (E164.matches(virtualNumber)) "**21*$virtualNumber#" else null
+
+    /** Turns off one kind of conditional forwarding: no reply, busy, unreachable. */
+    val clearNoReply: String = "##61#"
+    val clearBusy: String = "##67#"
+    val clearUnreachable: String = "##62#"
+
+    /** Clears unconditional forwarding. */
+    val clearUnconditional: String = "##21#"
+
+    /** The three single clear codes followed by the all-conditional clear [clear]. */
+    val turnOff: List<String> = listOf(clearNoReply, clearBusy, clearUnreachable, clear)
+
+    /** Ring time choices (seconds) the carrier accepts for the no-reply code. */
+    val ringSecondsChoices: List<Int> = listOf(10, 15, 20, 25, 30)
+
+    /** `tel:` URI for the dialer with `#` written as `%23` (a raw `#` would start a URI fragment). */
+    fun dialerUri(code: String): String = "tel:" + code.replace("#", "%23")
 }

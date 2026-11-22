@@ -375,7 +375,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Greeting and notice order with the Disclosure_Setting on and off, `end_call` after the last `mark`, silence flows, a failed bridge returning to the Agent, and the fallback causes, all with fake ports
     - _Requirements: 6.1, 6.2, 6.3, 11.7, 15.9_
 
-- [ ] 9. Implement persistence, recordings, traces, and cost
+- [x] 9. Implement persistence, recordings, traces, and cost
   - [x] 9.1 Implement the data access layer for DynamoDB
     - Define an `ItemStore` port (get, put with condition, update, delete, query by key condition, transact) with a DynamoDB implementation and an in-memory fake that has the same conditional-write and key-condition semantics
     - `UserScopedRepository(userId)` for the items `PROFILE`, `CONSENT`, `DEVICE#...`, `CALL#...`, `TRACE#...`, `COST#...`, `FWDTEST`, and `OPEN#...` with `CoreJson`, every key built through `Keys`; no method accepts a raw partition key; time-ordered `Query` for the call list; transcript over 300 KB to S3 under `users/<sub>/`; 3 retries at 1-second intervals, then a `NOT_LOGGED` alert and a redacted log line
@@ -415,7 +415,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 24: Traces and log lines contain no personal content**
     - **Validates: Requirements 16.8, 23.3**
 
-  - [~] 9.10 Implement `CallFinalizer`
+  - [x] 9.10 Implement `CallFinalizer`
     - Within 5 seconds of the call end, compute the Latency_Report (time to first audio, median and maximum reply latency), the Cost_Estimate, the outcome, the post-call check of the gate numbers spoken against the tool result, the recording key, and the Take_Over details; store the entry and trace and send the end event
     - _Requirements: 1.4, 4.6, 11.9, 18.3, 22.1_
 
@@ -450,7 +450,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Generate Users with long shared `sub` prefixes and call identifiers that contain `#`; run list, get, delete, sweep, and presign for one User and assert that only that User's records are returned or changed
     - **Validates: Requirements 28.1, 28.2, 28.3, 28.4, 28.5, 28.7, 28.9, 30.2**
 
-  - [~] 9.17 Implement the admin command-line script
+  - [x] 9.17 Implement the admin command-line script
     - `AdminCli` main class in `:agent` and `scripts/admin/callagent-admin` that run assign, unassign, list, and deactivate through `NumberAssignmentService` with `--profile ldots --region ap-northeast-1`; add a `bootstrap-user <sub>` command that creates the profile of a User before first sign-in
     - _Requirements: 26.2, 26.4, 26.5, 26.6_
 
@@ -466,7 +466,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `POST` and `DELETE /consent`, and `PUT` and `DELETE /devices/{deviceId}` (up to 5 devices per User, oldest replaced)
     - _Requirements: 17.1, 17.3, 20.3, 20.4, 20.8, 26.1, 26.8, 27.2, 27.3, 27.4, 27.6, 30.1_
 
-  - [~] 10.3 Implement the call log routes
+  - [x] 10.3 Implement the call log routes
     - `GET /calls` (newest first, cursor), `GET` and `DELETE /calls/{id}`, `GET /calls/{id}/recording`, `POST /calls/{id}/report-status`, and `GET /usage/month`, all through `UserScopedRepository` of the token's `sub`; a call identifier of another User answers 404
     - _Requirements: 18.6, 18.7, 17.7, 22.4, 28.2, 28.3_
 
@@ -500,7 +500,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Expired and wrong-audience tokens, the 429 response, and the alert fallback to SMS when no acknowledgment arrives
     - _Requirements: 16.6, 16.7, 11.8_
 
-  - [~] 10.11 Implement the Admin_API routes
+  - [x] 10.11 Implement the Admin_API routes
     - `GET /admin/users`, `GET /admin/numbers`, `PUT /admin/numbers/{e164}` (body `{userId}`), `DELETE /admin/numbers/{e164}`, and `POST /admin/users/{userId}/deactivate` through `NumberAssignmentService`; accept only tokens whose `cognito:groups` contains `admins` (403 otherwise); 409 on a duplicate assignment
     - _Requirements: 26.2, 26.3, 26.4, 26.5, 26.6, 26.7_
 
@@ -533,7 +533,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Show the consent text (processing outside India in the Agent_Region, recording, and retention) after first sign-in; keep the Agent off and the forwarding codes hidden until accepted; support withdrawal
     - _Requirements: 17.1, 17.2, 17.3_
 
-  - [~] 12.5 Add `ForwardingCodes` and the forwarding setup, turn-off, and test call screens
+  - [x] 12.5 Add `ForwardingCodes` and the forwarding setup, turn-off, and test call screens
     - Add `cloud.ForwardingCodes` to `:core`: the set, clear, ring-time, and unconditional codes for a validated number, with `#` encoded as `%23` in the dialer URI
     - Use the Virtual_Number assigned to the User (from `GET /me`) as `<number>` in every code, and show the setup only when a number is assigned
     - Build the setup screen (`**61*<number>**20#`, `**67*<number>#`, `**62*<number>#`, each with a button that opens the dialer with the code prepared and not dialed), the unconditional option with a warning, the turn-off screen (`##61#`, `##67#`, `##62#`, `##002#`), the carrier charge and Wi-Fi calling text (updated from spike C-4), and "Send test call" with a 10-minute countdown and a result
@@ -548,20 +548,20 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Add `google-services.json` from task 0.3 to the app project and to `.gitignore`
     - _Requirements: 11.2, 11.4, 19.8_
 
-  - [~] 12.8 Add the live call screen
+  - [-] 12.8 Add the live call screen
     - Full-screen screen with the Caller number, intent, language, elapsed time, live transcript from `/live`, "Take over", "End call", Quick_Replies, and bridge status; show an ended call as ended and disable Take over
     - _Requirements: 19.1, 19.9, 11.4_
 
-  - [~] 12.9 Add the settings sync
+  - [-] 12.9 Add the settings sync
     - Settings fields of Requirement 20 (including the User_Mobile for Take_Over, voice choice `kiara` or `arjun` with `tiffany` and `matthew` as alternatives, retention, Disclosure_Setting warning, cost rates, and monthly limit), validated with `SettingsValidator` and saved with `PUT /settings` and `expectedVersion`
     - Offline and conflict handling: keep the cache and the pending edit, send on reconnect when the versions match, otherwise run `SettingsMerge.threeWay`, show a per-field choice for fields changed on both sides, and retry with the stored version (at most 3 attempts); replace the cache with every document received from the server
     - _Requirements: 6.4, 7.6, 20.1, 20.3, 20.4, 20.6, 27.8, 27.9, 27.10, 27.11_
 
-  - [~] 12.10 Add the call detail and cost screens
+  - [-] 12.10 Add the call detail and cost screens
     - Latency report, trace events, transcript, cost labeled as an estimate, month total, and recording playback through the presigned URL; show a finished call in the list within 10 seconds
     - _Requirements: 18.7, 19.10, 22.4, 22.7, 23.2_
 
-  - [~] 12.11 Keep the spam report flow
+  - [-] 12.11 Keep the spam report flow
     - Verify that `core.report.SpamReportBuilder` and the report status flow still work against the new call log (report status through `POST /calls/{id}/report-status`)
     - _Requirements: 21.10_
 

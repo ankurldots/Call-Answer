@@ -35,3 +35,9 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+tasks.register<JavaExec>("runAdminCli") {
+    group = "application"
+    description = "Runs the admin CLI (scripts/admin/callagent-admin)"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.callanswer.agent.tenant.AdminCliKt")
+}

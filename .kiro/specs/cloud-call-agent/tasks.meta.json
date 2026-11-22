@@ -717,6 +717,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695471
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795377842472
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378039985
       }
     ],
     "9.12 Implement `SettingsStore` with optimistic concurrency": [
@@ -758,6 +768,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695565
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795377843481
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378040828
       }
     ],
     "10.1 Implement `JwtVerifier`, `RateLimiter`, and the route scaffold": [
@@ -799,6 +819,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695662
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795377844983
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378036945
       }
     ],
     "10.4 Implement the `/live` WebSocket": [
@@ -841,6 +871,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695858
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795377846293
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378039437
       }
     ],
     "11. Checkpoint - Server complete": [
@@ -923,6 +963,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372696083
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795377845964
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378037984
       }
     ],
     "12.7 Add push handling and the Takeover_Alert": [
@@ -937,6 +987,11 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372696148
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378046988
       }
     ],
     "12.9 Add the settings sync": [
@@ -944,6 +999,11 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372696182
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378048050
       }
     ],
     "12.10 Add the call detail and cost screens": [
@@ -951,6 +1011,11 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372696220
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378048997
       }
     ],
     "12.11 Keep the spam report flow": [
@@ -958,6 +1023,11 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372696252
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378050026
       }
     ],
     "12.14 Verify the release build": [
@@ -1049,6 +1119,13 @@
         "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795376970032
+      }
+    ],
+    "9. Implement persistence, recordings, traces, and cost": [
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795378040858
       }
     ]
   }

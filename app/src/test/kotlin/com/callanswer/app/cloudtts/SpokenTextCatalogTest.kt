@@ -32,7 +32,8 @@ class SpokenTextCatalogTest {
         assertTrue(has(Language.EN, "The night window is from 22:30 to 05:30."))
         assertTrue(has(Language.EN, "Please wait"))
         assertTrue(has(Language.HI, "कृपया प्रतीक्षा करें"))
-        assertTrue(has(Language.EN, "This call is being recorded and handled by an automated assistant."))
+        assertTrue(has(Language.EN, "This is Agent."))
+        assertTrue(has(Language.EN, "This call is being recorded."))
     }
     @Test fun mapLinkIsNeverSpoken() {
         val link = settings.copy(mapLocation = "https://maps.example/x")

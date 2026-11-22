@@ -4,6 +4,7 @@ import com.callanswer.core.delivery.DeliveryDirectionsRenderer
 import com.callanswer.core.delivery.StepTranslator
 import com.callanswer.core.gate.GateInfoRenderer
 import com.callanswer.core.gate.selectGate
+import com.callanswer.core.model.DEFAULT_AGENT_NAME
 import com.callanswer.core.model.FrozenSettings
 import com.callanswer.core.model.Language
 import com.callanswer.core.model.LocalTimeHm
@@ -51,10 +52,13 @@ class ResponseRenderer(
         fun t(en: String, hindi: String) = if (hi) hindi else en
         return when (spec) {
             SpeechSpec.Greeting -> t("Hello", "हैलो")
-            SpeechSpec.Disclosure -> t(
-                "This call is being recorded and handled by an automated assistant.",
-                "यह कॉल रिकॉर्ड की जा रही है और एक स्वचालित सहायक द्वारा संभाली जा रही है।",
-            )
+            SpeechSpec.Disclosure -> {
+                val name = frozen.agentName.trim().ifEmpty { DEFAULT_AGENT_NAME }
+                t(
+                    "This is $name. This call is being recorded.",
+                    "मैं $name बोल रहा हूँ। यह कॉल रिकॉर्ड की जा रही है।",
+                )
+            }
             is SpeechSpec.DeliveryDirections -> {
                 val gateText = GateInfoRenderer.render(selectGate(localTime, frozen.gates), language, includeWindowTimes = false)
                 val parts = DeliveryDirectionsRenderer.render(frozen.deliverySteps, language, frozen.mapLocation, gateText, translator)

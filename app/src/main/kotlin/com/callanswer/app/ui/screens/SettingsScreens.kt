@@ -1,5 +1,6 @@
 package com.callanswer.app.ui.screens
 
+import com.callanswer.app.data.displayAgentName
 import com.callanswer.app.data.rememberAgentName
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
@@ -314,7 +315,7 @@ private fun CallForm(store: SettingsStore, initial: Settings) {
             Language.HI to R.string.settings_voice_sample_hi,
         ).forEach { (language, label) ->
             AppButton(stringResource(label), primary = false, onClick = {
-                scope.launch { sampleFailed = !sampler.play(language, live.voiceGender) }
+                scope.launch { sampleFailed = !sampler.play(language, live.voiceGender, displayAgentName(live.agentName)) }
             })
         }
     }

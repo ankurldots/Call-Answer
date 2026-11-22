@@ -69,6 +69,7 @@ data class Settings(
         cloudLlmEnabled = cloudLlmEnabled,
         silentSendSpamReports = silentSendSpamReports,
         pathAEnabled = pathAEnabled,
+        agentName = agentName,
     )
 }
 
@@ -91,4 +92,6 @@ data class FrozenSettings(
     val cloudLlmEnabled: Boolean = false,
     val silentSendSpamReports: Boolean = false,
     val pathAEnabled: Boolean = false,
+    /** Name the agent gives itself on the call. */
+    val agentName: String = DEFAULT_AGENT_NAME,
 )

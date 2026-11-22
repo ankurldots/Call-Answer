@@ -5,6 +5,7 @@ import com.callanswer.app.CallAnswerApp
 import com.callanswer.app.audio.AgentAudioPlayerImpl
 import com.callanswer.app.cloudtts.PollyCacheSynthesizer
 import com.callanswer.app.audio.EchoGate
+import com.callanswer.core.model.DEFAULT_AGENT_NAME
 import com.callanswer.core.model.Language
 import com.callanswer.core.model.VoiceGender
 import kotlinx.coroutines.CancellationException
@@ -26,8 +27,8 @@ class VoiceSamplePlayer(context: Context) {
     private val player = AgentAudioPlayerImpl(EchoGate())
 
     /** Returns true when the sample played; false when no voice could synthesize it. */
-    suspend fun play(language: Language, gender: VoiceGender): Boolean =
-        speak(sampleText(language), language, gender)
+    suspend fun play(language: Language, gender: VoiceGender, agentName: String = DEFAULT_AGENT_NAME): Boolean =
+        speak(sampleText(language, agentName), language, gender)
 
     /** Speaks arbitrary [text], e.g. the full Delivery_Directions sample (9.21). Same result contract as [play]. */
     suspend fun speak(text: String, language: Language, gender: VoiceGender): Boolean = try {
@@ -48,9 +49,9 @@ class VoiceSamplePlayer(context: Context) {
     }
 
     companion object {
-        fun sampleText(language: Language): String = when (language) {
-            Language.EN -> "Hello, this is the assistant answering the call."
-            Language.HI -> "नमस्ते, मैं कॉल का जवाब देने वाला सहायक हूँ।"
+        fun sampleText(language: Language, agentName: String = DEFAULT_AGENT_NAME): String = when (language) {
+            Language.EN -> "Hello, this is $agentName."
+            Language.HI -> "नमस्ते, मैं $agentName बोल रहा हूँ।"
         }
     }
 }

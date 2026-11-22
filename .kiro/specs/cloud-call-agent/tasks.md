@@ -143,7 +143,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Verify that the existing `:core` tests and serialized fixtures still pass unchanged
     - _Requirements: 20.3, 18.1, 24.2, 27.1, 27.7_
 
-  - [~] 3.3 Write the SAM template: network, load balancer, certificate, and service
+  - [x] 3.3 Write the SAM template: network, load balancer, certificate, and service
     - Create `infra/cloud-agent/template.yaml` (consistent with `lambda/polly_tts/template.yaml`) with parameters `CognitoUserPoolId`, `CognitoClientId`, `HostedZoneId` (optional), `ImageUri`, and the two domain names
     - Define the VPC with public subnets, the ALB (idle timeout 3600 s), the ACM certificate for `agent.leadingdots.com` and `api.leadingdots.com` with DNS validation, the HTTPS listener with host-based rules, and the Route 53 validation and ALIAS records when `HostedZoneId` is given
     - Define the ECR repository, the ECS cluster and service (`desiredCount` 1, 100 and 200 percent deployment, circuit breaker, `stopTimeout` 120 s, 0.5 vCPU and 1 GB), the security groups (port 443 from the ALB only), and the log group
@@ -156,7 +156,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Add the `FallbackCount` alarm with an SNS topic and e-mail subscription, and a `CapRefusals` metric
     - _Requirements: 16.3, 16.4, 16.5, 17.5, 23.7, 28.4, 29.1, 29.2_
 
-  - [~] 3.5 Add the container build and push scripts
+  - [x] 3.5 Add the container build and push scripts
     - Add a Dockerfile (or Gradle Jib configuration) for `:agent` with a JRE 21 base and the SIGTERM drain handler (stop accepting new calls, let calls finish up to 120 s)
     - Add `scripts/build-push-agent.sh` that builds the image and pushes it to the ECR repository with `--profile ldots --region ap-northeast-1`
     - _Requirements: 1.4, 4.7_
@@ -172,7 +172,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - _Requirements: 25.1, 25.10, 27.10, 28.4, 28.5_
 
 - [ ] 4. Implement the Exotel stream handler and the audio path
-  - [~] 4.1 Implement `ExotelMessages` and `PcmCodec`
+  - [x] 4.1 Implement `ExotelMessages` and `PcmCodec`
     - JSON codec for connected, start, media, mark, clear, dtmf, and stop events; base64 and PCM16 conversion; frame validation against the announced `media_format`
     - Discard and count a frame whose length or encoding does not match, without changing later frames
     - _Requirements: 3.1, 3.5, 3.7_
@@ -181,7 +181,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 14: Exotel message codec round trip**
     - **Validates: Requirements 3.1, 3.5, 3.7**
 
-  - [~] 4.3 Implement `Resampler`
+  - [x] 4.3 Implement `Resampler`
     - Integer-ratio resampling (8 to 16 kHz, 24 to 8 kHz, generic ratios) with a linear-phase FIR low-pass filter and clipping to the 16-bit range; rates come from the start event and configuration
     - _Requirements: 3.2, 3.3, 3.6_
 
@@ -198,11 +198,11 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 16: Pacer chunking, rate, and barge-in clear**
     - **Validates: Requirements 3.3, 3.4, 5.1, 5.2, 12.9**
 
-  - [~] 4.7 Implement `SilenceDetector`
+  - [x] 4.7 Implement `SilenceDetector`
     - Short-term energy detector on Caller audio; silence counts from the `mark` that reports the last Agent audio as played
     - _Requirements: 6.5, 13.2_
 
-  - [~] 4.8 Implement `ExotelAuth` and the call token
+  - [x] 4.8 Implement `ExotelAuth` and the call token
     - HTTP Basic check for the WebSocket handshake and the `/exotel/*` webhooks against Secrets Manager values
     - HMAC-SHA256 call token over `CallSid`, the User_Id, and a 60-second expiry, with constant-time comparison; verification returns the User_Id
     - _Requirements: 16.2, 16.3, 16.11, 25.9_
@@ -227,7 +227,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - _Requirements: 1.3, 3.5, 3.8_
 
 - [ ] 5. Implement the Nova 2 Sonic client
-  - [~] 5.1 Implement `SonicEvents`, `ToolSpecs`, `SystemPrompt`, and `HistoryBuilder`
+  - [x] 5.1 Implement `SonicEvents`, `ToolSpecs`, `SystemPrompt`, and `HistoryBuilder`
     - Builders and parser for every input and output event of the design in the documented order; seven tool specs with JSON schemas; a system prompt without any protected data; history of at most 40 utterances plus one server-state line, passed through the PII_Guard in Stalling_Mode
     - Store the C-5 fixtures and parse them in a contract test
     - _Requirements: 7.4, 14.2, 14.8, 15.6, 20.9_
@@ -236,7 +236,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 13: Sonic event sequence is well formed**
     - **Validates: Requirements 14.2, 14.8, 15.6, 12.12**
 
-  - [~] 5.3 Implement voice selection for the Sonic session
+  - [x] 5.3 Implement voice selection for the Sonic session
     - Use `core.voice.VoiceSelector` with `kiara` and `arjun` as defaults and `tiffany` and `matthew` as selectable alternatives; keep the voice for the whole call and its replacement sessions; record a substitution in the Call_Log
     - _Requirements: 7.3, 7.5, 7.6_
 
@@ -263,7 +263,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - _Requirements: 3.2, 3.3, 5.1, 5.5_
 
 - [ ] 6. Implement the Agent_Tools on the `:core` rules
-  - [~] 6.1 Implement `AgentTool`, argument validation, and the tool context
+  - [x] 6.1 Implement `AgentTool`, argument validation, and the tool context
     - A common interface (`name`, schema, `execute(args, callState) -> JSON result`), JSON schema validation plus code validation, and a call state view holding the User_Id, the Frozen_Settings of that User, language, stalling mode, and counters
     - Tools are plain classes; they are registered in `ToolRegistry` in task 8.7
     - _Requirements: 8.2, 16.10_
@@ -308,7 +308,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 7: Intent logging accepts only the four categories**
     - **Validates: Requirements 8.2, 8.10**
 
-  - [~] 6.12 Implement the streaming PII_Guard in `:core`
+  - [x] 6.12 Implement the streaming PII_Guard in `:core`
     - `StreamingPiiGuard` that matches Protected_Terms across chunk boundaries, ignoring letter case and spacing or punctuation inside digit sequences, and reports the match no later than the completing chunk; use the 300 ms look-ahead buffer if spike C-5 requires it
     - _Requirements: 12.8, 12.9, 12.13_
 
@@ -650,7 +650,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
 
 ## Task Dependency Graph
 
-Waves are ordered by prerequisites, not by checkpoint. Spike-independent code starts in wave 0. Completed tasks (0.4 to 0.7, 1.1, 1.4) are omitted. Checkpoints 2, 7, 11, 13, and 15 are not in the graph.
+Waves are ordered by prerequisites, not by checkpoint. Phase A (waves 0 to 3) holds only spike-independent code and its tests, so it can run while the User waits on Exotel, DLT, and Firebase. Phase B (waves 4 to 17) holds every USER task, the spikes, and everything gated by them. Completed tasks (0.4 to 0.7, 1.1, 1.4, 3.1, 3.2, 3.7, 12.1) are omitted. Checkpoints 2, 7, 11, 13, and 15 are not in the graph.
 
 Depends on (gated tasks):
 - 0.1, 0.2: gate the Exotel spikes 1.2, 1.5 and deployment 14.1.
@@ -659,26 +659,31 @@ Depends on (gated tasks):
 - 1.2 (C-6 SMS): gates 6.8, 6.9, and through 6.8 also 8.7 and 10.9.
 - 1.7 (C-3 takeover): gates 8.9 and through it 8.10.
 - Checkpoint 2 (after 1.2, 1.3, 1.5, 1.6, 1.7, 1.8) must pass before 14.1; checkpoint 11 (after all of tasks 3 to 10) before all of task 14; checkpoint 13 (after task 12) before 14.6.
-- 3.3 uses manual Cloudflare DNS records per `docs/cloud/dns.md`; 3.3 and 3.5 sit in wave 1 only to keep wave 0 small.
-- 3.1 and 12.1 both touch `settings.gradle.kts` in wave 0; merge them in order.
+- 3.3 uses manual Cloudflare DNS records per `docs/cloud/dns.md`.
+- 3.3 and 3.4 write the same template, so they are in different waves.
+- 12.14 does not depend on 12.7 and stays in Phase A.
 
 ```json
 {
   "waves": [
-    { "id": 0, "tasks": ["0.1", "0.2", "0.3", "1.3", "3.1", "3.2", "3.7", "12.1"] },
-    { "id": 1, "tasks": ["1.2", "1.5", "3.3", "3.5", "4.1", "4.3", "4.7", "4.8", "5.1", "5.3", "6.1", "6.12", "8.1", "8.3", "9.1", "9.8", "10.1", "12.2"] },
-    { "id": 2, "tasks": ["1.6", "1.7", "1.8", "3.4", "4.2", "4.4", "4.5", "4.9", "4.10", "5.2", "5.4", "5.5", "6.2", "6.5", "6.8", "6.10", "6.13", "8.2", "8.4", "8.5", "9.2", "9.3", "9.4", "9.9", "9.12", "9.14", "12.3"] },
-    { "id": 3, "tasks": ["3.6", "4.6", "4.11", "5.6", "5.8", "6.3", "6.4", "6.6", "6.7", "6.9", "6.11", "6.14", "8.6", "9.5", "9.6", "9.10", "9.13", "9.15", "9.17", "10.2", "10.3", "10.6", "10.11", "12.4", "12.5", "12.7", "12.8", "12.9", "12.10", "12.11"] },
-    { "id": 4, "tasks": ["4.12", "5.7", "6.15", "8.7", "9.7", "9.11", "9.16", "10.7", "10.8", "12.6", "12.12", "12.13", "12.15", "12.16"] },
-    { "id": 5, "tasks": ["8.8", "10.4", "10.9", "10.10", "12.14"] },
-    { "id": 6, "tasks": ["8.9", "10.5"] },
-    { "id": 7, "tasks": ["8.10", "10.12"] },
-    { "id": 8, "tasks": ["14.1", "14.4", "14.8"] },
-    { "id": 9, "tasks": ["14.2"] },
-    { "id": 10, "tasks": ["14.3"] },
-    { "id": 11, "tasks": ["14.7"] },
-    { "id": 12, "tasks": ["14.5"] },
-    { "id": 13, "tasks": ["14.6"] }
+    { "id": 0, "tasks": ["3.3", "3.5", "4.1", "4.3", "4.7", "4.8", "5.1", "5.3", "6.1", "6.12", "8.1", "8.3", "9.1", "9.8", "10.1", "12.2"] },
+    { "id": 1, "tasks": ["3.4", "4.2", "4.4", "4.5", "4.9", "5.2", "5.4", "5.5", "6.2", "6.5", "6.10", "6.13", "8.2", "8.4", "8.5", "9.2", "9.3", "9.4", "9.9", "9.12", "9.14", "12.3"] },
+    { "id": 2, "tasks": ["3.6", "4.6", "5.6", "6.3", "6.4", "6.6", "6.7", "6.11", "6.14", "8.6", "9.5", "9.6", "9.10", "9.13", "9.15", "9.17", "10.2", "10.3", "10.11", "12.4", "12.5", "12.8", "12.9", "12.10", "12.11"] },
+    { "id": 3, "tasks": ["5.7", "6.15", "9.7", "9.11", "9.16", "12.6", "12.12", "12.13", "12.14", "12.15", "12.16"] },
+    { "id": 4, "tasks": ["0.1", "0.2", "0.3", "1.3"] },
+    { "id": 5, "tasks": ["1.2", "1.5", "10.8", "12.7"] },
+    { "id": 6, "tasks": ["1.6", "1.7", "1.8", "4.10", "4.11", "6.8", "10.10"] },
+    { "id": 7, "tasks": ["4.12", "5.8", "6.9", "10.6"] },
+    { "id": 8, "tasks": ["8.7", "10.7"] },
+    { "id": 9, "tasks": ["8.8", "10.4", "10.9"] },
+    { "id": 10, "tasks": ["8.9", "10.5"] },
+    { "id": 11, "tasks": ["8.10", "10.12"] },
+    { "id": 12, "tasks": ["14.1", "14.4", "14.8"] },
+    { "id": 13, "tasks": ["14.2"] },
+    { "id": 14, "tasks": ["14.3"] },
+    { "id": 15, "tasks": ["14.7"] },
+    { "id": 16, "tasks": ["14.5"] },
+    { "id": 17, "tasks": ["14.6"] }
   ]
 }
 ```

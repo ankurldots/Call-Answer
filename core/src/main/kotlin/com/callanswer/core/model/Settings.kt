@@ -21,8 +21,12 @@ val DefaultQuickReplies: List<QuickReply> = listOf(
     QuickReply(textEn = "I am coming", textHi = "मैं आ रहा हूँ"),
 )
 
+const val DEFAULT_AGENT_NAME = "Agent"
+
 @Serializable
 data class Settings(
+    /** Name the User gives the answering agent. Shown in the app; blank falls back to [DEFAULT_AGENT_NAME]. */
+    val agentName: String = DEFAULT_AGENT_NAME,
     val screeningEnabled: Boolean = true,
     /** Location URL (map link). Texted to a delivery caller who needs directions; never spoken. */
     val mapLocation: String? = null,

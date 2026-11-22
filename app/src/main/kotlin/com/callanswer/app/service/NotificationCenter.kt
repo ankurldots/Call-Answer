@@ -1,5 +1,6 @@
 package com.callanswer.app.service
 
+import com.callanswer.app.data.currentAgentName
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -122,7 +123,7 @@ class NotificationCenter(private val context: Context) {
             AlertKind.RECORDING_NOT_FOUND -> context.getString(R.string.notif_recording_not_found, n)
             AlertKind.FOLDER_ACCESS_LOST -> context.getString(R.string.notif_folder_access_lost)
             AlertKind.PERMISSION_REQUIRED -> context.getString(R.string.notif_permission_required, extra ?: "")
-            AlertKind.CAPTURE_SILENCED -> context.getString(R.string.notif_capture_silenced)
+            AlertKind.CAPTURE_SILENCED -> context.getString(R.string.notif_capture_silenced, currentAgentName(context))
             AlertKind.ANSWER_FAILED -> context.getString(R.string.notif_answer_failed, n)
             AlertKind.END_CALL_FAILED -> context.getString(R.string.notif_end_call_failed)
         }

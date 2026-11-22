@@ -1,4 +1,5 @@
 package com.callanswer.app.ui.screens
+import com.callanswer.app.data.rememberAgentName
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
@@ -76,7 +77,7 @@ fun HomeScreen(model: SetupModel, actions: SetupActions, onOpenSettings: () -> U
         HeroCard(
             active = screeningActive,
             checked = model.screeningEnabled,
-            message = stringResource(statusText),
+            message = stringResource(statusText, rememberAgentName()),
             ready = ready,
             total = total,
             onToggle = { enabled -> scope.launch { model.setScreeningEnabled(enabled) } },

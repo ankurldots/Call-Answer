@@ -1,5 +1,6 @@
 package com.callanswer.app.service
 
+import com.callanswer.app.data.currentAgentName
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.PendingIntent
@@ -299,7 +300,7 @@ class CallForegroundService : Service() {
             .addAction(0, getString(R.string.call_action_take_over), controlIntent(this, ACTION_TAKE_OVER, 11))
             .addAction(
                 0,
-                getString(if (muted) R.string.call_action_resume else R.string.call_action_mute),
+                getString(if (muted) R.string.call_action_resume else R.string.call_action_mute, currentAgentName(this)),
                 controlIntent(this, if (muted) ACTION_RESUME else ACTION_MUTE, 12),
             )
             .addAction(0, getString(R.string.call_action_end), controlIntent(this, ACTION_END, 13))

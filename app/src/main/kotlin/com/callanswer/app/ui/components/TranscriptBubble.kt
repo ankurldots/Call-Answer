@@ -1,5 +1,6 @@
 package com.callanswer.app.ui.components
 
+import com.callanswer.app.data.rememberAgentName
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,14 +25,13 @@ enum class BubbleSpeaker { CALLER, AGENT, USER, LIVE }
 
 @Composable
 fun TranscriptBubble(speaker: BubbleSpeaker, text: String, modifier: Modifier = Modifier) {
-    val label = stringResource(
-        when (speaker) {
-            BubbleSpeaker.CALLER -> R.string.speaker_caller
-            BubbleSpeaker.AGENT -> R.string.speaker_agent
-            BubbleSpeaker.USER -> R.string.speaker_user
-            BubbleSpeaker.LIVE -> R.string.speaker_live
-        },
-    )
+    val agentName = rememberAgentName()
+    val label = when (speaker) {
+        BubbleSpeaker.CALLER -> stringResource(R.string.speaker_caller)
+        BubbleSpeaker.AGENT -> agentName
+        BubbleSpeaker.USER -> stringResource(R.string.speaker_user)
+        BubbleSpeaker.LIVE -> stringResource(R.string.speaker_live)
+    }
     val description = stringResource(R.string.cd_transcript_bubble, label, text)
     val alignEnd = speaker == BubbleSpeaker.AGENT || speaker == BubbleSpeaker.USER
     val container = when (speaker) {

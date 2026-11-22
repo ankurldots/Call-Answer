@@ -1,5 +1,6 @@
 package com.callanswer.app.ui.screens
 
+import com.callanswer.app.data.rememberAgentName
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -154,6 +155,10 @@ private fun GeneralForm(store: SettingsStore, initial: Settings) {
         scope.launch { toggleFailed = !store.change { s -> s.copy(screeningEnabled = it) } }
     })
     AppTextField(
+        draft.agentName, { draft = draft.copy(agentName = it) },
+        stringResource(R.string.settings_agent_name),
+    )
+    AppTextField(
         draft.mapLocation, { draft = draft.copy(mapLocation = it) },
         stringResource(R.string.settings_map_location),
         errorMessage = errors[SettingsField.LOCATION_URL],
@@ -168,7 +173,7 @@ private fun GeneralForm(store: SettingsStore, initial: Settings) {
         stringResource(R.string.settings_address_hi),
         singleLine = false,
     )
-    Text(stringResource(R.string.settings_location_hint), style = MaterialTheme.typography.bodySmall)
+    Text(stringResource(R.string.settings_location_hint, rememberAgentName()), style = MaterialTheme.typography.bodySmall)
     AppTextField(
         draft.transferTarget, { draft = draft.copy(transferTarget = it) },
         stringResource(R.string.settings_transfer_target),
@@ -315,7 +320,7 @@ private fun CallForm(store: SettingsStore, initial: Settings) {
     }
     if (sampleFailed) StatusBanner(stringResource(R.string.settings_voice_sample_failed), BannerSeverity.ERROR)
 
-    AppSwitchRow(stringResource(R.string.settings_speaker), live.speakerEnabled, {
+    AppSwitchRow(stringResource(R.string.settings_speaker, rememberAgentName()), live.speakerEnabled, {
         scope.launch { toggleFailed = !store.change { s -> s.copy(speakerEnabled = it) } }
     })
     SaveStatus(null, toggleFailed)

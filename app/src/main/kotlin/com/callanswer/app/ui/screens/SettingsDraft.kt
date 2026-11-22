@@ -1,5 +1,6 @@
 package com.callanswer.app.ui.screens
 
+import com.callanswer.core.model.DEFAULT_AGENT_NAME
 import com.callanswer.core.model.Gate
 import com.callanswer.core.model.GateConfig
 import com.callanswer.core.model.LocalTimeHm
@@ -27,6 +28,7 @@ sealed class DraftResult {
 }
 
 data class GeneralDraft(
+    val agentName: String,
     val mapLocation: String,
     val address: String,
     val addressHi: String,
@@ -36,6 +38,7 @@ data class GeneralDraft(
 ) {
     companion object {
         fun from(s: Settings) = GeneralDraft(
+            agentName = s.agentName,
             mapLocation = s.mapLocation.orEmpty(),
             address = s.address.orEmpty(),
             addressHi = s.addressHi.orEmpty(),
@@ -64,6 +67,7 @@ data class GeneralDraft(
         if (errors.isNotEmpty()) return DraftResult.Invalid(errors)
         return DraftResult.Ok(
             base.copy(
+                agentName = agentName.trim().ifEmpty { DEFAULT_AGENT_NAME },
                 mapLocation = url.ifEmpty { null },
                 address = address.trim().ifEmpty { null },
                 addressHi = addressHi.trim().ifEmpty { null },

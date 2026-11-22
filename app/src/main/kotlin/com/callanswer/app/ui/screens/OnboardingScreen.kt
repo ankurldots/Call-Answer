@@ -1,5 +1,6 @@
 package com.callanswer.app.ui.screens
 
+import com.callanswer.app.data.rememberAgentName
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -72,8 +73,8 @@ fun OnboardingScreen(model: SetupModel, actions: SetupActions, onFinished: () ->
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() },
         )
-        AppCard(contentDescription = stringResource(item.purpose)) {
-            Text(stringResource(item.purpose), style = MaterialTheme.typography.bodyLarge)
+        AppCard(contentDescription = stringResource(item.purpose, rememberAgentName())) {
+            Text(stringResource(item.purpose, rememberAgentName()), style = MaterialTheme.typography.bodyLarge)
         }
         StepHelp(item, actions)
 

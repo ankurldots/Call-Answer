@@ -26,6 +26,12 @@ class SettingsDraftTest {
         assertEquals(listOf("a", "b"), s.protectedTerms)
     }
 
+    @Test fun agentNameIsTrimmedAndBlankFallsBackToDefault() {
+        val named = GeneralDraft.from(base).copy(agentName = "  Maya ").applyTo(base)
+        assertEquals("Maya", (named as DraftResult.Ok).settings.agentName)
+        val blank = GeneralDraft.from(base).copy(agentName = " ").applyTo(base)
+        assertEquals("Agent", (blank as DraftResult.Ok).settings.agentName)
+    }
     @Test fun equalNightTimesAreRejectedOnEnd() {
         val r = GatesDraft.from(base).copy(nightStart = "10:00", nightEnd = "10:00").applyTo(base)
         assertTrue(SettingsField.NIGHT_END in (r as DraftResult.Invalid).errors)

@@ -1,5 +1,6 @@
 package com.callanswer.app.service
 
+import com.callanswer.app.data.rememberAgentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -152,7 +153,7 @@ fun LiveCallScreen(
             val stateText = when {
                 !state.active -> stringResource(R.string.live_call_ended)
                 takeOver -> stringResource(R.string.live_banner_take_over)
-                state.mode == Mode.AGENT_MUTED -> stringResource(R.string.live_banner_muted)
+                state.mode == Mode.AGENT_MUTED -> stringResource(R.string.live_banner_muted, rememberAgentName())
                 else -> null
             }
             Card(
@@ -177,7 +178,7 @@ fun LiveCallScreen(
                 onChipClick = {},
             )
             DebugNetworkOverlay()
-            if (assistedMode) StatusBanner(stringResource(R.string.live_banner_assisted), BannerSeverity.WARNING)
+            if (assistedMode) StatusBanner(stringResource(R.string.live_banner_assisted, rememberAgentName()), BannerSeverity.WARNING)
 
             LazyColumn(
                 state = listState,
@@ -228,14 +229,14 @@ fun LiveCallScreen(
                     modifier = Modifier.weight(1f).defaultMinSize(minHeight = AppDimens.largeControl),
                 )
                 AppButton(
-                    text = stringResource(R.string.call_action_mute),
+                    text = stringResource(R.string.call_action_mute, rememberAgentName()),
                     onClick = onMute,
                     enabled = state.active && agentActive,
                     primary = false,
                     modifier = Modifier.weight(1f).defaultMinSize(minHeight = AppDimens.largeControl),
                 )
                 AppButton(
-                    text = stringResource(R.string.call_action_resume),
+                    text = stringResource(R.string.call_action_resume, rememberAgentName()),
                     onClick = onResume,
                     enabled = state.active && !agentActive,
                     primary = false,

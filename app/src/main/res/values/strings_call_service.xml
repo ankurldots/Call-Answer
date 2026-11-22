@@ -4,8 +4,8 @@
     <string name="call_notif_unknown_number">Unknown number</string>
     <string name="call_notif_text">%1$s, %2$s</string>
     <string name="call_action_take_over">Take over</string>
-    <string name="call_action_mute">Mute Agent</string>
-    <string name="call_action_resume">Resume Agent</string>
+    <string name="call_action_mute">Mute %1$s</string>
+    <string name="call_action_resume">Resume %1$s</string>
     <string name="call_action_end">End call</string>
     <string name="live_title">Live call: %1$s</string>
     <string name="live_intent_label">Intent: %1$s</string>
@@ -18,8 +18,8 @@
     <string name="live_language_en">English</string>
     <string name="live_language_unknown">Detecting</string>
     <string name="live_banner_take_over">You are talking</string>
-    <string name="live_banner_muted">The Agent is muted. It keeps listening and transcribing.</string>
-    <string name="live_banner_assisted">The caller\'s voice cannot be heard. The Agent will only speak, so please take over the call.</string>
+    <string name="live_banner_muted">%1$s is muted. It keeps listening and transcribing.</string>
+    <string name="live_banner_assisted">The caller\'s voice cannot be heard. %1$s will only speak, so please take over the call.</string>
     <string name="live_transcript_empty">Waiting for the caller to speak.</string>
     <string name="live_quick_reply_field">Type a reply for the caller</string>
     <string name="live_quick_reply_send">Send reply</string>

@@ -23,12 +23,12 @@
     <string name="perm_role">Call screening role</string>
 
     <string name="setup_contacts_title">Contacts</string>
-    <string name="setup_contacts_purpose">Call Answer compares each caller with your contacts. Callers in your contacts keep ringing for you. Without this, no call is answered by the Agent.</string>
+    <string name="setup_contacts_purpose">Call Answer compares each caller with your contacts. Callers in your contacts keep ringing for you. Without this, no call is answered by %1$s.</string>
     <string name="feature_contact_check">Contact check</string>
     <string name="perm_contacts">Contacts (READ_CONTACTS)</string>
 
     <string name="setup_phone_title">Phone answering and phone state</string>
-    <string name="setup_phone_purpose">Call Answer answers unknown callers on your behalf and ends the call when the Agent is done. It also reads the phone state to see when a call starts and ends.</string>
+    <string name="setup_phone_purpose">Call Answer answers unknown callers on your behalf and ends the call when %1$s is done. It also reads the phone state to see when a call starts and ends.</string>
     <string name="feature_answering">Answering and ending calls</string>
     <string name="perm_phone">Answer phone calls and phone state (ANSWER_PHONE_CALLS, READ_PHONE_STATE)</string>
 
@@ -53,7 +53,7 @@
     <string name="perm_sms">Send SMS (SEND_SMS)</string>
 
     <string name="setup_accessibility_title">Accessibility service</string>
-    <string name="setup_accessibility_purpose">Call Answer uses an accessibility service to route the call audio so the Agent can hear the caller and speak into the call. It does not read your screen content.</string>
+    <string name="setup_accessibility_purpose">Call Answer uses an accessibility service to route the call audio so %1$s can hear the caller and speak into the call. It does not read your screen content.</string>
     <string name="setup_accessibility_restricted_help">If the switch is greyed out, Android is blocking this app\'s restricted settings because it was installed from outside the Play Store. Open App info, tap the three-dot menu, choose Allow restricted settings, then come back and turn the service on under Accessibility.</string>
     <string name="feature_call_audio">Call audio handling</string>
     <string name="perm_accessibility">Accessibility service</string>
@@ -81,7 +81,7 @@
     <string name="perm_autorecord">Auto record in the Phone app</string>
 
     <!-- Home -->
-    <string name="home_status_on">Screening is on. Unknown callers are answered by the Agent.</string>
+    <string name="home_status_on">Screening is on. Unknown callers are answered by %1$s.</string>
     <string name="home_status_off_setting">Screening is off in settings. Calls ring as usual.</string>
     <string name="home_status_off_role">Screening is not active. Call Answer is not set as the call screening app.</string>
     <string name="home_status_off_contacts">Screening is not active. Contacts permission is missing, so calls ring for you.</string>

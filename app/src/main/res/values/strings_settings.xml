@@ -2,6 +2,7 @@
     <string name="settings_title">Settings</string>
     <string name="settings_open">Settings</string>
     <string name="settings_back">Back</string>
+    <string name="settings_agent_name">Agent name</string>
     <string name="settings_save">Save</string>
     <string name="settings_saved">Saved.</string>
     <string name="settings_not_saved">Not saved. Fix the marked fields. Previous values were kept.</string>
@@ -21,7 +22,7 @@
     <string name="settings_cloud_llm">Use cloud language model for stalling replies</string>
     <string name="settings_address">Address (used to confirm the address a delivery caller states; never spoken or sent)</string>
     <string name="settings_address_hi">Address in Hindi (optional; also used to confirm the address a caller states in Hindi)</string>
-    <string name="settings_location_hint">The agent texts the Location URL only when a delivery caller asks for the location or directions, or states an address that matches the Address above. If the stated address does not match, nothing is sent.</string>
+    <string name="settings_location_hint">%1$s texts the Location URL only when a delivery caller asks for the location or directions, or states an address that matches the Address above. If the stated address does not match, nothing is sent.</string>
     <string name="settings_cloud_llm_hint">When on, text of the conversation (never your protected terms, map location or transfer number) may be sent to a cloud service.</string>
 
     <string name="settings_gate1">Gate 1</string>
@@ -42,7 +43,7 @@
     <string name="settings_voice_sample_en">Play English sample</string>
     <string name="settings_voice_sample_hi">Play Hindi sample</string>
     <string name="settings_voice_sample_failed">No voice could play the sample.</string>
-    <string name="settings_speaker">Turn on the speakerphone when the Agent answers</string>
+    <string name="settings_speaker">Turn on the speakerphone when %1$s answers</string>
     <string name="settings_quick_replies">Quick replies</string>
     <string name="settings_quick_reply_en">English text</string>
     <string name="settings_quick_reply_hi">Hindi text</string>

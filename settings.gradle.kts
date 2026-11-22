@@ -20,5 +20,6 @@ dependencyResolutionManagement {
 rootProject.name = "call-answer"
 
 include(":spike")
+include(":spike-cloud")
 include(":core")
 include(":app")

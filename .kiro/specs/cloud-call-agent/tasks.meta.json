@@ -1,0 +1,29 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "0.5 **USER** Check Bedrock model access for Nova 2 Sonic in ap-northeast-1": [
+      {
+        "executionId": "cd7a7730-f01d-42a8-83c8-fde090136b9a",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795369863748
+      },
+      {
+        "executionId": "cd7a7730-f01d-42a8-83c8-fde090136b9a",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795369988731
+      }
+    ],
+    "1.1 Create the `:spike-cloud` JVM module and the shared spike harness": [
+      {
+        "executionId": "cd7a7730-f01d-42a8-83c8-fde090136b9a",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795369864570
+      },
+      {
+        "executionId": "cd7a7730-f01d-42a8-83c8-fde090136b9a",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795369987981
+      }
+    ]
+  }
+}

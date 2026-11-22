@@ -20,7 +20,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.callanswer.app.CallAnswerApp
 import com.callanswer.app.R
-import com.callanswer.app.service.NotificationCenter
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppDialog
 import com.callanswer.app.ui.components.AppTextField
@@ -31,12 +30,12 @@ import kotlinx.coroutines.launch
 
 /**
  * Dialog-themed host of the spam report flow (Requirement 14). Opened by the post-call notification action
- * (`PendingIntent.getActivity`, no trampoline) and from the Call_Log. Extra [NotificationCenter.EXTRA_ENTRY_ID].
+ * (`PendingIntent.getActivity`, no trampoline) and from the Call_Log. Extra [EXTRA_ENTRY_ID].
  */
 class ReportSpamActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val entryId = intent.getStringExtra(NotificationCenter.EXTRA_ENTRY_ID)
+        val entryId = intent.getStringExtra(EXTRA_ENTRY_ID)
         if (entryId.isNullOrBlank()) {
             finish()
             return
@@ -47,6 +46,10 @@ class ReportSpamActivity : ComponentActivity() {
                 ReportSpamFlow(app.spamReporter, entryId, app, onFinish = { finish() })
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_ENTRY_ID = "entryId"
     }
 }
 
@@ -83,15 +86,6 @@ private fun ReportSpamFlow(reporter: SpamReporter, entryId: String, app: CallAns
         ReportUiState.CannotReport -> InfoDialog(stringResource(R.string.report_cannot_report), onFinish)
         ReportUiState.NoMessagingApp -> InfoDialog(stringResource(R.string.report_no_messaging_app), onFinish)
         ReportUiState.HandedToMessagingApp -> LaunchedEffect(Unit) { onFinish() }
-        is ReportUiState.SilentSent -> InfoDialog(stringResource(R.string.report_silent_sent, s.text), onFinish)
-        ReportUiState.OfferRetry -> AppDialog(
-            title = stringResource(R.string.report_title),
-            onConfirm = { run { reporter.onReportSpam(entryId) } },
-            onDismiss = onFinish,
-            confirmText = stringResource(R.string.report_retry),
-        ) {
-            Text(stringResource(R.string.report_retry_offer))
-        }
     }
 }
 

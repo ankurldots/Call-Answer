@@ -36,7 +36,6 @@ import androidx.compose.ui.semantics.semantics
 import com.callanswer.app.CallAnswerApp
 import com.callanswer.app.R
 import com.callanswer.app.report.ReportSpamActivity
-import com.callanswer.app.service.NotificationCenter
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppCard
 import com.callanswer.app.ui.theme.AppDimens
@@ -48,7 +47,7 @@ internal fun Context.callAnswerApp(): CallAnswerApp = applicationContext as Call
 /** Opens the spam report flow of task 31.3 for one entry. */
 internal fun startReportSpam(context: Context, entryId: String) {
     context.startActivity(
-        Intent(context, ReportSpamActivity::class.java).putExtra(NotificationCenter.EXTRA_ENTRY_ID, entryId),
+        Intent(context, ReportSpamActivity::class.java).putExtra(ReportSpamActivity.EXTRA_ENTRY_ID, entryId),
     )
 }
 

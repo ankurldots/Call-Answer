@@ -22,6 +22,12 @@ sealed class SettingsError(val message: String) {
     data object NightWindowStartEqualsEnd :
         SettingsError("Night window start and end must be different times")
 
+    data object InvalidUserMobile :
+        SettingsError("Enter the mobile number in international format, for example +919876543210")
+
+    data object UserMobileIsVirtualNumber :
+        SettingsError("The mobile number must not be one of the assigned virtual numbers")
+
     data class InvalidGateField(val field: GateField) :
         SettingsError("Gate ${field.label} must be 1 to 100 characters")
 }
@@ -66,6 +72,22 @@ object SettingsValidator {
         val b = LocalTimeHm.parse(end)
         if (a == null || b == null) return invalid(SettingsError.InvalidNightWindowTime)
         return if (a == b) invalid(SettingsError.NightWindowStartEqualsEnd) else ValidationResult.Valid
+    }
+
+    private val E164 = Regex("""\+[1-9][0-9]{7,14}""")
+
+    /** `userMobile` must be E.164: a `+`, a non-zero first digit, 8 to 15 digits in all. */
+    fun validateUserMobile(s: String): ValidationResult =
+        if (E164.matches(s)) ValidationResult.Valid else invalid(SettingsError.InvalidUserMobile)
+
+    /**
+     * Cross-record rule: `userMobile` is not an assigned Virtual_Number. The caller supplies the assigned
+     * numbers (E.164) because only the data layer can list them.
+     */
+    fun validateUserMobile(s: String, isAssignedVirtualNumber: (String) -> Boolean): ValidationResult {
+        val format = validateUserMobile(s)
+        if (!format.isValid) return format
+        return if (isAssignedVirtualNumber(s)) invalid(SettingsError.UserMobileIsVirtualNumber) else ValidationResult.Valid
     }
 
     fun validateSteps(steps: List<DeliveryStep>): StepListResult = StepListValidator.validate(steps)

@@ -27,7 +27,8 @@ This is a personal project, being re-architected.
 
 | Module / folder | Purpose |
 |---|---|
-| `app` | Android app (`com.callanswer.app`, minSdk 29, targetSdk 36). Becoming the companion app; the on-device call audio path is being archived. |
+| `app` | Android companion app (`com.callanswer.app`, minSdk 29, targetSdk 36). It answers no calls, captures no call audio and never enables an accessibility service. |
+| `archive-ondevice` | Archived on-device call audio path (accessibility capture, on-device speech models, call screening answering, overlay). **Archived and not shipped:** `:app` does not depend on it and Gradle does not compile it. The last commit that held this code in `:app` is tagged `archive/ondevice-audio`. See `archive-ondevice/ARCHIVE.md`. |
 | `core` | Shared call-handling rules (gates, directions, PII guard, spam report, call log). JVM tests run without a device. To be reused by the cloud Agent service. |
 | `spike-cloud` | JVM harness for the cloud spikes (results in `spike-cloud/results/`, git-ignored) |
 | `spike` | On-device feasibility spikes (history; see `docs/spike-s1-s3-runbook.md`) |
@@ -46,32 +47,17 @@ The cloud Agent service (`agent` module) and its infrastructure are planned in `
   ```
   sdk.dir=/path/to/Android/sdk
   ```
-- An arm64 Android device (Android 10 / API 29 or newer) or emulator. Real call screening needs a physical device.
-- `curl`, `unzip`, `shasum` for the model script.
+- An arm64 Android device (Android 10 / API 29 or newer) or emulator. 
 
-### 1. Get the sherpa-onnx library
-The AAR is git-ignored. If `app/libs/sherpa-onnx-2.0.2.aar` is missing:
-```
-mkdir -p app/libs
-curl -L -o app/libs/sherpa-onnx-2.0.2.aar \
-  https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.2/sherpa-onnx-2.0.2.aar
-```
-
-### 2. Download the speech models
-Downloads the VAD and Vosk (Hindi and Indian English) models into `app/src/main/assets/models` and verifies SHA-256 checksums:
-```
-tools/fetch_models.sh
-```
-
-### 3. Build and install
+### 1. Build and install
 ```
 ./gradlew :app:assembleDebug
 ./gradlew :app:installDebug      # with a device connected (adb devices)
 ```
 Or open the project in Android Studio and run the `app` configuration.
 
-### 4. Grant permissions
-On the device, open the app and follow onboarding (sign-in first, then permissions). The on-device call screening path still exists in this build but is being archived; see Status above.
+### 2. Sign in and allow notifications
+On the device, open the app and follow onboarding (sign-in, then notifications). The app needs no call, microphone or SMS permission; the on-device call path is archived (see `archive-ondevice/ARCHIVE.md`).
 
 ### Tests
 ```
@@ -79,14 +65,14 @@ On the device, open the app and follow onboarding (sign-in first, then permissio
 ```
 
 ### Debugging a call
-Debug builds write a `trace-<sessionId>.tsv` file when a call ends. Pull the files with:
+The archived on-device build wrote `trace-<sessionId>.tsv` files when a call ended (see `archive-ondevice/`). Their helper:
 ```
 tools/e2e/pull_traces.sh
 ```
 See `docs/e2e-scenarios.md` for the full manual test checklist.
 
 ### Optional: regenerate TTS voices
-`tools/generate_polly_voices.sh` and `tools/generate_fallback_phrases.sh` use AWS Polly and need AWS credentials. See `lambda/polly_tts/README.md` for the Lambda.
+`tools/generate_polly_voices.sh` and `tools/generate_fallback_phrases.sh` (the latter and `tools/fetch_models.sh` write into `archive-ondevice/`) use AWS Polly and need AWS credentials. See `lambda/polly_tts/README.md` for the Lambda.
 
 ## License
 

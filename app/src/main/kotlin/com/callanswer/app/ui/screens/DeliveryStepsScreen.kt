@@ -24,7 +24,6 @@ import androidx.compose.ui.semantics.semantics
 import com.callanswer.app.R
 import com.callanswer.app.data.SettingsStore
 import com.callanswer.app.data.UpdateResult
-import com.callanswer.app.tts.VoiceSamplePlayer
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppCard
 import com.callanswer.app.ui.components.AppTextField
@@ -60,11 +59,6 @@ private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
     val live by store.settings.collectAsState(initial = initial)
     val rows = remember { mutableStateListOf<DeliveryStep>().apply { addAll(initial.deliverySteps) } }
     var status by remember { mutableStateOf<StepsStatus?>(null) }
-    var sampleFailure by remember { mutableStateOf(VoiceSamplePlayer.Failure.NONE) }
-    var samplePlaying by remember { mutableStateOf(false) }
-    val sampler = remember { VoiceSamplePlayer(context) }
-    DisposableEffect(sampler) { onDispose { sampler.release() } }
-
     Text(stringResource(R.string.settings_steps_hint), style = MaterialTheme.typography.bodyMedium)
     rows.forEachIndexed { i, row ->
         val title = stringResource(R.string.settings_step_title, i + 1)
@@ -147,46 +141,4 @@ private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
             }
         }
     })
-
-    Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm), modifier = Modifier.fillMaxWidth()) {
-        listOf(
-            Language.EN to R.string.settings_steps_sample_en,
-            Language.HI to R.string.settings_steps_sample_hi,
-        ).forEach { (language, label) ->
-            AppButton(stringResource(label), primary = false, enabled = !samplePlaying, modifier = Modifier.fillMaxWidth(), onClick = {
-                scope.launch {
-                    val text = DeliveryStepsDraft.sampleText(rows.toList(), language, live.mapLocation)
-                    Log.i("CallAnswer", "Directions playback requested lang=$language gender=${live.voiceGender} textLength=${text.length}")
-                    sampleFailure = VoiceSamplePlayer.Failure.NONE
-                    if (text.isBlank()) {
-                        Log.w("CallAnswer", "Directions playback fail: no text for $language")
-                        sampleFailure = VoiceSamplePlayer.Failure.NO_VOICE
-                        return@launch
-                    }
-                    samplePlaying = true
-                    try {
-                        val ok = sampler.speak(text, language, live.voiceGender)
-                        sampleFailure = if (ok) VoiceSamplePlayer.Failure.NONE else sampler.lastFailure
-                        Log.i("CallAnswer", "Directions playback ${if (ok) "done" else "fail"} lang=$language failure=${sampler.lastFailure}")
-                    } finally {
-                        samplePlaying = false
-                    }
-                }
-            })
-        }
-    }
-    Text(stringResource(R.string.settings_steps_sample_hint), style = MaterialTheme.typography.bodySmall)
-    if (samplePlaying) StatusBanner(stringResource(R.string.settings_voice_sample_playing), BannerSeverity.INFO)
-    if (sampleFailure != VoiceSamplePlayer.Failure.NONE) {
-        StatusBanner(
-            stringResource(
-                when (sampleFailure) {
-                    VoiceSamplePlayer.Failure.HINDI_VOICE_DOWNLOADING -> R.string.settings_voice_sample_hindi_downloading
-                    VoiceSamplePlayer.Failure.PLAYBACK -> R.string.settings_voice_sample_playback_failed
-                    else -> R.string.settings_voice_sample_failed
-                },
-            ),
-            BannerSeverity.ERROR,
-        )
-    }
 }

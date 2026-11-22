@@ -45,8 +45,6 @@ import androidx.compose.ui.semantics.semantics
 import com.callanswer.app.R
 import com.callanswer.app.data.SettingsStore
 import com.callanswer.app.data.UpdateResult
-import com.callanswer.app.tts.SampleSourcePlan
-import com.callanswer.app.tts.VoiceSamplePlayer
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppCard
 import com.callanswer.app.ui.components.AppSwitchRow
@@ -118,12 +116,9 @@ fun SettingsHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             Triple(Routes.SETTINGS_GATES, R.string.settings_section_gates, Icons.Filled.Lock),
             Triple(Routes.SETTINGS_CALL, R.string.settings_section_call, Icons.Filled.Call),
             Triple(Routes.SETTINGS_STEPS, R.string.settings_section_steps, Icons.Filled.Send),
-            Triple(Routes.SETTINGS_RECORDING, R.string.settings_section_recording, Icons.Filled.Home),
             Triple(Routes.SETTINGS_SPAM, R.string.settings_section_spam, Icons.Filled.Warning),
             Triple(Routes.SETTINGS_ACCOUNT, R.string.settings_section_account, Icons.Filled.Person),
-        ).let {
-            if (com.callanswer.app.BuildConfig.DEBUG) it + Triple(Routes.SETTINGS_ADVANCED, R.string.settings_section_advanced, Icons.Filled.Settings) else it
-        }.forEach { (route, label, icon) ->
+        ).forEach { (route, label, icon) ->
             val text = stringResource(label)
             AppCard(contentDescription = text, onClick = { onOpen(route) }) {
                 Row(
@@ -274,7 +269,7 @@ private fun GatesForm(store: SettingsStore, initial: Settings) {
     })
 }
 
-/** Disclosure, voice with sample playback, speaker and the quick replies editor (9.14, 9.15, 9.25, 13.3, 13.13). */
+/** Disclosure, voice and the quick replies editor (9.14, 9.15, 9.25, 13.3, 13.13). */
 @Composable
 fun CallSettingsScreen(store: SettingsStore, onBack: () -> Unit) {
     val initial = rememberInitialSettings(store)
@@ -289,10 +284,6 @@ private fun CallForm(store: SettingsStore, initial: Settings) {
     val context = LocalContext.current
     val live by store.settings.collectAsState(initial = initial)
     var toggleFailed by remember { mutableStateOf(false) }
-    var sampleFailure by remember { mutableStateOf(VoiceSamplePlayer.Failure.NONE) }
-    var samplePlaying by remember { mutableStateOf(false) }
-    val sampler = remember { VoiceSamplePlayer(context) }
-    DisposableEffect(sampler) { onDispose { sampler.release() } }
 
     AppSwitchRow(stringResource(R.string.settings_disclosure), live.disclosureEnabled, {
         scope.launch { toggleFailed = !store.change { s -> s.copy(disclosureEnabled = it) } }
@@ -315,52 +306,6 @@ private fun CallForm(store: SettingsStore, initial: Settings) {
         },
     )
     Text(stringResource(R.string.settings_voice_hint), style = MaterialTheme.typography.bodySmall)
-    Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm), modifier = Modifier.fillMaxWidth()) {
-        listOf(
-            Language.EN to R.string.settings_voice_sample_en,
-            Language.HI to R.string.settings_voice_sample_hi,
-        ).forEach { (language, label) ->
-            AppButton(stringResource(label), primary = false, enabled = !samplePlaying, modifier = Modifier.fillMaxWidth(), onClick = {
-                scope.launch {
-                    sampleFailure = VoiceSamplePlayer.Failure.NONE
-                    samplePlaying = true
-                    try {
-                        sampler.play(language, live.voiceGender, displayAgentName(live.agentName))
-                        sampleFailure = sampler.lastFailure
-                    } finally {
-                        samplePlaying = false
-                    }
-                }
-            })
-        }
-    }
-    val account = (context.applicationContext as com.callanswer.app.CallAnswerApp).authRepository
-    val authState by account.state.collectAsState()
-    if (SampleSourcePlan.suggestSignIn(authState is com.callanswer.app.auth.AuthState.SignedIn, account.isConfigured)) {
-        Text(stringResource(R.string.settings_voice_sample_signin_hint), style = MaterialTheme.typography.bodyMedium)
-    }
-    if (samplePlaying) StatusBanner(stringResource(R.string.settings_voice_sample_playing), BannerSeverity.INFO)
-    if (sampleFailure != VoiceSamplePlayer.Failure.NONE) {
-        StatusBanner(
-            stringResource(
-                when (sampleFailure) {
-                    VoiceSamplePlayer.Failure.HINDI_VOICE_DOWNLOADING -> R.string.settings_voice_sample_hindi_downloading
-                    VoiceSamplePlayer.Failure.PLAYBACK -> R.string.settings_voice_sample_playback_failed
-                    else -> R.string.settings_voice_sample_failed
-                },
-            ),
-            BannerSeverity.ERROR,
-        )
-        AppButton(stringResource(R.string.settings_voice_open_tts), primary = false, onClick = {
-            val intent = Intent("com.android.settings.TTS_SETTINGS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            runCatching { context.startActivity(intent) }
-                .onFailure { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
-        })
-    }
-
-    AppSwitchRow(stringResource(R.string.settings_speaker, rememberAgentName()), live.speakerEnabled, {
-        scope.launch { toggleFailed = !store.change { s -> s.copy(speakerEnabled = it) } }
-    })
     SaveStatus(null, toggleFailed)
 
     QuickRepliesEditor(store, initial)
@@ -395,74 +340,10 @@ private fun QuickRepliesEditor(store: SettingsStore, initial: Settings) {
     })
 }
 
-/** Recording_Folder with the no-folder warning, the one-time auto-record note and the legal note (9.11, 9.12, 9.13). */
+/** The fixed TRAI destination of the spam report (14.30). Reports are always handed to the messaging app. */
 @Composable
-fun RecordingSettingsScreen(model: SetupModel, actions: SetupActions, store: SettingsStore, onBack: () -> Unit) {
-    val live by store.settings.collectAsState(initial = null)
-    LaunchedEffect(Unit) { model.refresh() }
-    SettingsPage(stringResource(R.string.settings_section_recording), onBack) {
-        val uri = live?.recordingFolderUri
-        val hasFolder = !uri.isNullOrBlank() && model.status.isGranted(SetupItem.RECORDING_FOLDER)
-        if (hasFolder) {
-            Text(stringResource(R.string.settings_folder_current, uri.orEmpty()), style = MaterialTheme.typography.bodyMedium)
-        } else {
-            StatusBanner(stringResource(R.string.settings_folder_none_warning), BannerSeverity.WARNING)
-        }
-        AppButton(
-            stringResource(if (hasFolder) R.string.settings_folder_change else R.string.settings_folder_choose),
-            onClick = { actions.request(SetupItem.RECORDING_FOLDER) },
-        )
-        if (!model.status.autoRecordAcknowledged) {
-            StatusBanner(stringResource(R.string.settings_folder_autorecord))
-            AppButton(
-                stringResource(R.string.settings_folder_autorecord_ok),
-                primary = false,
-                onClick = { model.acknowledgeAutoRecord() },
-            )
-        }
-        Text(stringResource(R.string.settings_folder_legal), style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-/** Silent_Send_Setting with the permission hint and the fixed TRAI destination (9.26, 14.30). */
-@Composable
-fun SpamSettingsScreen(model: SetupModel, actions: SetupActions, store: SettingsStore, onBack: () -> Unit) {
-    val live by store.settings.collectAsState(initial = null)
-    val scope = rememberCoroutineScope()
-    var failed by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { model.refresh() }
+fun SpamSettingsScreen(onBack: () -> Unit) {
     SettingsPage(stringResource(R.string.settings_section_spam), onBack) {
-        AppSwitchRow(
-            stringResource(R.string.settings_spam_silent),
-            live?.silentSendSpamReports == true,
-            { scope.launch { failed = !store.change { s -> s.copy(silentSendSpamReports = it) } } },
-            enabled = live != null,
-        )
-        Text(stringResource(R.string.settings_spam_silent_hint), style = MaterialTheme.typography.bodySmall)
-        if (!model.status.isGranted(SetupItem.SMS)) {
-            StatusBanner(stringResource(R.string.settings_spam_permission_missing), BannerSeverity.WARNING)
-            AppButton(stringResource(R.string.action_request_again), primary = false, onClick = { actions.request(SetupItem.SMS) })
-        }
-        SaveStatus(null, failed)
         Text(stringResource(R.string.settings_spam_destination), style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-/** Debug-only settings. The section is not listed in release builds. */
-@Composable
-fun AdvancedSettingsScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
-    var chosen by remember { mutableStateOf(com.callanswer.app.audio.AgentVoiceUsage.get(context)) }
-    SettingsPage(stringResource(R.string.settings_section_advanced), onBack) {
-        Text(stringResource(R.string.settings_agent_voice_usage), style = MaterialTheme.typography.titleMedium)
-        Text(stringResource(R.string.settings_agent_voice_usage_hint), style = MaterialTheme.typography.bodySmall)
-        ChipRow(
-            labels = com.callanswer.app.audio.AgentVoiceUsage.entries.map { it.name },
-            selected = setOf(chosen.name),
-            onChipClick = { label ->
-                chosen = com.callanswer.app.audio.AgentVoiceUsage.entries.first { it.name == label }
-                com.callanswer.app.audio.AgentVoiceUsage.set(context, chosen)
-            },
-        )
     }
 }

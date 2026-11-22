@@ -57,6 +57,11 @@ ktor-server-netty = { group = "io.ktor", name = "ktor-server-netty-jvm", version
 ktor-server-websockets = { group = "io.ktor", name = "ktor-server-websockets-jvm", version.ref = "ktor" }
 ktor-client-cio = { group = "io.ktor", name = "ktor-client-cio-jvm", version.ref = "ktor" }
 ktor-client-websockets = { group = "io.ktor", name = "ktor-client-websockets-jvm", version.ref = "ktor" }
+aws-dynamodb = { group = "software.amazon.awssdk", name = "dynamodb", version.ref = "awsSdk" }
+aws-s3 = { group = "software.amazon.awssdk", name = "s3", version.ref = "awsSdk" }
+aws-secretsmanager = { group = "software.amazon.awssdk", name = "secretsmanager", version.ref = "awsSdk" }
+aws-cloudwatch = { group = "software.amazon.awssdk", name = "cloudwatch", version.ref = "awsSdk" }
+ktor-server-test-host = { group = "io.ktor", name = "ktor-server-test-host-jvm", version.ref = "ktor" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 
 [plugins]

@@ -2,7 +2,7 @@
 # Downloads and verifies the models bundled in the APK assets. Run from anywhere.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-A="$ROOT/app/src/main/assets/models"
+A="$ROOT/archive-ondevice/src/main/assets/models"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 mkdir -p "$A/asr" "$A/vad"
 

@@ -36,10 +36,11 @@ google-services.json
 
 # S7 sherpa-onnx AAR (52 MB, downloaded; see spike/S7-README.md)
 spike/libs/*.aar
+archive-ondevice/libs/*.aar
 app/libs/*.aar
 # Bundled models (large); fetched by tools/fetch_models.sh
-app/src/main/assets/models/asr/vosk-small-*/
-app/src/main/assets/models/vad/*.onnx
+archive-ondevice/src/main/assets/models/asr/vosk-small-*/
+archive-ondevice/src/main/assets/models/vad/*.onnx
 
 # AWS SAM build output
 .aws-sam/

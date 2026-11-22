@@ -47,6 +47,23 @@ data class Settings(
     val protectedTerms: List<String> = emptyList(),
     val cloudLlmEnabled: Boolean = false,
     val silentSendSpamReports: Boolean = false,
+    // Cloud Call Agent fields. All have defaults so stored settings without them still decode.
+    /** Take_Over destination, E.164. */
+    val userMobile: String? = null,
+    /** Optional Sonic voice id that overrides the choice made from [voiceGender]. */
+    val voiceId: String? = null,
+    /** Set by the server on every save; the client never edits it. */
+    val version: Long = 0,
+    val agentEnabled: Boolean = false,
+    val fallbackRoute: FallbackRoute = FallbackRoute.VOICEMAIL,
+    val retentionDays: Int = 30,
+    val recordingEnabled: Boolean = true,
+    val greetingName: String? = null,
+    val defaultLanguage: Language = Language.EN,
+    val maxStallingMinutes: Int = 5,
+    val costRates: CostRates = CostRates(),
+    val monthlyLimitInr: Int? = null,
+    val consentVersion: String? = null,
 ) {
     /** Snapshot taken at call start. */
     fun freeze(): FrozenSettings = FrozenSettings(

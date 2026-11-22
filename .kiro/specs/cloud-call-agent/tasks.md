@@ -131,13 +131,13 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 3. Set up the `:agent` module, the infrastructure, and secrets
-  - [~] 3.1 Create the `:agent` Gradle module
+  - [x] 3.1 Create the `:agent` Gradle module
     - JVM module with Ktor (Netty), kotlinx-serialization, kotlinx-coroutines, AWS SDK for Java v2 (`bedrockruntime`, `dynamodb`, `s3`, `secretsmanager`, `cloudwatch`), Kotest, and a dependency on `:core`; register it in `settings.gradle.kts`
     - Add a `Clock` interface, a `Config` loader that reads environment variables (region, table, bucket, secret names, `sonic.maxSessionSeconds`, `sonic.idleSeconds`, model identifier), and a `/health` route
     - Add one smoke test so `./gradlew :agent:test` runs
     - _Requirements: 24.1, 14.1_
 
-  - [~] 3.2 Add the cloud fields and the `cloud` package to `:core`
+  - [x] 3.2 Add the cloud fields and the `cloud` package to `:core`
     - Add the `Settings` fields (including `userMobile`, `voiceGender`, `voiceId`, and the server-owned `version`), `CallLogEntry` fields (including `settingsVersion`), and the `cloud` package skeleton listed in the design; every added field has a default value
     - Extend `SettingsValidator` with the `userMobile` rule (E.164) and a hook for the cross-record rule that `userMobile` is not an assigned Virtual_Number
     - Verify that the existing `:core` tests and serialized fixtures still pass unchanged
@@ -166,7 +166,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Add a snapshot test of the IAM statements that fails on a wildcard resource outside an allowed list
     - _Requirements: 16.3, 16.4_
 
-  - [~] 3.7 Add the `tenant` package to `:core`
+  - [x] 3.7 Add the `tenant` package to `:core`
     - Add `UserId` and `E164` value types, `PhoneNumbers.normalize` (pure; handles `+91`, `91`, a leading `0`, spaces, hyphens, and 10-digit Indian numbers; returns null for non-numbers; idempotent), and `Keys` that build every DynamoDB key (`USER#<sub>`, `NUMBER#<e164>`, `CALL#...`, `DEVICE#...`) and S3 key (`users/<sub>/...`) from a `UserId`
     - Add `SettingsMerge.threeWay(base, server, edits)` and the `SettingsUpdate` result types (`Saved`, `Conflict`, `Invalid`)
     - _Requirements: 25.1, 25.10, 27.10, 28.4, 28.5_
@@ -513,7 +513,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 12. Update the Companion_App
-  - [~] 12.1 Archive the on-device audio path
+  - [x] 12.1 Archive the on-device audio path
     - Run a dependency scan of what `ui/` still uses from `a11y/`, `audio/`, `asr/`, `tts/`, `translate/`, `cloudtts/`, `nlg/`, `telecom/`, `recording/`, `service/`, and `sms/`
     - Move those packages to a Gradle module `:archive-ondevice` that `:app` does not depend on (a note in `README.md` records that the on-device path is archived and not shipped; a git tag `archive/ondevice-audio` marks the last commit that contained it in `:app`)
     - Adapt the `ui/` screens that referenced the on-device pipeline

@@ -75,4 +75,14 @@ data class CallLogEntry(
     val notes: List<LogNoteKind>,
     val transfer: TransferRecord? = null,
     val report: SpamReportInfo = SpamReportInfo(),
+    // Cloud Call Agent fields. All have defaults so stored entries without them still decode.
+    val costEstimatePaise: Long? = null,
+    val latency: LatencyReport? = null,
+    val sonicSessions: List<SonicSessionRecord> = emptyList(),
+    val fallbackCause: String? = null,
+    val recordingKey: String? = null,
+    val isTestCall: Boolean = false,
+    val voiceId: String? = null,
+    /** Version of the settings the call was frozen from. */
+    val settingsVersion: Long? = null,
 )

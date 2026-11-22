@@ -22,4 +22,6 @@ rootProject.name = "call-answer"
 include(":spike")
 include(":spike-cloud")
 include(":core")
+include(":agent")
 include(":app")
+include(":archive-ondevice")

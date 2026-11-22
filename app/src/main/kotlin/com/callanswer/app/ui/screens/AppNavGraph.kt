@@ -18,11 +18,9 @@ object Routes {
     const val SETTINGS_GENERAL = "settings/general"
     const val SETTINGS_GATES = "settings/gates"
     const val SETTINGS_CALL = "settings/call"
-    const val SETTINGS_RECORDING = "settings/recording"
     const val SETTINGS_SPAM = "settings/spam"
     const val SETTINGS_STEPS = "settings/steps"
     const val SETTINGS_ACCOUNT = "settings/account"
-    const val SETTINGS_ADVANCED = "settings/advanced"
     const val CALL_LOG = "calllog"
     const val CALL_DETAIL = "calllog/{entryId}"
     fun callDetail(id: String) = "calllog/" + android.net.Uri.encode(id)
@@ -64,7 +62,6 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
         composable(Routes.SETTINGS_GENERAL) { GeneralSettingsScreen(store, back) }
         composable(Routes.SETTINGS_GATES) { GatesSettingsScreen(store, back) }
         composable(Routes.SETTINGS_CALL) { CallSettingsScreen(store, back) }
-        composable(Routes.SETTINGS_RECORDING) { RecordingSettingsScreen(model, actions, store, back) }
         composable(Routes.SETTINGS_ACCOUNT) {
             AccountScreen((LocalContext.current.applicationContext as CallAnswerApp).authRepository, back)
         }
@@ -76,7 +73,6 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
             val id = entry.arguments?.getString("entryId").orEmpty()
             CallDetailScreen(id, resumeTick, back)
         }
-        composable(Routes.SETTINGS_ADVANCED) { AdvancedSettingsScreen(back) }
-        composable(Routes.SETTINGS_SPAM) { SpamSettingsScreen(model, actions, store, back) }
+        composable(Routes.SETTINGS_SPAM) { SpamSettingsScreen(back) }
     }
 }

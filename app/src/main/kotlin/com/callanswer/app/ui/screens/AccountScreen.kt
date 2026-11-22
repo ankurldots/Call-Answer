@@ -20,7 +20,6 @@ import com.callanswer.app.auth.AuthError
 import com.callanswer.app.auth.AuthException
 import com.callanswer.app.auth.AuthRepository
 import com.callanswer.app.auth.AuthState
-import com.callanswer.app.cloudtts.PollyPrefetchWorker
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppTextField
 import com.callanswer.app.ui.components.BannerSeverity
@@ -44,17 +43,6 @@ fun AccountScreen(auth: AuthRepository, onBack: () -> Unit) {
 @Composable
 fun AccountPanel(auth: AuthRepository) {
     val state by auth.state.collectAsState()
-    val context = LocalContext.current
-    // Signing in downloads the Polly voice files (the debounced watcher would also do it; this is immediate).
-    val wasSignedIn = remember { booleanArrayOf(state is AuthState.SignedIn) }
-    LaunchedEffect(state) {
-        val signedIn = state is AuthState.SignedIn
-        if (signedIn && !wasSignedIn[0] && auth.isConfigured) {
-            Log.i("CallAnswer", "Signed in: starting Polly prefetch")
-            PollyPrefetchWorker.enqueue(context.applicationContext)
-        }
-        wasSignedIn[0] = signedIn
-    }
     when {
         !auth.isConfigured -> StatusBanner(stringResource(R.string.account_not_configured), BannerSeverity.WARNING)
         state is AuthState.SignedIn -> SignedInView(auth, (state as AuthState.SignedIn).email)

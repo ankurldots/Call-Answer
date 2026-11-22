@@ -1,7 +1,5 @@
 package com.callanswer.app.ui.screens
 
-import android.app.Activity
-import android.app.role.RoleManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -23,20 +21,13 @@ class SetupActions(
     private val context: Context,
     private val model: SetupModel,
     private val launchPermissions: (Array<String>) -> Unit,
-    private val launchRole: (Intent) -> Unit,
-    private val launchFolderPicker: () -> Unit,
     private val setPending: (SetupItem) -> Unit,
 ) {
     /** "Request again" on Home and the primary button in onboarding. */
     fun request(item: SetupItem) {
         setPending(item)
         when (item) {
-            SetupItem.CALL_SCREENING_ROLE -> requestRole(item)
             SetupItem.FULL_SCREEN_INTENT -> openFullScreenIntentSettings()
-            SetupItem.OVERLAY -> openOverlaySettings()
-            SetupItem.BATTERY -> start(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-            SetupItem.RECORDING_FOLDER -> launchFolderPicker()
-            SetupItem.AUTO_RECORD -> model.acknowledgeAutoRecord()
             else -> {
                 val missing = item.permissions.filter {
                     context.checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -49,10 +40,7 @@ class SetupActions(
     /** "Open settings": the page where the User can grant the item by hand. */
     fun openSettings(item: SetupItem) {
         when (item) {
-            SetupItem.CALL_SCREENING_ROLE -> start(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
             SetupItem.FULL_SCREEN_INTENT -> openFullScreenIntentSettings()
-            SetupItem.OVERLAY -> openOverlaySettings()
-            SetupItem.BATTERY -> start(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             else -> openAppInfo()
         }
     }
@@ -60,22 +48,6 @@ class SetupActions(
     /** App info page, where the User can grant a runtime permission by hand. */
     fun openAppInfo() = start(
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
-    )
-
-    private fun requestRole(item: SetupItem) {
-        val rm = context.getSystemService(RoleManager::class.java)
-        when {
-            !rm.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING) -> {
-                Toast.makeText(context, R.string.setup_role_unavailable, Toast.LENGTH_LONG).show()
-                model.recordDenied(item)
-            }
-            rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING) -> Unit
-            else -> launchRole(rm.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
-        }
-    }
-
-    private fun openOverlaySettings() = start(
-        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
     )
 
     private fun openFullScreenIntentSettings() {
@@ -110,23 +82,11 @@ fun rememberSetupActions(model: SetupModel): SetupActions {
         if (item != null && result.values.any { !it }) model.recordDenied(item)
         scope.launch { model.refresh() }
     }
-    val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        pending[0]?.takeIf { result.resultCode != Activity.RESULT_OK }?.let(model::recordDenied)
-        scope.launch { model.refresh() }
-    }
-    val folderLauncher = rememberLauncherForActivityResult(model.folderContract()) { uri ->
-        scope.launch {
-            val saved = uri != null && model.saveFolder(uri)
-            if (!saved) pending[0]?.let(model::recordDenied)
-        }
-    }
     return remember(context, model) {
         SetupActions(
             context = context,
             model = model,
             launchPermissions = { permissionLauncher.launch(it) },
-            launchRole = { roleLauncher.launch(it) },
-            launchFolderPicker = { folderLauncher.launch(null) },
             setPending = { pending[0] = it },
         )
     }

@@ -78,12 +78,11 @@ fun OnboardingScreen(model: SetupModel, actions: SetupActions, onFinished: () ->
         AppCard(contentDescription = stringResource(item.purpose, rememberAgentName())) {
             Text(stringResource(item.purpose, rememberAgentName()), style = MaterialTheme.typography.bodyLarge)
         }
-        StepHelp(item)
 
         if (item in model.deniedThisSession && !granted) {
             StatusBanner(deniedMessage(item), BannerSeverity.WARNING)
         }
-        AnimatedVisibility(granted && item != SetupItem.AUTO_RECORD) {
+        AnimatedVisibility(granted) {
             StatusBanner(stringResource(R.string.onboarding_granted), BannerSeverity.INFO)
         }
 
@@ -95,8 +94,6 @@ fun OnboardingScreen(model: SetupModel, actions: SetupActions, onFinished: () ->
             } else {
                 AppButton(stringResource(R.string.onboarding_skip), onClick = ::next, primary = false)
             }
-        } else if (item == SetupItem.AUTO_RECORD) {
-            AppButton(stringResource(R.string.onboarding_got_it), onClick = { model.acknowledgeAutoRecord(); next() })
         } else if (granted) {
             AppButton(stringResource(R.string.onboarding_next), onClick = ::next)
         } else {
@@ -106,20 +103,8 @@ fun OnboardingScreen(model: SetupModel, actions: SetupActions, onFinished: () ->
     }
 }
 
-/** Extra guidance for the steps that need it. */
-@Composable
-private fun StepHelp(item: SetupItem) {
-    when (item) {
-        SetupItem.BATTERY -> Text(stringResource(R.string.setup_battery_help), style = MaterialTheme.typography.bodyMedium)
-        SetupItem.RECORDING_FOLDER -> Text(stringResource(R.string.setup_folder_help), style = MaterialTheme.typography.bodyMedium)
-        else -> Unit
-    }
-}
-
 private fun actionLabel(item: SetupItem): Int = when (item) {
-    SetupItem.CALL_SCREENING_ROLE -> R.string.action_set_role
-    SetupItem.FULL_SCREEN_INTENT, SetupItem.OVERLAY, SetupItem.BATTERY -> R.string.action_open_settings
-    SetupItem.RECORDING_FOLDER -> R.string.action_choose_folder
+    SetupItem.FULL_SCREEN_INTENT -> R.string.action_open_settings
     else -> R.string.action_allow
 }
 

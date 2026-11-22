@@ -7,8 +7,8 @@ import android.os.Build
 import androidx.annotation.StringRes
 import com.callanswer.app.R
 /**
- * One guided setup step, in onboarding order. The companion app needs only sign-in and the notification
- * permissions for the take-over alert; it answers no calls and needs no call, microphone or SMS access.
+ * One device permission the Agent's alerts need. Sign-in, consent, number and User_Mobile are onboarding
+ * steps (see [OnboardingStep]). The companion app needs only the notification permissions for the take-over alert; it answers no calls and needs no call, microphone or SMS access.
  * [permissions] lists runtime permissions; special-access items use their own check.
  */
 enum class SetupItem(
@@ -20,9 +20,6 @@ enum class SetupItem(
     @StringRes val permissionLabel: Int,
     val permissions: List<String> = emptyList(),
 ) {
-    SIGN_IN(
-        R.string.setup_signin_title, R.string.setup_signin_purpose, R.string.feature_cloud_voice, R.string.perm_signin,
-    ),
     NOTIFICATIONS(
         R.string.setup_notifications_title, R.string.setup_notifications_purpose, R.string.feature_notifications,
         R.string.perm_notifications,
@@ -40,10 +37,9 @@ data class SetupStatus(val granted: Map<SetupItem, Boolean>) {
     val denied: List<SetupItem>
         get() = SetupItem.entries.filter { !isGranted(it) }
     companion object {
-        fun read(context: Context, signedIn: Boolean = false): SetupStatus {
+        fun read(context: Context): SetupStatus {
             val granted = SetupItem.entries.associateWith { item ->
                 when (item) {
-                    SetupItem.SIGN_IN -> signedIn
                     SetupItem.FULL_SCREEN_INTENT -> canUseFullScreenIntent(context)
                     else -> item.permissions.all {
                         context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED

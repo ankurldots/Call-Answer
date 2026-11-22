@@ -1,57 +1,27 @@
 <resources>
     <string name="onboarding_progress">Step %1$d of %2$d</string>
-    <string name="onboarding_granted">Done. This is already set up.</string>
     <string name="onboarding_next">Next</string>
-    <string name="onboarding_skip">Skip for now</string>
-    <string name="onboarding_got_it">Got it</string>
 
     <string name="action_allow">Allow</string>
-    <string name="action_set_role">Set as call screening app</string>
     <string name="action_open_settings">Open settings</string>
-    <string name="action_choose_folder">Choose folder</string>
     <string name="action_request_again">Request again</string>
 
     <string name="banner_denied">%1$s is turned off. Permission not granted: %2$s.</string>
-    <string name="setup_role_unavailable">The call screening role is not available on this phone.</string>
     <string name="setup_settings_unavailable">This settings page could not be opened on this phone.</string>
 
     <!-- Items: title, purpose shown before the request, feature disabled on denial, permission name -->
-    <string name="setup_signin_title">Sign in</string>
-    <string name="setup_signin_purpose">Signing in turns on the natural Indian voice (Polly Kajal) and syncs it to this phone. Calls still work offline: the voice files are downloaded once and stay on the phone. You can skip this and use the on-device voices.</string>
-    <string name="feature_cloud_voice">Natural Indian voice</string>
-    <string name="perm_signin">Signed in</string>
-    <string name="home_signin_missing">The natural Indian voice is off. Sign in to turn it on. The on-device voice is used until then.</string>
+    <string name="home_signin_missing">You are not signed in. Sign in to set up the Agent.</string>
     <string name="action_sign_in">Sign in</string>
-    <string name="setup_role_title">Call screening app</string>
-    <string name="setup_role_purpose">Android lets only the call screening app see incoming calls before they ring. Call Answer needs this role to check who is calling and to answer unknown callers for you.</string>
-    <string name="feature_screening">Call screening</string>
-    <string name="perm_role">Call screening role</string>
-
-    <string name="setup_contacts_title">Contacts</string>
-    <string name="setup_contacts_purpose">Call Answer compares each caller with your contacts. Callers in your contacts keep ringing for you. Without this, no call is answered by %1$s.</string>
-    <string name="feature_contact_check">Contact check</string>
-    <string name="perm_contacts">Contacts (READ_CONTACTS)</string>
-
-    <string name="setup_phone_title">Phone answering and phone state</string>
-    <string name="setup_phone_purpose">Call Answer answers unknown callers on your behalf and ends the call when %1$s is done. It also reads the phone state to see when a call starts and ends.</string>
-    <string name="feature_answering">Answering and ending calls</string>
-    <string name="perm_phone">Answer phone calls and phone state (ANSWER_PHONE_CALLS, READ_PHONE_STATE)</string>
 
 
-    <string name="setup_mic_title">Microphone</string>
-    <string name="setup_mic_purpose">Call Answer listens to the caller to understand what they want. Audio is processed on the phone and is not saved by the App.</string>
-    <string name="feature_listening">Listening to callers</string>
-    <string name="perm_mic">Microphone (RECORD_AUDIO)</string>
+
+
 
     <string name="setup_notifications_title">Notifications</string>
     <string name="setup_notifications_purpose">Call Answer shows an alert when a caller needs you, a live call notification with Take over and End call, and a prompt to report spam after a call.</string>
     <string name="feature_notifications">Alerts and call notifications</string>
     <string name="perm_notifications">Notifications (POST_NOTIFICATIONS)</string>
 
-    <string name="setup_sms_title">Text messages</string>
-    <string name="setup_sms_purpose">Call Answer texts your location link to a delivery caller who asks for directions. If you turn it on, it can also send spam reports to 1909 without opening your messaging app. Reports are sent only to 1909 (TRAI).</string>
-    <string name="feature_sms">Map location text and silent spam reports</string>
-    <string name="perm_sms">Send SMS (SEND_SMS)</string>
 
 
     <string name="setup_fsi_title">Full-screen alerts</string>
@@ -59,33 +29,36 @@
     <string name="feature_takeover_alert">Full-screen Take over alert</string>
     <string name="perm_fsi">Full-screen notifications</string>
 
-    <string name="setup_overlay_title">Display over other apps</string>
-    <string name="setup_overlay_purpose">This lets the Agent start when a call comes in. Android blocks apps that are not on screen from starting call handling, so Call Answer shows a small bar, \"Call Answer is handling this call\", while it answers and for as long as the call lasts. Some banking and UPI apps warn when another app is displayed over them; the bar disappears when the call ends.</string>
-    <string name="feature_overlay">Starting the Agent when a call comes in</string>
-    <string name="perm_overlay">Display over other apps</string>
 
-    <string name="setup_battery_title">Battery: unrestricted</string>
-    <string name="setup_battery_purpose">Android can stop background apps to save battery. Call Answer must keep running during a call, so it needs unrestricted battery use.</string>
-    <string name="setup_battery_help">Allow the app in the list that opens. On Samsung phones also open App info, then Battery, and choose Unrestricted, and remove Call Answer from Never sleeping apps limits.</string>
-    <string name="feature_background">Reliable background running</string>
-    <string name="perm_battery">Unrestricted battery use</string>
 
-    <string name="setup_folder_title">Recordings folder</string>
-    <string name="setup_folder_purpose">Your phone\'s own call recorder saves recordings. Choose the folder where it saves them and Call Answer will link each recording to its call log entry. The App reads only this folder and never copies files.</string>
-    <string name="setup_folder_help">Pick the call recordings folder in the system picker. The App asks for access to that folder only, not to all your files.</string>
-    <string name="feature_recording_link">Linking recordings to the call log</string>
-    <string name="perm_folder">Recordings folder</string>
 
-    <string name="setup_autorecord_title">Turn on auto-record</string>
-    <string name="setup_autorecord_purpose">Call Answer cannot start your phone\'s call recorder. Open the Phone app, go to Settings, then Record calls, and turn on auto record for unknown numbers. You only need to do this once.</string>
-    <string name="feature_autorecord">Recording of screened calls</string>
-    <string name="perm_autorecord">Auto record in the Phone app</string>
 
     <!-- Home -->
-    <string name="home_status_on">Screening is on. Unknown callers are answered by %1$s.</string>
-    <string name="home_status_off_setting">Screening is off in settings. Calls ring as usual.</string>
-    <string name="home_status_off_role">Screening is not active. Call Answer is not set as the call screening app.</string>
-    <string name="home_status_off_contacts">Screening is not active. Contacts permission is missing, so calls ring for you.</string>
-    <string name="home_no_folder_warning">No recordings folder is selected, so recordings cannot be linked to the call log. Choose one below.</string>
     <string name="home_denied_heading">Needs your attention</string>
+    <!-- Guided start (Requirement 31) -->
+    <string name="onboarding_signin_title">Sign in</string>
+    <string name="onboarding_signin_body">Sign in with the account your administrator created. Then you accept the privacy consent, get your number, and set up call forwarding.</string>
+    <string name="onboarding_number_title">Your number</string>
+    <string name="onboarding_number_waiting">Waiting for the admin to assign a number to your account.</string>
+    <string name="onboarding_number_waiting_hint">This screen checks again every minute while it is open. The forwarding codes appear after a number is assigned.</string>
+    <string name="onboarding_mobile_title">Your mobile number</string>
+    <string name="onboarding_mobile_body">When you take over a call, the caller is connected to this number. Use international format with the country code.</string>
+    <string name="onboarding_mobile_save">Save number</string>
+    <string name="onboarding_settings_title">Settings</string>
+    <string name="onboarding_settings_body">Turn the Agent on when you are ready. It can be on only after you accepted the consent, a number is assigned, and your mobile number is saved.</string>
+    <string name="onboarding_finish">Finish</string>
+    <string name="agent_prerequisites_missing">The Agent stays off until you accept the consent, a number is assigned to you, and your mobile number is saved.</string>
+    <string name="upload_offer_title">Settings on this phone</string>
+    <string name="upload_offer_body">The server has no settings for your account yet. Upload the settings stored on this phone as your first settings?</string>
+    <string name="upload_offer_accept">Upload settings</string>
+    <string name="upload_offer_dismiss">Not now</string>
+    <string name="upload_offer_failed">The settings could not be uploaded. Check your connection and try again.</string>
+    <!-- Home -->
+    <string name="home_agent_title">Agent</string>
+    <string name="home_continue_setup">Continue setup</string>
+    <string name="home_need_consent">Privacy consent is not accepted. The Agent stays off.</string>
+    <string name="home_need_number">No number is assigned to your account yet.</string>
+    <string name="home_need_mobile">Your mobile number is not saved yet.</string>
+    <string name="home_agent_on">The Agent answers forwarded calls.</string>
+    <string name="home_agent_off">The Agent is off. Turn it on in the Agent settings.</string>
 </resources>

@@ -43,6 +43,17 @@ android {
         // Keep native libraries uncompressed and page-aligned (16 KB page-size compatibility).
         jniLibs.useLegacyPackaging = false
     }
+    testOptions {
+        unitTests.all { test ->
+            // ReleaseManifestTest always inspects the merged *release* manifest (release unit-test tasks are not generated).
+            test.dependsOn("processReleaseManifest")
+            test.systemProperty(
+                "callanswer.mergedManifest",
+                layout.buildDirectory.file("intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml")
+                    .get().asFile.absolutePath,
+            )
+        }
+    }
     lint {
         disable += "PermissionImpliesUnsupportedChromeOsHardware"
     }

@@ -111,6 +111,19 @@ class SettingsRepository(
         syncLocked()
     }
 
+    /**
+     * First upload of the local settings when the server holds no document: `PUT /settings` with `expectedVersion` 0.
+     * A 409 means a document exists now; the cache then holds it and [SyncResult.UpToDate] is returned.
+     */
+    suspend fun uploadInitial(settings: JsonObject): SyncResult = lock.withLock {
+        val result = try { api.putSettings(0L, settings) } catch (e: ApiException) { return@withLock SyncResult.Failed(e) }
+        when (result) {
+            is PutSettingsResult.Saved -> { remember(result.document); SyncResult.Saved(result.document) }
+            is PutSettingsResult.Conflict -> { remember(result.current); SyncResult.UpToDate(result.current) }
+            is PutSettingsResult.Invalid -> SyncResult.Invalid(result.field, result.message)
+        }
+    }
+
     private suspend fun syncLocked(): SyncResult {
         var server = try { api.getSettings() } catch (e: ApiException) { return SyncResult.Failed(e) }
         remember(server)

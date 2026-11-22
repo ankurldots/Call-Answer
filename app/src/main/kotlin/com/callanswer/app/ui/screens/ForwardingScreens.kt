@@ -41,7 +41,7 @@ private fun openDialer(context: Context, code: String): Boolean {
 private fun ForwardingGate(
     api: CompanionApi,
     title: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onOpenConsent: () -> Unit,
     content: @Composable (String) -> Unit,
 ) {
@@ -91,10 +91,12 @@ private fun CodeCard(label: String, code: String) {
 @Composable
 fun ForwardingSetupScreen(
     api: CompanionApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onOpenConsent: () -> Unit,
     onOpenTurnOff: () -> Unit,
     onOpenTest: () -> Unit,
+    /** Extra content at the end of the page (the onboarding "Continue" button). */
+    footer: @Composable () -> Unit = {},
 ) {
     ForwardingGate(api, stringResource(R.string.fwd_setup_title), onBack, onOpenConsent) { number ->
         var ring by remember { mutableIntStateOf(20) }
@@ -123,6 +125,7 @@ fun ForwardingSetupScreen(
         }
         AppButton(stringResource(R.string.fwd_open_test), onClick = onOpenTest)
         AppButton(stringResource(R.string.fwd_open_turnoff), primary = false, onClick = onOpenTurnOff)
+        footer()
     }
 }
 

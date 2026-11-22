@@ -27,16 +27,25 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
         startDestination = if (model.onboardingDone) Routes.HOME else Routes.ONBOARDING,
     ) {
         composable(Routes.ONBOARDING) {
-            OnboardingScreen(model, actions) {
-                navController.navigate(Routes.HOME) { popUpTo(Routes.ONBOARDING) { inclusive = true } }
+            OnboardingScreen(
+                model, actions,
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onOpenTurnOff = { navController.navigate(Routes.FORWARDING_TURN_OFF) },
+                onOpenTest = { navController.navigate(Routes.FORWARDING_TEST) },
+            ) {
+                // Opened from Home: return to it. First run: Home replaces the onboarding.
+                if (!navController.popBackStack(Routes.HOME, inclusive = false)) {
+                    navController.navigate(Routes.HOME) { popUpTo(Routes.ONBOARDING) { inclusive = true } }
+                }
             }
         }
         composable(Routes.HOME) {
             HomeScreen(
-                model, actions,
+                model, actions, resumeTick,
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenCallLog = { navController.navigate(Routes.CALL_LOG) },
                 onOpenAccount = { navController.navigate(Routes.SETTINGS_ACCOUNT) },
+                onOpenOnboarding = { navController.navigate(Routes.ONBOARDING) },
             )
         }
         val back: () -> Unit = { navController.popBackStack() }

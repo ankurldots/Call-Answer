@@ -84,7 +84,7 @@ internal fun EditOutcome.toSaveOutcome(): SaveOutcome = when (this) {
 }
 
 @Composable
-internal fun SettingsPage(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
+internal fun SettingsPage(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()

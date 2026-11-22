@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import com.callanswer.app.R
 import com.callanswer.app.api.ApiException
 import com.callanswer.app.api.CompanionApi
+import com.callanswer.app.api.Profile
 import com.callanswer.app.data.Conflict
 import com.callanswer.app.data.ConflictChoice
 import com.callanswer.app.data.SyncResult
@@ -50,9 +51,12 @@ fun AgentSettingsScreen(
     onBack: () -> Unit,
 ) {
     var consent by remember { mutableStateOf<ConsentStatus>(ConsentStatus.Loading) }
+    var profile by remember { mutableStateOf<Profile?>(null) }
     LaunchedEffect(api) {
         consent = try {
-            if (api.me().consentAccepted) ConsentStatus.Accepted else ConsentStatus.NotAccepted
+            val me = api.me()
+            profile = me
+            if (me.consentAccepted) ConsentStatus.Accepted else ConsentStatus.NotAccepted
         } catch (e: CancellationException) {
             throw e
         } catch (e: ApiException) {
@@ -60,12 +64,12 @@ fun AgentSettingsScreen(
         }
     }
     CloudSettingsPage(stringResource(R.string.settings_section_agent), state, onOpenConflicts, onBack) {
-        AgentForm(state, it, consent, onOpenConsent)
+        AgentForm(state, it, consent, profile, onOpenConsent)
     }
 }
 
 @Composable
-private fun AgentForm(state: CloudSettingsState, initial: Settings, consent: ConsentStatus, onOpenConsent: () -> Unit) {
+private fun AgentForm(state: CloudSettingsState, initial: Settings, consent: ConsentStatus, profile: Profile?, onOpenConsent: () -> Unit) {
     val scope = rememberCoroutineScope()
     val live = state.settings ?: initial
     var draft by remember { mutableStateOf(AgentDraft.from(initial)) }
@@ -76,8 +80,12 @@ private fun AgentForm(state: CloudSettingsState, initial: Settings, consent: Con
     AppSwitchRow(
         stringResource(R.string.agent_enabled), live.agentEnabled,
         { scope.launch { toggleFailed = !state.change { s -> s.copy(agentEnabled = it) } } },
-        enabled = agentSwitchEnabled(consent, live.agentEnabled),
+        enabled = agentSwitchEnabled(consent, live.agentEnabled) &&
+            (agentMayTurnOn(true, profile, live.userMobile) || live.agentEnabled),
     )
+    if (profile != null && consent == ConsentStatus.Accepted && !agentMayTurnOn(true, profile, live.userMobile)) {
+        StatusBanner(stringResource(R.string.agent_prerequisites_missing), BannerSeverity.WARNING)
+    }
     when (consent) {
         ConsentStatus.Loading -> Text(stringResource(R.string.settings_loading), style = MaterialTheme.typography.bodySmall)
         is ConsentStatus.Failed -> StatusBanner(stringResource(consent.messageRes), BannerSeverity.ERROR)

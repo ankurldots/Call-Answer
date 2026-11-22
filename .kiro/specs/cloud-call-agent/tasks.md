@@ -573,11 +573,11 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Forwarding setup (codes shown, dialer opened with the code prepared and not dialed), live call screen (Take over action, ended-call state), and the consent gate
     - _Requirements: 2.1, 19.9, 17.2_
 
-  - [~] 12.14 Verify the release build
+  - [x] 12.14 Verify the release build
     - Add a test that fails when the release manifest contains `RECORD_AUDIO`, a call screening service, or an accessibility service; run `:core` tests in the release build; run `scripts/check-16kb.sh` on the release APK
     - _Requirements: 24.4, 24.7_
 
-  - [~] 12.15 Add the onboarding flow
+  - [x] 12.15 Add the onboarding flow
     - Guided steps after the first sign-in: Privacy_Consent, "waiting for your number" screen that polls `GET /me` at most every 60 seconds while open and then shows the assigned number, User_Mobile entry with validation, forwarding setup (12.5), and settings; keep the Agent off until consent, number, and User_Mobile exist
     - When the server holds no settings document, offer to upload the cached local settings with `expectedVersion` 0
     - _Requirements: 31.1, 31.2, 31.3, 31.4, 31.5, 31.6, 26.8_

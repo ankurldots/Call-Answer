@@ -25,6 +25,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.callanswer.app.CallAnswerApp
+import com.callanswer.app.api.ApiException
+import com.callanswer.app.api.Profile
+import com.callanswer.app.auth.AuthState
+import kotlinx.coroutines.CancellationException
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +59,15 @@ import com.callanswer.app.ui.theme.AppDimens
 import kotlinx.coroutines.launch
 /** Home: setup progress, quick links, then every denied item with "Request again" and "Open settings" (9.7). */
 @Composable
-fun HomeScreen(model: SetupModel, actions: SetupActions, onOpenSettings: () -> Unit = {}, onOpenCallLog: () -> Unit = {}, onOpenAccount: () -> Unit = {}) {
+fun HomeScreen(
+    model: SetupModel,
+    actions: SetupActions,
+    resumeTick: Int = 0,
+    onOpenSettings: () -> Unit = {},
+    onOpenCallLog: () -> Unit = {},
+    onOpenAccount: () -> Unit = {},
+    onOpenOnboarding: () -> Unit = {},
+) {
     val status = model.status
     val total = SetupItem.entries.size
     val ready = total - status.denied.size
@@ -64,6 +84,7 @@ fun HomeScreen(model: SetupModel, actions: SetupActions, onOpenSettings: () -> U
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.semantics { heading() },
         )
+        AgentReadinessCard(resumeTick, onOpenAccount, onOpenOnboarding)
         SetupCard(ready, total)
         SectionHeader(stringResource(R.string.home_quick_links))
         QuickLink(Icons.Filled.Call, stringResource(R.string.calllog_open), stringResource(R.string.calllog_open_hint), onOpenCallLog)
@@ -74,7 +95,7 @@ fun HomeScreen(model: SetupModel, actions: SetupActions, onOpenSettings: () -> U
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() },
             )
-            status.denied.forEach { item -> DeniedItem(item, actions, onOpenAccount) }
+            status.denied.forEach { item -> DeniedItem(item, actions) }
         }
     }
 }
@@ -103,22 +124,73 @@ private fun QuickLink(icon: ImageVector, title: String, subtitle: String, onClic
     }
 }
 @Composable
-private fun DeniedItem(item: SetupItem, actions: SetupActions, onOpenAccount: () -> Unit) {
-    val signIn = item == SetupItem.SIGN_IN
-    val message = if (signIn) stringResource(R.string.home_signin_missing) else deniedMessage(item)
+private fun DeniedItem(item: SetupItem, actions: SetupActions) {
+    val message = deniedMessage(item)
     AppCard(contentDescription = message) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceMd)) {
             IconBadge(item.icon(), size = AppDimens.iconLg + AppDimens.spaceSm)
             Text(stringResource(item.title), style = MaterialTheme.typography.titleSmall)
         }
         StatusBanner(message, BannerSeverity.WARNING, Modifier.padding(vertical = AppDimens.spaceSm))
-        if (signIn) {
-            AppButton(stringResource(R.string.action_sign_in), onClick = onOpenAccount)
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm), modifier = Modifier.fillMaxWidth()) {
-                AppButton(stringResource(R.string.action_request_again), onClick = { actions.request(item) })
-                AppButton(stringResource(R.string.action_open_settings), onClick = { actions.openSettings(item) }, primary = false)
+        Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm), modifier = Modifier.fillMaxWidth()) {
+            AppButton(stringResource(R.string.action_request_again), onClick = { actions.request(item) })
+            AppButton(stringResource(R.string.action_open_settings), onClick = { actions.openSettings(item) }, primary = false)
+        }
+    }
+}
+
+/**
+ * What the Agent still needs (Requirement 31 criterion 6): sign-in, consent, an assigned number, and the User_Mobile.
+ * "Continue setup" reopens the onboarding at the first missing step.
+ */
+@Composable
+private fun AgentReadinessCard(resumeTick: Int, onOpenAccount: () -> Unit, onOpenOnboarding: () -> Unit) {
+    val app = LocalContext.current.applicationContext as CallAnswerApp
+    val authState by app.authRepository.state.collectAsState()
+    val signedIn = authState is AuthState.SignedIn
+    val settings = rememberCloudSettings()
+    var profile by remember { mutableStateOf<Profile?>(null) }
+    var loadFailed by remember { mutableStateOf(false) }
+    LaunchedEffect(signedIn, resumeTick) {
+        if (!signedIn) { profile = null; return@LaunchedEffect }
+        loadFailed = false
+        try {
+            profile = app.companionApi.me()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: ApiException) {
+            loadFailed = true
+        }
+    }
+    val missing = missingPrerequisites(signedIn, profile, settings.settings?.userMobile)
+    AppCard(contentDescription = stringResource(R.string.home_agent_title)) {
+        Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
+            Text(stringResource(R.string.home_agent_title), style = MaterialTheme.typography.titleMedium)
+            when {
+                !signedIn -> {
+                    StatusBanner(stringResource(R.string.home_signin_missing), BannerSeverity.WARNING)
+                    AppButton(stringResource(R.string.action_sign_in), onClick = onOpenAccount)
+                }
+                profile == null -> {
+                    if (loadFailed) StatusBanner(stringResource(R.string.fwd_err_network), BannerSeverity.ERROR)
+                    else Text(stringResource(R.string.fwd_loading))
+                }
+                missing.isNotEmpty() -> {
+                    missing.forEach { StatusBanner(stringResource(prerequisiteText(it)), BannerSeverity.WARNING) }
+                    AppButton(stringResource(R.string.home_continue_setup), onClick = onOpenOnboarding)
+                }
+                else -> StatusBanner(
+                    stringResource(if (settings.settings?.agentEnabled == true) R.string.home_agent_on else R.string.home_agent_off),
+                )
             }
         }
     }
+    if (signedIn) SettingsUploadOffer(settings)
+}
+
+private fun prerequisiteText(p: AgentPrerequisite): Int = when (p) {
+    AgentPrerequisite.SIGN_IN -> R.string.home_signin_missing
+    AgentPrerequisite.CONSENT -> R.string.home_need_consent
+    AgentPrerequisite.NUMBER -> R.string.home_need_number
+    AgentPrerequisite.USER_MOBILE -> R.string.home_need_mobile
 }

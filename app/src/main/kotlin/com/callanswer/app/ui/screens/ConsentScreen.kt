@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
  * accepts or withdraws here. [onAccepted] runs after a successful acceptance (onboarding continues from there).
  */
 @Composable
-fun ConsentScreen(api: CompanionApi, onBack: () -> Unit, onAccepted: () -> Unit = {}) {
+fun ConsentScreen(api: CompanionApi, onBack: (() -> Unit)?, onAccepted: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf<ConsentStatus>(ConsentStatus.Loading) }
     var reload by remember { mutableIntStateOf(0) }

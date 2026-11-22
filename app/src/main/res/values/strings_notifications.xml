@@ -19,8 +19,9 @@
     <string name="notif_permission_required">%1$s permission is required. Open the app to allow it.</string>
     <string name="notif_title_attention">Call Answer needs attention</string>
     <string name="notif_takeover_title">Caller at the door needs you: %1$s</string>
+    <string name="notif_capture_silenced_title">%1$s can\'t hear the caller</string>
+    <string name="notif_capture_silenced_tap">%1$s can\'t hear the caller. Tap to take over.</string>
     <string name="notif_capture_silenced">The caller\'s voice cannot be heard. %1$s will only speak, so please take over the call.</string>
-    <string name="a11y_description">Lets Call Answer hear the caller during a call and press the speaker and merge buttons on the in-call screen.</string>
     <string name="notif_number_unavailable">number unavailable</string>
     <string name="notif_title_spam_screened">Spam call screened</string>
     <string name="notif_spam_call_screened">Spam call screened: %1$s</string>

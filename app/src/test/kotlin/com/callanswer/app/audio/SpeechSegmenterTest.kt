@@ -53,4 +53,14 @@ class SpeechSegmenterTest {
         val tick = seg.tick(5200)
         assertEquals(5100L, tick.noAudioForMs)
     }
+
+    @Test
+    fun tickReportsNoNoAudioWhenNothingWasEverHeard() {
+        val seg = SpeechSegmenter(EnergyVad(), { _, _ -> false }, 0L, onSegment = {})
+        seg.onFrame(PcmFrame(ShortArray(512), 100))
+        val tick = seg.tick(60_000)
+        assertEquals(0L, tick.noAudioForMs)
+        assertTrue(!seg.heardAudio)
+        assertEquals(60_000L, tick.silentForMs)
+    }
 }

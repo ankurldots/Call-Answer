@@ -11,8 +11,6 @@ import com.callanswer.app.nlg.StallContext
 import com.callanswer.app.nlg.StallingResponder
 import com.callanswer.app.sms.MapSmsSender
 import com.callanswer.app.telecom.TelecomCallAnswerer
-import com.callanswer.app.telecom.TransferController
-import com.callanswer.app.telecom.TransferControllers
 import com.callanswer.app.translate.MlKitStepTranslator
 import com.callanswer.app.tts.AndroidTtsSynthesizer
 import com.callanswer.app.tts.DirectoryPiperVoiceLocator
@@ -26,7 +24,6 @@ import com.callanswer.app.cloudtts.PollyCacheSynthesizer
 import com.callanswer.core.engine.CallSession
 import com.callanswer.core.engine.ConversationEvent
 import com.callanswer.core.engine.Effect
-import com.callanswer.core.engine.PathAResult
 import com.callanswer.core.engine.ResponseRenderer
 import com.callanswer.core.engine.SequentialResponseIdGenerator
 import com.callanswer.core.engine.SpeechSpec
@@ -77,7 +74,6 @@ class EffectExecutor(
     private val renderer: ResponseRenderer,
     private val stalling: StallingResponder,
     private val fallbacks: FallbackPhrases?,
-    private val transfer: TransferController?,
     private val alerts: TakeoverAlertPresenter,
     private val notifications: NotificationCenter,
     private val smsSender: MapSmsSender,
@@ -122,7 +118,6 @@ class EffectExecutor(
                     generation.incrementAndGet()
                     player.stop()
                 }
-                is Effect.StartTransfer -> startTransfer(effect.target)
                 is Effect.RaiseTakeoverAlert -> alerts.raise(effect.callerNumber, effect.reason)
                 Effect.ClearTakeoverAlert -> alerts.clear()
                 is Effect.SendMapSms -> sendMapSms(effect.number)
@@ -267,20 +262,6 @@ class EffectExecutor(
 
     // ---- Other effects ----
 
-    private fun startTransfer(target: String) {
-        scope.launch(Dispatchers.Default) {
-            val result = try {
-                transfer?.connect(target) ?: PathAResult.FAILED
-            } catch (e: CancellationException) {
-                throw e
-            } catch (t: Throwable) {
-                Log.w(TAG, "transfer failed", t)
-                PathAResult.FAILED
-            }
-            emit { ConversationEvent.TransferResult(it, result) }
-        }
-    }
-
     private fun sendMapSms(number: String) {
         val location = frozen.mapLocation?.trim().orEmpty()
         if (number.isBlank() || location.isEmpty()) return
@@ -358,7 +339,6 @@ class EffectExecutor(
                     cloud = null,
                 ),
                 fallbacks = FallbackPhrases(app.assets),
-                transfer = TransferControllers.create(app),
                 alerts = TakeoverAlertPresenterImpl(app, tonePlayer, scope),
                 notifications = notifications,
                 smsSender = MapSmsSender(app, notifyFailure = { notifications.mapSmsFailed(it) }),

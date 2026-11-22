@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
-import android.provider.Settings
 import androidx.annotation.StringRes
 import com.callanswer.app.R
 
@@ -24,6 +23,9 @@ enum class SetupItem(
     @StringRes val permissionLabel: Int,
     val permissions: List<String> = emptyList(),
 ) {
+    SIGN_IN(
+        R.string.setup_signin_title, R.string.setup_signin_purpose, R.string.feature_cloud_voice, R.string.perm_signin,
+    ),
     CALL_SCREENING_ROLE(
         R.string.setup_role_title, R.string.setup_role_purpose, R.string.feature_screening, R.string.perm_role,
     ),
@@ -35,10 +37,6 @@ enum class SetupItem(
         R.string.setup_phone_title, R.string.setup_phone_purpose, R.string.feature_answering,
         R.string.perm_phone,
         listOf(Manifest.permission.ANSWER_PHONE_CALLS, Manifest.permission.READ_PHONE_STATE),
-    ),
-    CALL_PHONE(
-        R.string.setup_call_phone_title, R.string.setup_call_phone_purpose, R.string.feature_transfer,
-        R.string.perm_call_phone, listOf(Manifest.permission.CALL_PHONE),
     ),
     MICROPHONE(
         R.string.setup_mic_title, R.string.setup_mic_purpose, R.string.feature_listening,
@@ -53,13 +51,13 @@ enum class SetupItem(
         R.string.setup_sms_title, R.string.setup_sms_purpose, R.string.feature_sms,
         R.string.perm_sms, listOf(Manifest.permission.SEND_SMS),
     ),
-    ACCESSIBILITY(
-        R.string.setup_accessibility_title, R.string.setup_accessibility_purpose, R.string.feature_call_audio,
-        R.string.perm_accessibility,
-    ),
     FULL_SCREEN_INTENT(
         R.string.setup_fsi_title, R.string.setup_fsi_purpose, R.string.feature_takeover_alert,
         R.string.perm_fsi,
+    ),
+    OVERLAY(
+        R.string.setup_overlay_title, R.string.setup_overlay_purpose, R.string.feature_overlay,
+        R.string.perm_overlay,
     ),
     BATTERY(
         R.string.setup_battery_title, R.string.setup_battery_purpose, R.string.feature_background,
@@ -87,12 +85,18 @@ data class SetupStatus(
         get() = SetupItem.entries.filter { it != SetupItem.AUTO_RECORD && !isGranted(it) }
 
     companion object {
-        fun read(context: Context, folderGranted: Boolean, autoRecordAcknowledged: Boolean): SetupStatus {
+        fun read(
+            context: Context,
+            folderGranted: Boolean,
+            autoRecordAcknowledged: Boolean,
+            signedIn: Boolean = false,
+        ): SetupStatus {
             val granted = SetupItem.entries.associateWith { item ->
                 when (item) {
+                    SetupItem.SIGN_IN -> signedIn
                     SetupItem.CALL_SCREENING_ROLE -> isRoleHeld(context)
-                    SetupItem.ACCESSIBILITY -> isAccessibilityEnabled(context)
                     SetupItem.FULL_SCREEN_INTENT -> canUseFullScreenIntent(context)
+                    SetupItem.OVERLAY -> android.provider.Settings.canDrawOverlays(context)
                     SetupItem.BATTERY -> isBatteryUnrestricted(context)
                     SetupItem.RECORDING_FOLDER -> folderGranted
                     SetupItem.AUTO_RECORD -> autoRecordAcknowledged
@@ -109,9 +113,6 @@ data class SetupStatus(
             return rm.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING) && rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
         }
 
-        fun isAccessibilityEnabled(context: Context): Boolean =
-            Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-                ?.contains("${context.packageName}/") == true
 
         fun canUseFullScreenIntent(context: Context): Boolean =
             if (Build.VERSION.SDK_INT >= 34) {

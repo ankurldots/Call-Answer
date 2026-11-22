@@ -5,6 +5,7 @@ import android.media.AudioFormat
 import android.media.AudioTimestamp
 import android.media.AudioTrack
 import android.os.SystemClock
+import android.util.Log
 import com.callanswer.core.echo.AgentWindow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -55,15 +56,26 @@ class AgentAudioPlayerImpl(
     }
 
     private suspend fun playChunk(pcm: ShortArray, from: Int, to: Int, rate: Int) {
-        val t = createTrack(rate, (to - from) * 2) ?: return
+        val t = createTrack(rate, (to - from) * 2)
+        if (t == null) {
+            val msg = "AudioTrack could not be created (rate=$rate, usages=$usages)"
+            Log.w("CallAnswer", msg)
+            throw IllegalStateException(msg)
+        }
         track = t
         val total = to - from
         val startWall = SystemClock.elapsedRealtime()
         var startMs = -1L
         try {
-            t.write(pcm, from, total)
+            // MODE_STREAM: the buffer holds the whole chunk, so this write does not block.
+            val written = t.write(pcm, from, total)
+            if (written != total) throw IllegalStateException("AudioTrack write returned $written of $total")
             t.play()
+            val deadline = startWall + total * 1000L / rate + FINISH_SLACK_MS
             while (!stopped && t.playbackHeadPosition < total) {
+                if (SystemClock.elapsedRealtime() > deadline) {
+                    throw IllegalStateException("AudioTrack playback stalled at head=${t.playbackHeadPosition} of $total")
+                }
                 if (startMs < 0) startMs = timestampMs(t, startWall)
                 delay(POLL_MS)
             }
@@ -115,12 +127,17 @@ class AgentAudioPlayerImpl(
                             .build(),
                     )
                     .setAudioFormat(format)
-                    .setBufferSizeInBytes(maxOf(bytes, minBuf))
-                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .setBufferSizeInBytes(maxOf(bytes, minBuf * 2))
+                    .setTransferMode(AudioTrack.MODE_STREAM)
                     .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
                     .build()
-            }.getOrNull()
-            if (t != null && t.state == AudioTrack.STATE_INITIALIZED) return t
+            }.onFailure { Log.w("CallAnswer", "AudioTrack build failed usage=$usage rate=$rate", it) }.getOrNull()
+            // MODE_STREAM tracks report STATE_INITIALIZED right after construction.
+            if (t != null && t.state == AudioTrack.STATE_INITIALIZED) {
+                Log.i("CallAnswer", "AudioTrack created usage=$usage rate=$rate")
+                return t
+            }
+            if (t != null) Log.w("CallAnswer", "AudioTrack state=${t.state} usage=$usage rate=$rate")
             t?.release()
         }
         return null
@@ -140,5 +157,6 @@ class AgentAudioPlayerImpl(
         const val MAX_CHUNK_MS = 8_000
         const val LISTEN_GAP_MS = 400L
         private const val POLL_MS = 10L
+        private const val FINISH_SLACK_MS = 2_000L
     }
 }

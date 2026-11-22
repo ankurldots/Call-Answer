@@ -9,10 +9,15 @@ import android.widget.TextView
 
 /** S1 screen content: instructions, permission request, manual foreground-service start and end-call buttons. */
 object S1Panel {
+    private fun intro(ctx: Activity) = "Make the spike the call screening app (role request on the main menu), grant the permissions, " +
+        "then call this phone from another number. A foreground service starts for every screened call. " +
+        "Current mode: ${S1Settings.describe(ctx)}. AUTO_ANSWER_AND_END answers and ends the call after the delay, " +
+        "AUTO_ANSWER_ONLY answers and leaves the call up, OFF leaves it ringing for you to answer. " +
+        "Results are in the spike log, tag S1."
+
     fun build(activity: Activity, root: LinearLayout, body: TextView) {
-        body.text = "Make the spike the call screening app (role request on the main menu), grant the permissions, " +
-            "then call this phone from another number. The call is answered, a foreground service starts, " +
-            "and the call is ended after ${S1Spike.AUTO_END_DELAY_MS / 1000} s. Results are in the spike log, tag S1."
+        S1Settings.addSelector(activity, root) { body.text = intro(activity) }
+        body.text = intro(activity)
         fun button(label: String, action: () -> Unit) {
             root.addView(Button(activity).apply {
                 text = label

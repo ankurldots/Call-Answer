@@ -8,7 +8,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 
-/** S2 comparison: a plain (non-accessibility) foreground service that owns the AudioRecord. */
+/** S2 comparison: a plain foreground service that owns the AudioRecord. */
 class S2CaptureService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -26,11 +26,18 @@ class S2CaptureService : Service() {
             SpikeLog.log("S2", "startForeground failed: $e")
             stopSelf(); return START_NOT_STICKY
         }
+        if (intent?.getBooleanExtra(EXTRA_HOLD, false) == true) {
+            // S4: the capture runs in the activity's thread; this service only holds the microphone foreground type.
+            SpikeLog.log("S2", "foreground service holding microphone type for another spike")
+            return START_NOT_STICKY
+        }
         val seconds = intent?.getIntExtra(EXTRA_SECONDS, 10) ?: 10
         val delay = intent?.getIntExtra(EXTRA_DELAY, 0) ?: 0
+        val only = intent?.getStringExtra(EXTRA_SOURCE)
+        val offhook = intent?.getBooleanExtra(EXTRA_WAIT_OFFHOOK, false) ?: false
         Thread {
-            Thread.sleep(delay * 1000L)
-            S2Capture.runAll(this, S2Owner.FOREGROUND_SERVICE, seconds)
+            if (offhook) S2Capture.waitForOffhook(this, 120) else Thread.sleep(delay * 1000L)
+            S2Capture.runAll(this, seconds, only)
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }.start()
@@ -38,7 +45,10 @@ class S2CaptureService : Service() {
     }
 
     companion object {
+        const val EXTRA_HOLD = "hold"
         const val EXTRA_SECONDS = "seconds"
         const val EXTRA_DELAY = "delay"
+        const val EXTRA_SOURCE = "source"
+        const val EXTRA_WAIT_OFFHOOK = "wait_offhook"
     }
 }

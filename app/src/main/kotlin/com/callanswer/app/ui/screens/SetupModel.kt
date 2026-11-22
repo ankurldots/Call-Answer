@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.edit
+import com.callanswer.app.CallAnswerApp
+import com.callanswer.app.auth.AuthState
 import com.callanswer.app.data.SettingsStore
 import com.callanswer.app.recording.RecordingFolderRepository
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +24,12 @@ class SetupModel(context: Context) {
     private val folders = RecordingFolderRepository(app)
     private val settings = SettingsStore.create(app)
 
-    var status by mutableStateOf(SetupStatus.read(app, folderGranted = false, autoRecordAcknowledged = false))
+    private val auth = (app as CallAnswerApp).authRepository
+
+    /** Signed in. A build without the account feature has nothing to sign in to, so the item counts as done. */
+    private fun signedIn() = auth.state.value is AuthState.SignedIn || !auth.isConfigured
+
+    var status by mutableStateOf(SetupStatus.read(app, folderGranted = false, autoRecordAcknowledged = false, signedIn = signedIn()))
         private set
     var screeningEnabled by mutableStateOf(true)
         private set
@@ -40,7 +47,7 @@ class SetupModel(context: Context) {
             (uri != null && folders.hasAccess(uri)) to s.screeningEnabled
         }
         screeningEnabled = enabled
-        status = SetupStatus.read(app, folderOk, prefs.getBoolean(KEY_AUTORECORD_ACK, false))
+        status = SetupStatus.read(app, folderOk, prefs.getBoolean(KEY_AUTORECORD_ACK, false), signedIn())
         deniedThisSession.removeAll { status.isGranted(it) }
     }
 

@@ -8,10 +8,8 @@ plugins {
 
 // Build flags decided by the feasibility spike (task 2). The spike results are not yet
 // recorded in design.md, so these hold the conservative defaults until they are:
-//  - PATH_A_SUPPORTED: S6 Path A unproven, so Path B (Takeover_Alert) only.
 //  - ASR_ENGINE: Vosk is the fallback unless S7 proves Whisper meets p90 <= 2.5 s and >= 90% intent accuracy.
 //  - SILENT_SMS_ENABLED: S8 unproven, so every report uses ACTION_SENDTO.
-val pathASupported = false
 val asrEngine = "VOSK_STREAMING" // or "WHISPER_BASE_INT8"
 val silentSmsEnabled = false
 
@@ -29,7 +27,6 @@ android {
         versionName = "0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += "arm64-v8a" }
-        buildConfigField("boolean", "PATH_A_SUPPORTED", pathASupported.toString())
         buildConfigField("String", "ASR_ENGINE", "\"$asrEngine\"")
         buildConfigField("boolean", "SILENT_SMS_ENABLED", silentSmsEnabled.toString())
         buildConfigField("String", "AWS_REGION", "\"${awsProp("callanswer.aws.region")}\"")

@@ -17,7 +17,7 @@ class SpokenTextCatalogTest {
     private fun has(lang: Language, text: String) = SpokenSentence(lang, text) in SpokenTextCatalog.sentences(settings)
     /** Every sentence a call would synthesize for directions, at any time of day, is in the catalog. */
     @Test fun coversDirectionsAtAllTimes() {
-        val frozen = settings.freeze(false)
+        val frozen = settings.freeze()
         val all = SpokenTextCatalog.sentences(settings).toSet()
         for (lang in Language.entries) for (h in 0..23) for (proactive in listOf(true, false)) {
             val text = ResponseRenderer().text(SpeechSpec.DeliveryDirections(0, proactive), lang, frozen, LocalTimeHm(h, 0))

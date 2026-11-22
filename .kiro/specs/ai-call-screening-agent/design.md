@@ -10,42 +10,47 @@ All recognition, language detection, classification, gate selection and speech s
 
 | # | Decision | Choice | Validated by |
 |---|---|---|---|
-| D1 | Audio path | Speakerphone + microphone. Agent TTS plays on the loudspeaker; the Caller's voice is captured from the loudspeaker by the microphone. Capture runs in an app that is also an enabled `AccessibilityService`, because that is the only non-system exemption Android 10+ documents for capturing audio during a voice call. | Spike S1 to S4 |
+| D1 | Audio path | Speakerphone + microphone. Agent TTS plays on the loudspeaker; the Caller's voice is captured from the loudspeaker by the microphone. Capture is a plain `AudioRecord` owned by a foreground service (types `mediaPlayback` and `microphone`). The App uses no accessibility service (see "Decision: no accessibility service"). Whether the Caller is audible to that `AudioRecord` in-call is decided by spike S2. | Spike S1 to S4 |
 | D2 | Answering | `CallScreeningService` (role) supplies the number. `TelecomManager.acceptRingingCall()` (`ANSWER_PHONE_CALLS`) answers. | S1 |
-| D3 | Transfer | Path A (only where S6 shows it works on the M34 5G): second call to the Transfer_Target and merge by UI automation through the AccessibilityService. Path B (always available, accepted by the User as a valid transfer): Takeover_Alert, a full-screen high-importance alert with sound, vibration and an App-played tone on the speaker, with a "Take over" action. | S6 |
+| D3 | Transfer | Takeover_Alert only (accepted by the User as a valid transfer): a full-screen high-importance alert with sound, vibration and an App-played tone on the speaker, with a "Take over" action. There is no second-call and merge path, because it needs UI automation through an accessibility service. | S6 |
 | D4 | Recording | Samsung Phone app auto-record. The App only links files from a SAF folder and plays them with Media3. | S5 |
 | D5 | On-device AI | Silero VAD; ASR chosen on the device: Whisper base int8 (2 threads) if it meets the latency budget at p90 in S7, otherwise Vosk small `hi`/`en-in` streaming as primary; text-based language detector, rule-based intent classifier, templates for responses, bundled Piper voices via sherpa-onnx for TTS. | S7 |
 | D6 | Spam reporting (Requirement 14) | Pure `SpamReportBuilder` in `:core` builds "<Brief_Description>, <Sender_Number>, <DD/MM/YY>". Default path: `ACTION_SENDTO` `sms:1909` with `sms_body`, sent by the User from the messaging app. Direct `SmsManager` send only when Silent_Send_Setting is on and `SEND_SMS` is granted. | S8 |
 
 ### Assumptions
 
-- The App is installed for personal use (sideloaded or internal testing), not distributed on Google Play. Google Play's policy restricts non-accessibility use of `AccessibilityService`, so a Play-distributed build would need a different capture approach (see Risk R1).
+- The App is installed for personal use (sideloaded or internal testing), not distributed on Google Play. UPI and banking apps refuse to work while any accessibility service is enabled on the phone, so the App does not use one.
 - The target device is a Samsung Galaxy M34 5G, India model: Exynos 1280 (2x Cortex-A78 and 6x Cortex-A55 CPU cores, Mali-G68 GPU), 6 GB or 8 GB RAM. It launched in July 2023 with Android 13 / One UI 5.1 and has a promise of 4 OS upgrades. The Android and One UI version currently installed is not assumed; spike S0 reads it from the phone, together with the RAM variant and the security patch level. Platform rules that differ between Android versions (for example the Android 14 foreground-service and full-screen-intent rules) are designed for the strictest case and checked against the version found in S0.
 - The Samsung Phone app's call-recording option is expected on the India model. Spike S0 confirms that it is present on the User's phone.
-- The User accepts that a hold or conference merge needs carrier support for call waiting and 3-way calling.
+- The User accepts that a call to the Transfer_Target is not placed by the App; the Takeover_Alert is the transfer.
 - The User keeps the Samsung Phone app as the default dialer. This is required for Requirement 12, because the Samsung recorder lives inside that app.
-- The User accepts the Takeover_Alert (Path B of D3) as a valid transfer when connecting the Transfer_Target is not supported on the phone or fails.
+- The User accepts the Takeover_Alert as the only transfer mechanism (D3).
 - The central `@myelly/ui` steering rule does not apply to this project. The App uses one shared set of reusable Compose components (`ui/components`) on Material 3 with a single theme (`ui/theme`).
 
 ## Architecture
 
 ### 1. Platform decisions
 
+#### Decision: no accessibility service
+The App does not declare, request or read any accessibility service. UPI and banking apps refuse to work while any accessibility service is enabled on the phone, and the User needs both. This removes the capture exemption that the earlier design relied on, and the Samsung in-call UI automation (Speaker, Merge, Swap/Resume buttons), so Path A (second call and merge) is gone and the Takeover_Alert is the only transfer.
+
+Capture now depends on the S2 result with the plain foreground-service owner (`CallForegroundService`, types `mediaPlayback|microphone`, speakerphone on, sources `VOICE_RECOGNITION`, `MIC`, `UNPROCESSED`, `VOICE_COMMUNICATION` in that order). If S2 fails (every source silenced in-call), the fallbacks are, in order: (1) the default digital assistant role (`VoiceInteractionService`), which Android lists among the exemptions for capture and for starting a microphone service from the background, at the cost of replacing the User's assistant; (2) no Caller speech recognition, that is assisted mode F1 (the Agent speaks and alerts the User; Requirement 13.17). Fallback F2 (VoIP number) stays the last resort. Nothing in this paragraph has been verified on the phone.
+
 #### D1. How the Agent hears the Caller and speaks into the call
 
-**What Android allows.** Android does not give a third-party app the call's uplink or downlink (`VOICE_UPLINK`, `VOICE_DOWNLINK` and `AudioDeviceInfo.TYPE_TELEPHONY` need the privileged `CAPTURE_AUDIO_OUTPUT`). The Android 10+ input-sharing rules say: while the audio mode is `MODE_IN_CALL` or `MODE_IN_COMMUNICATION`, the call always receives audio, and an ordinary app can capture only if it is an accessibility service (or a privileged app with `CAPTURE_AUDIO_OUTPUT`). Otherwise the ordinary app's `AudioRecord` receives silence. Source: [Sharing audio input](https://developer.android.com/media/platform/sharing-audio-input).
+**What Android allows.** Android does not give a third-party app the call's uplink or downlink (`VOICE_UPLINK`, `VOICE_DOWNLINK` and `AudioDeviceInfo.TYPE_TELEPHONY` need the privileged `CAPTURE_AUDIO_OUTPUT`). The Android 10+ input-sharing rules say: while the audio mode is `MODE_IN_CALL` or `MODE_IN_COMMUNICATION`, the call always receives audio, and an ordinary app's `AudioRecord` can be silenced, unless the app is an accessibility service, a privileged app with `CAPTURE_AUDIO_OUTPUT`, or holds the default assistant or dialer role. Source: [Sharing audio input](https://developer.android.com/media/platform/sharing-audio-input). Earlier spike runs on the M34 5G saw `MIC` and `UNPROCESSED` silenced in-call and `VOICE_RECOGNITION` not silenced, but that run used an accessibility service as the owner, so it must be repeated with the plain foreground service.
 
-This changes the plan. A plain `AudioRecord` in a foreground service is expected to be silenced during the call. The primary approach therefore adds the `AccessibilityService` exemption, and spike S2 proves or disproves it on the actual phone before anything else is built.
+This changes the plan. A plain `AudioRecord` in a foreground service may be silenced during the call. The primary approach captures with that plain foreground service and spike S2 proves or disproves it on the actual phone (speakerphone on, each source). The fallbacks are in "Decision: no accessibility service".
 
 **Primary approach (P-AUDIO).**
 
-1. `AccessibilityService` (`CallAudioAccessibilityService`) is declared and enabled by the User once. It owns the `AudioRecord`, so the capture is made by an accessibility service.
+1. `CallForegroundService` is the capture owner (`CallAudioCaptureOwner` holds the `AudioRecord`). It is declared with `foregroundServiceType="mediaPlayback|microphone"` and the `FOREGROUND_SERVICE_MICROPHONE` permission, and requests the `microphone` type only when `RECORD_AUDIO` is granted. No accessibility service is declared or read.
 2. Capture: `AudioRecord`, 16 kHz, mono, PCM16. Source order tried at runtime and fixed by spike S2: `VOICE_RECOGNITION`, then `MIC`, then `UNPROCESSED`, then `VOICE_COMMUNICATION`. Notes:
    - `VOICE_COMMUNICATION` is privacy-sensitive, so it has priority over ordinary capture, but it also applies the platform's call processing (AEC and noise suppression) tuned for a headset use case, which can degrade a voice coming from the loudspeaker. It is tried last.
    - `UNPROCESSED` has no AEC or noise suppression, which suits our own echo handling, but gain is low on some Samsung devices. Our AGC compensates.
    - An `AudioManager.AudioRecordingCallback` reports `isClientSilenced()`. If capture is silenced, the App switches to the fallback (below) and tells the User.
 3. Output: the Agent never uses the Android TTS audio path directly. Every TTS engine produces PCM, and one `AgentAudioPlayer` plays it with an `AudioTrack`. Usage is tried in this order: `USAGE_VOICE_COMMUNICATION`, `USAGE_ASSISTANT`, `USAGE_MEDIA` (fixed by S3). The loudspeaker output reaches the Caller through the microphone's uplink path. Owning the PCM gives us exact start and end times, a stop within 500 ms (`pause` and `flush`), and a reference signal for echo removal.
-4. Mode and route: the App does not set `AudioManager.mode` during a telephony call (the system holds `MODE_IN_CALL`). Speaker route is attempted in this order: `AudioManager.setSpeakerphoneOn(true)` (deprecated since API 31, but still the call-route switch on many builds), `setCommunicationDevice(speaker)` (API 31+), and an accessibility click on the Samsung in-call Speaker button. If none works, the App notifies the User (Requirement 13.17) and continues.
+4. Mode and route: the App does not set `AudioManager.mode` during a telephony call (the system holds `MODE_IN_CALL`). Speaker route is attempted in this order: `AudioManager.setSpeakerphoneOn(true)` (deprecated since API 31, but still the call-route switch on many builds), and `setCommunicationDevice(speaker)` (API 31+). If neither works, the App notifies the User (Requirement 13.17) and continues.
 5. Volume: the App raises `STREAM_VOICE_CALL` to a configured level (default 80%) so the microphone picks up the TTS clearly. It restores the previous volume when the call ends.
 
 **Echo and Caller/Agent/User separation.** The microphone hears three loudspeaker/room sources: the Caller (downlink), the Agent TTS, and the User when they speak. Three layers keep the Agent's own voice out of the Caller transcript (Requirement 13.15). Layers 1 and 3 are always on. Layer 2 is enabled only if spike S4 shows a benefit.
@@ -71,7 +76,7 @@ The Agent does not stop talking because of microphone voice activity (Requiremen
 
 | Option | Hears Caller | Speaks to Caller | Samsung recorder still works | Effort | Verdict |
 |---|---|---|---|---|---|
-| A. Speakerphone + microphone, capture as accessibility service (chosen) | Via loudspeaker, then microphone | Via loudspeaker, then microphone | Yes (stock dialer unchanged) | Medium | Chosen. Needs S2 and S3 to pass. |
+| A. Speakerphone + microphone, capture by a plain foreground service (chosen) | Via loudspeaker, then microphone, if S2 shows it is not silenced | Via loudspeaker, then microphone | Yes (stock dialer unchanged) | Medium | Chosen. Needs S2 and S3 to pass. |
 | B. Make the App the default dialer (`InCallService`) | No. `InCallService` gives call control and audio routing (`setAudioRoute`), not call PCM. | No | No. The Samsung Phone app is replaced, so its recorder is lost. | High | Rejected. It does not solve audio and breaks Requirement 12. It would, however, give a clean `Call.conference()` for transfer. |
 | C. VoIP/SIP number with a provider (cloud media streams) | Yes, clean | Yes, clean | No (provider records) | High, plus recurring cost and telecom compliance | Pivot option if S2 or S3 fails. |
 | D. Conditional call forwarding to a cloud IVR | Yes | Yes | No | Medium | Rejected. Carrier forwarding cannot filter by "not in contacts". |
@@ -85,7 +90,7 @@ Speakerphone was already the User's decision, and it fits the requirements (Requ
 - **Ending the call.** `TelecomManager.endCall()` (`ANSWER_PHONE_CALLS`). It may be deprecated on newer API levels, so S1 checks it on the phone. If it fails, the App asks the User with a notification.
 - **Hidden numbers.** `details.handle == null` or `handlePresentation != PRESENTATION_ALLOWED` is treated as Unknown_Caller (Requirement 1.5).
 - **Matching.** `PhoneNumberMatcher.matchKey(raw)` strips every non-digit character, then removes trunk or country prefixes by keeping the last 10 digits when there are more than 10 digits, and otherwise the digits as given. The `ContactIndex` is an in-memory `Set<String>` of keys built from `ContactsContract.CommonDataKinds.Phone`, refreshed by a `ContentObserver`. The set is loaded at App start and when the screening role is granted, so the lookup is a hash lookup (well within 1 s). If the contacts cannot be read (permission revoked or query error), the screener leaves the call ringing and posts a notification within 5 s (Requirement 1.6).
-- **Foreground start from a screening callback.** A foreground service with type `microphone` started from the background fails on Android 14 and later (while-in-use permission rule). The documented exemptions include a service started from a notification interaction and a service started when the app shows a visible activity or holds `SYSTEM_ALERT_WINDOW` with a visible overlay on Android 15 ([Restrictions on starting a foreground service from the background](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)). The design keeps the audio capture in the `AccessibilityService` process (bound by the system, so not subject to a background start) and runs the rest of the call (ASR, engine, playback, notification) in `CallForegroundService`, declared with type `mediaPlayback` because it plays the Agent's audio (`specialUse` is the alternative). If the system refuses to start it from `onScreenCall`, the App starts it from a full-screen-intent notification and the Live_Call_Screen activity instead. Which combination works on the phone is decided in S1 (Risk R5).
+- **Foreground start from a screening callback.** A foreground service with type `microphone` created while the App is in the background fails on Android 14 and later, because `RECORD_AUDIO` is a while-in-use permission and the system throws `SecurityException` ([Restrictions on starting a foreground service from the background](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)). The documented exemptions for while-in-use access include a service started by interacting with a notification, started from a visible app, started by the default `VoiceInteractionService` app, or by a system component. `onScreenCall` is none of these, so the design is: `CallForegroundService` first enters the foreground as `mediaPlayback` only (allowed from the screening callback, or from the full-screen-intent path if the system refuses), and tries `mediaPlayback|microphone` first when the permission is granted, falling back on `SecurityException`. The `microphone` type is added later (`ACTION_UPGRADE_MICROPHONE`) when the Live_Call_Screen becomes visible, which happens through the full-screen intent or when the User taps the notification or the alert. Residual risk: until that happens the `AudioRecord` can be silenced, so capture runs in assisted mode F1 with the User notified; a User who never opens the screen on a locked phone gets no Caller transcript. This has not been run on the phone. Which combination works is decided in S1 and S2 (Risks R1 and R5).
 
 #### D3. How the transfer to a real person works
 
@@ -93,15 +98,15 @@ Android has no call-transfer API for a third-party app. Candidate options:
 
 | Option | How | Works without default-dialer role | Result for Caller | Verdict |
 |---|---|---|---|---|
-| T1. Second call and merge | `TelecomManager.placeCall(tel:Transfer_Target)` puts the active call on hold and dials the target. When the target answers, tap Merge to create a 3-way conference. | Placing the call: yes (`CALL_PHONE`). Merge: no public API outside `InCallService`. The App presses Samsung's in-call Merge button through the `AccessibilityService`. | Caller, Transfer_Target and the User's phone are in one conference. The phone stays in the call as the bridge (not a true transfer). | Path A, enabled only where S6 shows it works on the M34 5G and the User's carrier. UI automation on One UI is fragile. |
-| T2. Takeover_Alert | Full-screen-intent notification on a high-importance channel with sound and vibration, plus an alert tone played by the App on the speaker, and a "Take over" action. The Agent keeps the Caller on the line with "please wait" phrases. | Yes | The User talks to the Caller directly. | Path B, always available. The User accepted it as a valid transfer (Requirement 4, criteria 2, 5, 7 to 11). |
+| T1. Second call and merge | `TelecomManager.placeCall(tel:Transfer_Target)` puts the active call on hold and dials the target. When the target answers, tap Merge to create a 3-way conference. | Placing the call: yes (`CALL_PHONE`). Merge: no public API outside `InCallService`; only an accessibility click on Samsung's Merge button. | 3-way conference. | Removed (no accessibility service). |
+| T2. Takeover_Alert | Full-screen-intent notification on a high-importance channel with sound and vibration, plus an alert tone played by the App on the speaker, and a "Take over" action. The Agent keeps the Caller on the line with "please wait" phrases. | Yes | The User talks to the Caller directly. | The only path. The User accepted it as a valid transfer (Requirement 4, criteria 2, 5, 7 to 10). |
 | T3. Conditional forwarding codes (`**21*`, `**61*` and similar) | Carrier MMI codes set forwarding for future calls. | Yes (dial codes) | Not per-call. Affects later calls. Cannot move a call already answered. | Rejected. |
 | T4. Call the Transfer_Target and bridge audio through the phone | Phone holds two calls. | Android cannot mix two calls' audio without a merge. | Not possible. | Rejected. |
 | T5. Explicit call transfer (carrier MMI "4") | Join two calls and drop out. | Carrier-dependent MMI | True transfer. | Not in scope. Possible follow-up experiment in S6. |
 
-**Chosen:** Path A (T1) only where it is supported, and Path B (T2, the Takeover_Alert) in every other case. "Supported" is a single flag, `pathAEnabled`, that is true only when all three hold: the build flag set from the S6 result is on, a Transfer_Target is configured, and the accessibility service is enabled at call start. The flag is part of `FrozenSettings`, so it does not change during a call. If S6 fails, the build ships with the flag off and every transfer goes straight to Path B, which meets Requirement 4.2 as written ("otherwise by raising the Takeover_Alert").
+**Chosen:** the Takeover_Alert (T2) for every transfer. The earlier Path A (T1, second call and merge by accessibility click) was removed together with the accessibility service. This meets Requirement 4.2 as now written.
 
-**Path B, the Takeover_Alert.**
+**The Takeover_Alert.**
 
 - Notification on channel `takeover_alert` (`IMPORTANCE_HIGH`, sound and vibration on, category `CALL`, lock-screen visibility public), with a full-screen intent to the Live_Call_Screen and one action, **Take over**. Full-screen intent access on Android 14+ is requested during onboarding (already in the permission flow). Without it, the notification still shows as a heads-up notification with the same action.
 - Alert tone. Notification sounds are often muted or reduced to a short beep while a call is active, so the App also plays its own short alert tone through `AgentAudioPlayer` on the speaker. `TakeoverAlertPresenter` (`:app`) repeats the tone every 10 s, offset by 5 s from the Agent's "please wait" phrases, until the User takes over or 30 s have passed. The Caller hears the tone through the microphone path; it is short and quieter than speech. `EchoGate` marks each tone as an Agent window, so the tone is never transcribed.
@@ -111,18 +116,15 @@ Android has no call-transfer API for a third-party app. Candidate options:
 **Transfer sequence.**
 
 1. The Agent says the transfer notice in the Caller's language (Requirement 4.1).
-2. When the notice ends (`AgentSpeechFinished`), the engine starts the transfer immediately; the effects run within 2 s (4.2). It also emits the "call transferred" notification with the Caller's number (4.6).
-3. **If `pathAEnabled`** (Path A): `TransferController.connect(target)` calls `placeCall`, which puts the Caller on hold. It waits up to 30 s for Samsung's Merge button to become enabled (the second call is connected), presses Merge, and reports `MERGED`. The Agent goes into `TRANSFERRED` (silent, listening only, until the call ends). The Agent says no "please wait" phrases during this wait because the Caller is on hold.
-4. **Path A no answer in 30 s, or failure** (`placeCall` exception, Merge or Resume button not found): the App ends the second call, resumes the held call (accessibility click on Swap/Resume), and reports `NO_ANSWER_30S` or `FAILED`. The engine raises the Takeover_Alert (4.7). On `FAILED` it also notifies the User within 10 s that connecting the Transfer_Target failed, with the Caller's number (4.4).
-5. **If not `pathAEnabled`** (Path A not supported on this phone, accessibility service off, or no Transfer_Target): the first transfer effect is `RaiseTakeoverAlert` (4.2, 4.5, 4.10). When no Transfer_Target is configured, the App also notifies the User within 10 s that a Transfer_Target is not configured, with the Caller's number (4.5).
-6. **Waiting for take over** (phase `AWAITING_TAKEOVER`): the Agent says a short "please wait" phrase (`SpeechSpec.PleaseWait`) in the Caller's language immediately and then every 10 s, so the interval is never more than 15 s (4.7, 4.11). The Agent says nothing else in this phase. Caller utterances are transcribed but get no reply.
-7. **User takes over** (from the alert or from the Live_Call_Screen): Take_Over as in Requirement 13, and the Call_Log records "transfer completed by User" with outcome `TAKEN_OVER_BY_USER` (4.8, 13.21).
-8. **No take over within 30 s of the alert**: the Agent says once "nobody is available, please call again shortly" (`SpeechSpec.NobodyAvailable`) in the Caller's language, the phase returns to `LISTENING` so the Caller stays connected to the Agent, the outcome is `NO_TAKEOVER_30S`, and the alert stays visible until the call ends (4.3, 4.9). A later take over from the still-visible alert is a normal Take_Over.
-9. **No network** (Requirement 8.10): placing the second call uses the cellular voice network and needs no data, so Path A runs unchanged. If it fails, step 4 applies: the Takeover_Alert needs no network, and the failure is written to the Call_Log.
+2. When the notice ends (`AgentSpeechFinished`), the engine raises the Takeover_Alert immediately (`RaiseTakeoverAlert`); the effects run within 2 s (4.2). It also emits the "Caller is waiting" notification with the Caller's number (4.6). When no Transfer_Target is configured, the App also notifies the User within 10 s with the Caller's number (4.5); the Transfer_Target is never dialled.
+3. **Waiting for take over** (phase `AWAITING_TAKEOVER`): the Agent says a short "please wait" phrase (`SpeechSpec.PleaseWait`) in the Caller's language immediately and then every 10 s, so the interval is never more than 15 s (4.7, 4.11). The Agent says nothing else in this phase. Caller utterances are transcribed but get no reply.
+4. **User takes over** (from the alert or from the Live_Call_Screen): Take_Over as in Requirement 13, and the Call_Log records "transfer completed by User" with outcome `TAKEN_OVER_BY_USER` (4.8, 13.21).
+5. **No take over within 30 s of the alert**: the Agent says once "nobody is available, please call again shortly" (`SpeechSpec.NobodyAvailable`) in the Caller's language, the phase returns to `LISTENING` so the Caller stays connected to the Agent, the outcome is `NO_TAKEOVER_30S`, and the alert stays visible until the call ends (4.3, 4.9). A later take over from the still-visible alert is a normal Take_Over.
+6. **No network** (Requirement 8.10): the Takeover_Alert needs no network, so the transfer works unchanged with data off.
 
-**Controls during a transfer** (Requirement 13.20). Mute, Resume and Quick_Replies do not change the transfer: the path, the 30 s timers, the alert and the logged outcome are the same as without them. Mute still silences the Agent (13.10), so no "please wait" phrase is spoken while muted. If the 30 s point passes while muted, the outcome becomes `NO_TAKEOVER_30S` on time and `NobodyAvailable` is spoken right after the Bridging_Phrase when the User resumes. The User confirmed this reading of 13.10 versus 4.9 (open question 5). Take over is the only control that completes the transfer.
+**Controls during a transfer** (Requirement 13.20). Mute, Resume and Quick_Replies do not change the transfer: the 30 s timers, the alert and the logged outcome are the same as without them. Mute still silences the Agent (13.10), so no "please wait" phrase is spoken while muted. If the 30 s point passes while muted, the outcome becomes `NO_TAKEOVER_30S` on time and `NobodyAvailable` is spoken right after the Bridging_Phrase when the User resumes. The User confirmed this reading of 13.10 versus 4.9 (open question 5). Take over is the only control that completes the transfer.
 
-**Honest assumption:** merge by UI automation and carrier 3-way calling have not been tested on the M34 5G. S6 decides whether Path A is enabled at all. Path B does not depend on S6.
+**Honest assumption:** the User may not notice the alert (phone in another room); S6 checks the alert on the M34 5G.
 
 #### D4. Recording
 
@@ -187,7 +189,7 @@ graph TB
         CS[CallScreeningService]
         CA[CallAnswerer]
         FGS[CallForegroundService]
-        AAS[CallAudioAccessibilityService<br/>AudioRecord owner]
+        AAS[CallForegroundService<br/>CallAudioCaptureOwner<br/>AudioRecord owner]
         subgraph Audio
             CAP[CallAudioCapture]
             VAD[VAD + EchoGate]
@@ -209,7 +211,7 @@ graph TB
         NM[NetworkMonitor]
         PR[ProviderRouter]
         CLOUD[CloudLlmClient optional]
-        TC[TransferController<br/>Path A]
+        TC[TakeoverAlertPresenter<br/>Takeover_Alert]
         TAP[TakeoverAlertPresenter<br/>Path B]
         SMS[MapSmsSender]
         subgraph Reporting
@@ -273,19 +275,15 @@ stateDiagram-v2
     Listening --> Ended: silence 2 after repeat greeting
     Listening --> Classify: Caller utterance
     Classify --> Delivery: DELIVERY
-    Classify --> Transfer: DOOR_NOT_OPENED
+    Classify --> AwaitingTakeover: DOOR_NOT_OPENED (RaiseTakeoverAlert after the transfer notice)
     Classify --> Stalling: SOLICITATION
     Classify --> Clarify: UNKNOWN
     Clarify --> Listening: asked reason (max 2 prompts)
     Clarify --> Ended: 2 unresolved prompts, "will call back"
     Delivery --> Listening: directions spoken
     Delivery --> Ended: acknowledged, Caller hangs up, 10 s silence, or repeats exhausted
-    Transfer --> Transferred: Path A merged
-    Transfer --> AwaitingTakeover: Path A not enabled or no Transfer_Target (RaiseTakeoverAlert)
-    Transfer --> AwaitingTakeover: Path A no answer in 30 s or failed (resume, RaiseTakeoverAlert)
     AwaitingTakeover --> AwaitingTakeover: tick, "please wait" at most every 15 s
     AwaitingTakeover --> Listening: 30 s without take over, "nobody is available, please call again shortly"
-    Transferred --> Ended: call ends
     AwaitingTakeover --> Ended: call ends
     Stalling --> Listening: reply spoken
     Stalling --> Ended: max duration, 3 silence prompts, Caller hangs up, or reply failure after retry
@@ -302,7 +300,7 @@ stateDiagram-v2
     }
 ```
 
-`AwaitingTakeover` is the Path B waiting phase. Take over from the Takeover_Alert or from the Live_Call_Screen moves the mode to `TakeOver` and records the transfer as completed by the User; the phase is then frozen like any other phase in `TakeOver`. In `AwaitingTakeover` the only speech is "please wait"; Caller utterances are transcribed and not answered.
+`AwaitingTakeover` is the waiting phase. Take over from the Takeover_Alert or from the Live_Call_Screen moves the mode to `TakeOver` and records the transfer as completed by the User; the phase is then frozen like any other phase in `TakeOver`. In `AwaitingTakeover` the only speech is "please wait"; Caller utterances are transcribed and not answered.
 
 Rules that cross the diagram: gate queries never change the phase (the engine speaks the gate info and then follows the phase's next step); User "End call" goes to `Ended` from every state within 2 s; in `TakeOver` no phase transition is produced by timers, silence or max-duration events; in `AgentMuted` the Agent produces no speech but the transcript keeps growing; Resume Agent speaks a Bridging_Phrase and continues from the stored phase and Intent_Category.
 
@@ -315,7 +313,7 @@ sequenceDiagram
     participant CI as ContactIndex
     participant CA as CallAnswerer
     participant FG as CallForegroundService
-    participant AU as Audio (AAS + Player)
+    participant AU as Audio (Capture + Player)
     participant EN as ConversationEngine
     participant UI as Live_Call_Screen
     Net->>CS: onScreenCall(details)
@@ -362,8 +360,8 @@ Two Gradle modules keep the logic testable on the JVM without an emulator.
   report/       SpamReportBuilder, BriefDescriptionGenerator, SenderNumber, ReportStatusMachine, ReportFlowPolicy
 
 :app  (Android)
-  telecom/      CallScreenerService, CallAnswerer, TransferController, ContactIndex
-  audio/        CallAudioAccessibilityService, CallAudioCapture, AgentAudioPlayer, EchoGate, AudioRouteController
+  telecom/      CallScreenerService, CallAnswerer, ContactIndex
+  audio/        CallAudioCaptureOwner, CallAudioCapture, AgentAudioPlayer, EchoGate, AudioRouteController (setSpeakerphoneOn, setCommunicationDevice)
   asr/          WhisperRecognizer, VoskRecognizer, SystemRecognizer, SileroVad
   tts/          SherpaPiperSynthesizer, AndroidTtsSynthesizer, ScriptSplitter, FallbackPhrases
   nlg/          CloudLlmClient, StallingResponder
@@ -440,7 +438,7 @@ data class Utterance(
     val endMs: Long,
 )
 
-enum class Phase { ANSWERING, GREETING, LISTENING, DELIVERY, TRANSFER, AWAITING_TAKEOVER, TRANSFERRED, STALLING, CLARIFYING, ENDED }
+enum class Phase { ANSWERING, GREETING, LISTENING, DELIVERY, AWAITING_TAKEOVER, TRANSFERRED /* unused, kept for the log */, STALLING, CLARIFYING, ENDED }
 enum class Mode { AGENT_ACTIVE, AGENT_MUTED, TAKE_OVER }
 
 data class CallSession(
@@ -472,7 +470,7 @@ data class ConversationState(
 )
 
 data class TransferState(
-    val path: TransferPath,                       // PATH_A_MERGE or PATH_B_ALERT (current)
+    val path: TransferPath,                       // always PATH_B_ALERT (PATH_A_MERGE is kept in the enum, unused)
     val startedAtMs: Long,
     val alertReason: AlertReason? = null,         // why the Takeover_Alert was raised
     val alertRaisedAtMs: Long? = null,
@@ -480,7 +478,7 @@ data class TransferState(
     val nobodyAvailablePending: Boolean = false,  // 30 s passed while muted; spoken after the Bridging_Phrase
     val outcome: TransferOutcome? = null,         // final, written to the Call_Log
 )
-enum class TransferPath { PATH_A_MERGE, PATH_B_ALERT }
+enum class TransferPath { PATH_A_MERGE /* unused, removed feature */, PATH_B_ALERT }
 ```
 
 ### ConversationEngine (pure reducer)
@@ -501,7 +499,6 @@ sealed interface ConversationEvent {
     data class UserResume(override val atMs: Long) : ConversationEvent
     data class UserEndCall(override val atMs: Long) : ConversationEvent
     data class QuickReplySent(override val atMs: Long, val text: String) : ConversationEvent
-    data class TransferResult(override val atMs: Long, val result: PathAResult) : ConversationEvent    // Path A only
     data class ResponseFailed(override val atMs: Long, val attempt: Int) : ConversationEvent
     data class SpeechSynthesisFailed(override val atMs: Long, val attempt: Int) : ConversationEvent
     data class CallEnded(override val atMs: Long, val by: EndedBy) : ConversationEvent
@@ -510,7 +507,6 @@ sealed interface ConversationEvent {
 sealed interface Effect {
     data class Speak(val responseId: String, val spec: SpeechSpec, val language: Language) : Effect
     data object StopSpeaking : Effect
-    data class StartTransfer(val target: String, val callerNumber: String?) : Effect          // Path A
     data class RaiseTakeoverAlert(val callerNumber: String?, val reason: AlertReason) : Effect // Path B
     data object ClearTakeoverAlert : Effect                                                   // on take over or call end only
     data class SendMapSms(val number: String) : Effect
@@ -567,7 +563,7 @@ Behavior notes:
 - **Silence (5.6, 6.4, 6.5).** Silence handling is driven by `Tick`: after the greeting, one silence timeout repeats the greeting, the second ends the call; in stalling, 3 consecutive silence prompts end the call and record "caller silence".
 - **Audio problems (8.7, 8.8).** `CallerAudioUnusable` asks the Caller to repeat, at most 3 consecutive times. After more than 10 s without usable audio the call ends and the interruption (start, duration) is logged.
 - **Maximum stalling (5.8).** The `Tick` handler ends the call politely when `now - stallStartMs >= maxStallingSeconds`.
-- **Transfer (Requirement 4, 8.10, 13.20, 13.21).** Started on `AgentSpeechFinished` of the `TransferNotice`. With `pathAEnabled` (frozen at call start; true only with the S6 build flag on, a Transfer_Target configured and the accessibility service enabled), the first transfer effect is `StartTransfer(target)`, followed by `Notify(TRANSFER_STARTED)`, and the phase is `TRANSFER`. Otherwise the first transfer effect is `RaiseTakeoverAlert` (reason `PATH_A_UNAVAILABLE` or `TARGET_NOT_CONFIGURED`), followed by `Speak(PleaseWait)`, `Notify(TRANSFER_STARTED)` and, without a target, `Notify(TRANSFER_TARGET_MISSING)`; the phase is `AWAITING_TAKEOVER`. `TransferResult(MERGED)` gives `TRANSFERRED` and outcome `MERGED`. `TransferResult(NO_ANSWER_30S)` or `TransferResult(FAILED)` gives `RaiseTakeoverAlert` (reason `NO_ANSWER_30S` or `FAILED_THEN_ALERT`), `Speak(PleaseWait)` and `AWAITING_TAKEOVER`; `FAILED` also gives `Notify(TRANSFER_FAILED)` and `LogNote(TRANSFER_FAILED)` (4.4, 8.10). In `AWAITING_TAKEOVER`: a `Tick` with `now - lastPleaseWaitAtMs >= 10 000 ms` gives `Speak(PleaseWait)` (ticks are at most 1 s apart, so the start-to-start spacing is at most 11 s, below the 15 s limit); Caller utterances are added to the transcript and produce no `Speak`; the first `Tick` with `now - alertRaisedAtMs >= 30 000 ms` gives exactly one `Speak(NobodyAvailable)`, outcome `NO_TAKEOVER_30S` and phase `LISTENING`, without `ClearTakeoverAlert` (4.3, 4.9). `UserTakeOver` in `AWAITING_TAKEOVER` or `TRANSFER` additionally gives `LogNote(TRANSFER_COMPLETED_BY_USER)` and outcome `TAKEN_OVER_BY_USER` (4.8). A `TransferResult` that arrives after a take over only updates the log record. Mute suppresses PleaseWait and NobodyAvailable speech but not the timers or the outcome; if `NO_TAKEOVER_30S` was reached while muted, `nobodyAvailablePending` makes `UserResume` speak `NobodyAvailable` right after the `BridgingPhrase` (13.10, 13.20).
+- **Transfer (Requirement 4, 8.10, 13.20, 13.21).** Started on `AgentSpeechFinished` of the `TransferNotice`. The first transfer effect is always `RaiseTakeoverAlert` (reason `TAKEOVER_REQUIRED`, or `TARGET_NOT_CONFIGURED` without a target), followed by `Speak(PleaseWait)`, `Notify(TRANSFER_STARTED)` and, without a target, `Notify(TRANSFER_TARGET_MISSING)`; the phase is `AWAITING_TAKEOVER`. In `AWAITING_TAKEOVER`: a `Tick` with `now - lastPleaseWaitAtMs >= 10 000 ms` gives `Speak(PleaseWait)` (ticks are at most 1 s apart, so the start-to-start spacing is at most 11 s, below the 15 s limit); Caller utterances are added to the transcript and produce no `Speak`; the first `Tick` with `now - alertRaisedAtMs >= 30 000 ms` gives exactly one `Speak(NobodyAvailable)`, outcome `NO_TAKEOVER_30S` and phase `LISTENING`, without `ClearTakeoverAlert` (4.3, 4.9). `UserTakeOver` in `AWAITING_TAKEOVER` additionally gives `LogNote(TRANSFER_COMPLETED_BY_USER)` and outcome `TAKEN_OVER_BY_USER` (4.8). Mute suppresses PleaseWait and NobodyAvailable speech but not the timers or the outcome; if `NO_TAKEOVER_30S` was reached while muted, `nobodyAvailablePending` makes `UserResume` speak `NobodyAvailable` right after the `BridgingPhrase` (13.10, 13.20).
 - **Take over (13.6, 13.8, 13.9, 13.21).** `UserTakeOver` produces `StopSpeaking`, `ClearTakeoverAlert` when an alert is shown, sets `mode = TAKE_OVER` and stores the start time. The reducer ignores `origin`, so a take over from the Takeover_Alert produces exactly the same transition as one from the Live_Call_Screen. In TAKE_OVER the reducer produces no `Speak`, no `EndCall` (except on `UserEndCall`/`CallEnded`), no `StartTransfer`, no `RaiseTakeoverAlert` and no silence or max-duration reaction. The transcript still grows.
 - **Mute (13.10).** `UserMute` produces `StopSpeaking` and `mode = AGENT_MUTED`. No `Speak` effect is produced until resume. `QuickReplySent` is ignored while muted or in TAKE_OVER (the User is talking directly).
 - **Resume (13.11).** `UserResume` from TAKE_OVER or AGENT_MUTED produces `Speak(BridgingPhrase)` in the Caller's language and restores `mode = AGENT_ACTIVE` with `phase` and `intent` unchanged.
@@ -717,8 +713,6 @@ interface AudioRouteController { suspend fun enableSpeaker(): Boolean }
 `VoiceSelector` rules: prefer a voice of the requested gender and language, bundled first; if the best same-gender voice is not the preferred one it is a substitution; if no same-gender voice exists for the language use any voice for that language (substitution). The gender for a call is fixed at call start (7.11) and the same `VoiceSelector` is used for both languages.
 
 ```kotlin
-interface TransferController { suspend fun connect(target: String): PathAResult }   // Path A only; placeCall + Merge, or end + Resume
-enum class PathAResult { MERGED, NO_ANSWER_30S, FAILED }
 
 interface TakeoverAlertPresenter {           // Path B (:app)
     fun raise(callerNumber: String?, reason: AlertReason)   // full-screen intent, high-importance channel, sound, vibration, tone
@@ -727,8 +721,8 @@ interface TakeoverAlertPresenter {           // Path B (:app)
 }
 
 // :core, used by the engine and stored in the Call_Log
-enum class AlertReason { PATH_A_UNAVAILABLE, TARGET_NOT_CONFIGURED, NO_ANSWER_30S, FAILED_THEN_ALERT }
-enum class TransferOutcome { MERGED, TAKEN_OVER_BY_USER, NO_TAKEOVER_30S, CALL_ENDED_WHILE_WAITING }
+enum class AlertReason { TAKEOVER_REQUIRED, TARGET_NOT_CONFIGURED, NO_ANSWER_30S, FAILED_THEN_ALERT }   // the last two are no longer produced
+enum class TransferOutcome { MERGED /* unused */, TAKEN_OVER_BY_USER, NO_TAKEOVER_30S, CALL_ENDED_WHILE_WAITING }
 
 interface CallAnswerer { suspend fun answer(): Boolean }
 interface ContactIndex { fun isKnown(rawNumber: String): Boolean; val readable: Boolean }
@@ -744,8 +738,9 @@ enum class Decision { ANSWER, LEAVE_RINGING, LEAVE_RINGING_NOTIFY_NO_CONTACT_ACC
 `decide`: not enabled gives `LEAVE_RINGING`; contacts not readable gives `LEAVE_RINGING_NOTIFY_NO_CONTACT_ACCESS`; hidden number gives `ANSWER`; known contact gives `LEAVE_RINGING`; otherwise `ANSWER`.
 
 ### Foreground service, Live_Call_Screen and notification
+- Decision: answer only after the service is in the foreground. Android 12+ blocks a foreground service start from the background (the screening binding is not an exemption on the tested Galaxy M34; logcat showed the start denied). `CallScreenerService` therefore (1) shows a small `TYPE_APPLICATION_OVERLAY` pill when `SYSTEM_ALERT_WINDOW` is granted (Android 15+ requires a visible overlay for the exemption), (2) starts `CallForegroundService`, (3) waits up to 1.5 s for `CallForegroundService.running`, and only then calls `TelecomCallAnswerer.answer()` (`StartThenAnswer`). If the start is refused or not confirmed, the call is left ringing, the overlay is removed and a full-screen alert "Tap to let the Agent answer" is posted; its tap or full-screen launch opens `LiveCallActivity`, which starts the service while visible and then answers if the call is still ringing. The `microphone` type is tried on every start and retried when an activity becomes visible. Channels are created in `Application.onCreate` and before every post. Log tag: `CallAnswer`.
 
-- `CallForegroundService` owns the call session, wires capture to ASR to engine to TTS to player, and updates the notification and the Live_Call_Screen state (`StateFlow<LiveCallUiState>`). It starts within the call-answer path and shows the notification within 2 s of answer (13.19).
+- `CallForegroundService` owns the call session, wires capture to ASR to engine to TTS to player, and updates the notification and the Live_Call_Screen state (`StateFlow<LiveCallUiState>`). The service enters the foreground as `mediaPlayback` (plus `microphone` when permitted, see D1). It starts within the call-answer path and shows the notification within 2 s of answer (13.19).
 - Notification (channel `live_call`, category `CALL`, ongoing, full-screen intent for the Live_Call_Screen): shows the number, intent and language, and three actions in this order: **Take over**, **Mute Agent** (becomes **Resume Agent** when muted or in Take_Over), **End call**. Android shows a maximum of three actions in the compact form, so Resume Agent replaces Mute Agent when applicable. The actions are `PendingIntent`s to the service.
 - `Live_Call_Screen` (Compose): live transcript list (updated within 2 s of each utterance, 13.5), intent and language chips, the four controls, and Quick_Reply chips with a text field. Quick replies and typed replies are sent as `QuickReplySent`; the Agent speaks them in the Caller's language (translated when on-device translation is available, otherwise as is) in the call's voice gender (13.14).
 - Take over: `StopSpeaking` within 500 ms (player `pause` plus `flush`), the service keeps capturing and transcribing, and the Live_Call_Screen shows "You are talking".
@@ -757,12 +752,13 @@ enum class Decision { ANSWER, LEAVE_RINGING, LEAVE_RINGING_NOTIFY_NO_CONTACT_ACC
 
 ```mermaid
 flowchart TD
-    A[First launch] --> B[Explain: call screening role]
+    A[First launch] --> A1[Sign in, or Skip for now: enables Polly voices, starts prefetch]
+    A1 --> B[Explain: call screening role]
     B --> C[Request ROLE_CALL_SCREENING]
     C --> D[Explain each permission, then request]
     D --> D1[READ_CONTACTS]
     D --> D2[ANSWER_PHONE_CALLS + READ_PHONE_STATE]
-    D --> D3[CALL_PHONE for the transfer call]
+
     D --> D4[RECORD_AUDIO]
     D --> D5[POST_NOTIFICATIONS, Android 13+]
     D --> D6[SEND_SMS]
@@ -772,7 +768,7 @@ flowchart TD
     D4 --> E
     D5 --> E
     D6 --> E
-    E --> E1[Accessibility service for call audio; Android 13+ sideload: Allow restricted settings]
+    E --> E1[Microphone foreground service type: RECORD_AUDIO and FOREGROUND_SERVICE_MICROPHONE]
     E --> E2[Full-screen intent access, Android 14+]
     E --> E3[Battery: unrestricted / never sleeping apps on One UI]
     E1 --> F[Recording_Folder via folder picker, persisted]
@@ -1070,7 +1066,7 @@ data class CallLogEntry(
 @Serializable data class VoiceSubstitution(val language: Language, val usedVoiceId: String)
 @Serializable data class TransferRecord(
     val path: TransferPath,                     // last path used
-    val alertReason: AlertReason?,              // null when Path A merged without an alert
+    val alertReason: AlertReason?,              // null when no alert reason applies
     val outcome: TransferOutcome,               // TAKEN_OVER_BY_USER = "transfer completed by User" (4.8)
     val startedAtMs: Long,
     val alertRaisedAtMs: Long?,
@@ -1124,7 +1120,7 @@ State transitions of `RecordingInfo.status`: `PENDING` (search running) to `LINK
 
 State transitions of `SpamReportInfo.status` are given by the `ReportStatusMachine` table in [Spam reporting](#spam-reporting-requirement-14). In short: `NOT_REPORTED`, `FAILED` or `CANNOT_REPORT_NUMBER_UNAVAILABLE` to `PREPARED` on "Report spam"; `PREPARED` to `HANDED_TO_MESSAGING_APP`, `SENT` or `FAILED`, or back to the previous stamp on cancel; any status to `CANNOT_REPORT_NUMBER_UNAVAILABLE` when the number is unavailable; `PREPARED`, `HANDED_TO_MESSAGING_APP` and `SENT` to a new `PREPARED` only after the User confirms a repeat report.
 
-`TransferRecord.outcome` is set once per transfer: `MERGED` (Path A merge), `TAKEN_OVER_BY_USER` (take over from the Takeover_Alert or the Live_Call_Screen while the transfer was running; logged as "transfer completed by User"), `NO_TAKEOVER_30S` (30 s after the alert without take over), or `CALL_ENDED_WHILE_WAITING` (the call ended before any of these). A take over after `NO_TAKEOVER_30S` is recorded as a normal take over in `takeovers` and does not change the outcome.
+`TransferRecord.outcome` is set once per transfer: `TAKEN_OVER_BY_USER` (take over from the Takeover_Alert or the Live_Call_Screen while the transfer was running; logged as "transfer completed by User"), `NO_TAKEOVER_30S` (30 s after the alert without take over), or `CALL_ENDED_WHILE_WAITING` (the call ended before any of these). A take over after `NO_TAKEOVER_30S` is recorded as a normal take over in `takeovers` and does not change the outcome.
 
 
 ## Correctness Properties
@@ -1337,7 +1333,7 @@ Properties 1 to 37 cover call handling, Properties 38 to 47 cover spam reporting
 
 ### Property 34: Take over invariants
 
-*For any* event sequence that contains UserTakeOver and no later UserResume, every effect after the takeover is free of Speak, StartTransfer, RaiseTakeoverAlert, and EndCall (except an EndCall caused by UserEndCall), StopSpeaking is emitted immediately on takeover, and Caller and live utterances are still appended to the transcript.
+*For any* event sequence that contains UserTakeOver and no later UserResume, every effect after the takeover is free of Speak, RaiseTakeoverAlert, and EndCall (except an EndCall caused by UserEndCall), StopSpeaking is emitted immediately on takeover, and Caller and live utterances are still appended to the transcript.
 
 **Validates: Requirements 5.3, 13.6, 13.8, 13.9, 13.12**
 
@@ -1425,11 +1421,11 @@ These properties cover Requirement 14, 9.26 and 10.13. All of them test pure `:c
 
 ### Transfer properties
 
-These properties cover the reworked transfer (Requirement 4, 13.20, 13.21). They test the pure `ConversationEngine` reducer with generated event sequences in virtual time (ticks at most 1 s apart). The Android side of Path A (`placeCall`, Merge) and of Path B (notification, tone) is covered by S6 and instrumented tests.
+These properties cover the reworked transfer (Requirement 4, 13.20, 13.21). They test the pure `ConversationEngine` reducer with generated event sequences in virtual time (ticks at most 1 s apart). The Android side of the Takeover_Alert (notification, tone) is covered by S6 and instrumented tests.
 
-### Property 48: First transfer effect follows the path rule
+### Property 48: The first transfer effect is the Takeover_Alert
 
-*For any* frozen settings (Transfer_Target configured or not, `pathAEnabled` true or false) and *any* conversation that reaches the end of the TransferNotice in AGENT_ACTIVE mode, the first transfer effect is `StartTransfer` if and only if `pathAEnabled` is true and a Transfer_Target is configured, and otherwise it is `RaiseTakeoverAlert`. With no Transfer_Target, no `StartTransfer` is ever emitted in the call and a `TRANSFER_TARGET_MISSING` notification is emitted.
+*For any* frozen settings (Transfer_Target configured or not) and *any* conversation that reaches the end of the TransferNotice in AGENT_ACTIVE mode, the first transfer effect is `RaiseTakeoverAlert`. With no Transfer_Target a `TRANSFER_TARGET_MISSING` notification is emitted; the Transfer_Target is never dialled.
 
 **Validates: Requirements 4.2, 4.5, 4.10**
 
@@ -1441,7 +1437,7 @@ These properties cover the reworked transfer (Requirement 4, 13.20, 13.21). They
 
 ### Property 50: Take over from the Takeover_Alert equals take over from the Live_Call_Screen
 
-*For any* conversation state and *any* time, reducing `UserTakeOver(origin = TAKEOVER_ALERT)` and `UserTakeOver(origin = LIVE_CALL_SCREEN)` yields equal transitions (same next state and same effects, in order). When the phase is AWAITING_TAKEOVER or TRANSFER, the effects contain `StopSpeaking` and `LogNote(TRANSFER_COMPLETED_BY_USER)`, the mode becomes TAKE_OVER, and the transfer outcome is `TAKEN_OVER_BY_USER`.
+*For any* conversation state and *any* time, reducing `UserTakeOver(origin = TAKEOVER_ALERT)` and `UserTakeOver(origin = LIVE_CALL_SCREEN)` yields equal transitions (same next state and same effects, in order). When the phase is AWAITING_TAKEOVER, the effects contain `StopSpeaking` and `LogNote(TRANSFER_COMPLETED_BY_USER)`, the mode becomes TAKE_OVER, and the transfer outcome is `TAKEN_OVER_BY_USER`.
 
 **Validates: Requirements 4.8, 13.20, 13.21**
 
@@ -1471,10 +1467,6 @@ These properties cover the reworked transfer (Requirement 4, 13.20, 13.21). They
 | Cloud timeout or error | `withTimeoutOrNull` null or exception | Local result, no Caller-facing message | 8.4 |
 | Network degraded or lost | `NetworkMonitor` | Offline_Mode on next request within 2 s | 8.2, 8.5 |
 | Transfer_Target not configured | `transferTarget == null` | Raise the Takeover_Alert within 2 s (no rejection), "please wait" at most every 15 s, notify within 10 s that no Transfer_Target is configured, with the Caller's number | 4.5, 4.10, 4.11 |
-| Path A not supported on this phone or accessibility service off | `pathAEnabled == false` at call start | Go directly to the Takeover_Alert | 4.2 |
-| Path A no answer in 30 s | Merge button never enabled / second call not active | End second call, resume held call, raise the Takeover_Alert within 2 s, "please wait" | 4.7 |
-| Path A failure (also with no network) | `placeCall` exception, Merge or Resume button not found | Resume held call, raise the Takeover_Alert within 2 s, notify within 10 s with the Caller's number, log the failure | 4.4, 4.7, 8.10 |
-| Held call cannot be resumed after Path A | Call state stays `HOLDING` after the Resume click | Takeover_Alert still raised; the alert text tells the User the Caller is on hold; logged | 4.7 |
 | No take over within 30 s of the alert | Engine tick `now - alertRaisedAtMs >= 30 s` | Agent says once "nobody is available, please call again shortly", Caller stays connected, alert stays until call end, outcome `NO_TAKEOVER_30S` | 4.3, 4.9 |
 | Full-screen intent access not granted | `NotificationManager.canUseFullScreenIntent() == false` (Android 14+) | Alert shown as heads-up notification with the same Take over action, plus the App's alert tone; onboarding banner | 4.2 |
 | Notification sound muted during the call | Always assumed | The App plays its own alert tone on the speaker | 4.2 |
@@ -1519,7 +1511,6 @@ The rows below cover spam reporting. Every report error is shown to the User and
 - **PII guard (Property 13).** Prompt input is limited by type to the sanitized Caller utterance and recent turns; protected values are masked; outputs with protected values, digit runs of 6 or more, email, PAN, Aadhaar, IFSC or card patterns are rejected. Provider settings request no retention where the provider supports it (10.7). The cloud API key is stored with the Android Keystore (encrypted DataStore entry), never in code or logs.
 - **Recordings.** Access is only through the SAF folder the User selected. Files are opened read-only; the App never copies, uploads or modifies them (12.12, 12.14). Deletion happens only after explicit confirmation.
 - **Logs.** Logcat output in release builds contains no numbers, transcripts or audio.
-- **Accessibility service.** Declared with the minimum event types (`typeWindowStateChanged`, `typeWindowContentChanged`) and package filter `com.samsung.android.incallui` and `com.samsung.android.dialer`, used only for audio-capture eligibility, the speaker button and the Merge/Resume buttons. Its purpose is shown to the User before enabling.
 - **Disclosure.** Off by default as required (10.11). Legal note for the User: recording and automated handling of calls may need consent under local law; the App shows this in the recording settings.
 
 ## Testing Strategy
@@ -1542,11 +1533,11 @@ Testing uses two complementary layers: property-based tests for the universal pr
 - `Arb.callLogEntry()` covering every enum value, null fields and Unicode text.
 - `Arb.conversationEvents()` producing realistic event sequences with ticks, user controls and network changes for the engine properties.
 - `Arb.echoScenario()` for Property 37.
-- `Arb.transferScenario()` for Properties 48 to 51: frozen settings with and without a Transfer_Target and `pathAEnabled`, a random `PathAResult` or none, then a tick sequence (gaps 0.2 to 1 s, 0 to 60 s long) mixed with Caller utterances of every Intent_Category, Gate_Queries, voice activity and an optional `UserTakeOver` with a random origin.
+- `Arb.transferScenario()` for Properties 48 to 51: frozen settings with and without a Transfer_Target, then a tick sequence (gaps 0.2 to 1 s, 0 to 60 s long) mixed with Caller utterances of every Intent_Category, Gate_Queries, voice activity and an optional `UserTakeOver` with a random origin.
 
 ### Unit tests (examples and edge cases)
 
-Engine examples for transfer outcomes (4.4 and 4.6 notifications, `FAILED_THEN_ALERT` and the 8.10 log note, a `TransferResult` that arrives after a take over), Takeover_Alert notification and tone behavior with Robolectric (channel importance, full-screen intent, Take over action sends `UserTakeOver`, alert kept until call end), map SMS effects (3.4, 3.8), delivery end triggers (3.6), failure retries (5.10, 7.9, 8.9), quick replies (13.14), mute and resume during the Path A wait and during `AWAITING_TAKEOVER`, including the 30 s point passing while muted (13.20), unknown-call notification payload with and without number (6.3, 6.6), default gates and steps (9.8, 11.16), Call_Log save retry (10.3), recording retry schedule and statuses (12.5 to 12.7, 12.10), Outbox flush (8.12), permission-to-feature mapping (9.3). Unit tests stay focused on these; the property tests cover input variety.
+Engine examples for transfer outcomes (4.6 notification, take over during `AWAITING_TAKEOVER`), Takeover_Alert notification and tone behavior with Robolectric (channel importance, full-screen intent, Take over action sends `UserTakeOver`, alert kept until call end), map SMS effects (3.4, 3.8), delivery end triggers (3.6), failure retries (5.10, 7.9, 8.9), quick replies (13.14), mute and resume during `AWAITING_TAKEOVER`, including the 30 s point passing while muted (13.20), unknown-call notification payload with and without number (6.3, 6.6), default gates and steps (9.8, 11.16), Call_Log save retry (10.3), recording retry schedule and statuses (12.5 to 12.7, 12.10), Outbox flush (8.12), permission-to-feature mapping (9.3). Unit tests stay focused on these; the property tests cover input variety.
 
 ### Instrumented tests
 
@@ -1554,21 +1545,21 @@ Room round trip with real SQLite; DataStore restart; SAF folder with a test `Doc
 
 ### Feasibility spike (do first, on the User's Galaxy M34 5G)
 
-Build a throwaway "spike" app variant (`:spike`) with the minimal screening service, answer call, speaker route, accessibility capture, AudioTrack TTS and a WAV dump. Use a second phone as the Caller. Every item has a pass criterion; results are written into this document before full development.
+Build a throwaway "spike" app variant (`:spike`) with the minimal screening service, answer call, speaker route, foreground-service capture, AudioTrack TTS and a WAV dump. Use a second phone as the Caller. Every item has a pass criterion; results are written into this document before full development.
 
 | ID | Check | Pass criterion |
 |---|---|---|
 | S0 | On the Galaxy M34 5G: read and record the model number, the installed One UI and Android version, security patch level, RAM variant (6 or 8 GB), carrier, VoLTE on/off. Confirm that the Samsung Phone app is the default dialer and that its call-recording option (auto-record for unknown numbers) is present on this India-model build. | Recorded; recording option present (if absent, Requirement 12 is revisited with the User) |
 | S1 | `onScreenCall` gets the number; `acceptRingingCall` answers; time from ring to answer; foreground service start from the screening callback; notification within 2 s; `endCall` works | Answer within 3 s in 10 of 10 calls; service and notification start; end call works |
-| S2 | Microphone capture during the call as accessibility service vs. without it, for each audio source (VOICE_RECOGNITION, MIC, UNPROCESSED, VOICE_COMMUNICATION); check `isClientSilenced`; dump WAV | Caller's voice audible in the dump with at least one source; record which source works best |
+| S2 | Microphone capture during the call by the plain foreground service (type `microphone`, speakerphone on), for each audio source (VOICE_RECOGNITION, MIC, UNPROCESSED, VOICE_COMMUNICATION); check `isClientSilenced`; dump WAV. Answers: is the Caller audible without an accessibility service? | Caller's voice audible in the dump with at least one source; record which source works best |
 | S3 | Caller hears the Agent's TTS through speaker and mic path: 10 Hindi + 10 English sentences, two `AudioTrack` usages, call volume 60 to 100%, Samsung "Noise reduction" on/off; player stop latency | At least 90% of words understood at the Caller's phone; stop within 500 ms |
 | S4 | Echo: Agent TTS in the capture; run gate plus text filter, then AEC with TTS reference; Caller speaking during Agent speech | No Agent text in the Caller transcript in 20 test turns; decide whether AEC layer is needed |
 | S5 | Samsung auto-record for unknown numbers with a call answered by the App: does a file appear, which folder, name pattern, timestamps, delay after call end; does it contain the Caller, Agent and User | File appears for 5 of 5 calls; patterns recorded; sides captured documented |
-| S6 | Transfer on the M34 5G and the User's carrier. Path A: `placeCall` to the Transfer_Target during the active call, accessibility Merge click, conference audio, 30 s no-answer path, resume held call; data off (cellular only). Path B: Takeover_Alert while a call is active (full-screen intent with and without the access, notification sound during the call, App alert tone audible on the speaker, Take over action reaches the service from the lock screen). | Path A: merge works in 5 of 5 tries, then the `pathAEnabled` build flag is set on; otherwise it stays off and every transfer uses Path B. Path B: alert shown and Take over works in 5 of 5 tries (required) |
+| S6 | Transfer on the M34 5G. Takeover_Alert while a call is active (full-screen intent with and without the access, notification sound during the call, App alert tone audible on the speaker, Take over action reaches the service from the lock screen). | Alert shown and Take over works in 5 of 5 tries (required) |
 | S7 | On-device AI benchmark on the M34 5G with captured call audio: Whisper base int8 (2 threads, big-core affinity) vs Vosk small `hi`/`en-in` streaming (WER and intent accuracy on 30 Hindi, English, Hinglish utterances, latency); Piper voice first-audio latency; end-to-end response latency, cold and at the end of a 10-minute sustained call; peak resident memory (PSS) during the call | End-to-end at most 2.5 s at p90 in Offline_Mode and intent accuracy at least 90%. Whisper is primary only if it passes; otherwise Vosk streaming is primary (D5 decision rule). Resident model memory well below the RAM (target a few hundred MB on the 6 GB variant); no low-memory kill. Bundle only the smallest models that pass |
 | S8 | 1909 hand-off and send (see [Spike S8](#spike-s8-1909-hand-off-and-send)) | Steps 1 to 5 recorded; silent path build flag decided |
 
-Go/no-go: S1, S2 and S3 must pass for the primary approach. S6 Path B must pass; S6 Path A only decides the `pathAEnabled` flag. If S2 or S3 fails, the team stops and decides with the User between fallback F1 (assisted mode) and pivot F2 (VoIP number).
+Go/no-go: S1, S2 and S3 must pass for the primary approach. S6 must pass. If S2 or S3 fails, the team stops and decides with the User between fallback F1 (assisted mode), the default assistant role (see "Decision: no accessibility service") and pivot F2 (VoIP number).
 
 ### Manual test matrix (patchy network)
 
@@ -1631,11 +1622,11 @@ Each run covers the four intents in Hindi, English and Hinglish, Take over, Mute
 
 | ID | Risk | Impact | Mitigation | Spike |
 |---|---|---|---|---|
-| R1 | Microphone capture is silenced during calls on Android 10+ for ordinary apps; the accessibility-service exemption may be blocked or limited on the User's One UI build, and Play policy forbids this use for distributed apps | Agent cannot hear the Caller; core feature fails | Accessibility capture; test all sources; fallback F1 assisted mode; pivot F2 VoIP | S2 |
+| R1 | Microphone capture is silenced during calls on Android 10+ for ordinary apps, and the accessibility-service exemption is not used | Agent cannot hear the Caller; core feature fails | Test all sources with the plain foreground service (S2); fallback F1 assisted mode; default assistant role; pivot F2 VoIP | S2 |
 | R2 | Caller cannot hear TTS clearly (uplink noise suppression and call AEC remove loudspeaker audio) | Agent speaks but Caller does not understand | Volume, short sentences, usage choice, Samsung noise reduction setting | S3 |
 | R3 | Echo of Agent TTS in the Caller transcript, or Caller speech lost during Agent speech | Wrong intents, self-conversation | Three-layer echo handling; short speech chunks with gaps | S4 |
-| R4 | Merge by UI automation fails on the M34 5G or the carrier lacks 3-way calling | Path A unavailable. Mitigated: the User accepted Path B (Takeover_Alert) as a valid transfer, and Requirement 4.2 now allows it, so this no longer blocks Requirement 4. Remaining risk: the User may not notice the alert (phone in another room). | Path A only where S6 passes; Path B always; full-screen intent, sound, vibration and the App's alert tone; "nobody available" after 30 s | S6 |
-| R5 | Foreground service with audio started from the screening callback is refused on Android 14+ | No processing during call | Capture in the accessibility service; full-screen intent path | S1 |
+| R4 | The User does not notice the Takeover_Alert (phone in another room) | The Caller waits and then hears "nobody is available". | Full-screen intent, sound, vibration and the App's alert tone; "nobody available" after 30 s | S6 |
+| R5 | `microphone` foreground type refused when started from the screening callback (Android 14+ while-in-use rule) | Capture silenced until the Live_Call_Screen is visible | `mediaPlayback` first, `microphone` added when the screen is visible or the notification is tapped; assisted mode F1 meanwhile; full-screen-intent path | S1, S2 |
 | R6 | Samsung recorder does not start for App-answered calls, or the folder and name pattern differ | Requirement 12 not met | Lenient matching, documented User instruction, status NOT_FOUND | S5 |
 | R7 | Whisper base int8 too slow on the Exynos 1280 (only 2 big cores), or ASR too poor for loudspeaker Hinglish audio; latency grows when the phone heats up in long calls | 3 s limit missed, wrong intents | Device-driven ASR choice in S7 (Vosk streaming becomes primary if Whisper misses the p90 budget), VAD trimming, short first sentence for TTS, phrase tables tuned on real captures, sustained-call measurement | S7 |
 | R8 | Bundled model size (about 300 to 700 MB) and resident memory on a 6 GB phone | Large install; App killed during a call under memory pressure | Install-time asset pack; bundle only the smallest models that pass S7; one ASR engine and two voices loaded per call; memory-mapped models | S7 |
@@ -1643,8 +1634,8 @@ Each run covers the four intents in Hindi, English and Hinglish, Take over, Mute
 
 Open questions for the User:
 
-1. Is the App only for personal use (sideload), so that the accessibility-service approach is acceptable? A Play Store release would need the VoIP pivot.
-2. Answered: the User accepted the Takeover_Alert as a valid transfer. Requirement 4 (criteria 1 to 11), 8.10 and 13.20 to 13.21 were updated, and D3 uses Path A only where S6 shows it works.
+1. Answered: the App does not use an accessibility service (UPI and banking apps refuse to work while one is enabled). Capture depends on S2.
+2. Answered: the User accepted the Takeover_Alert as the only transfer. Requirement 4, 8.10 and 13.20 to 13.21 were updated, and D3 no longer has a Path A.
 3. Should the PII guard protect extra values such as the User's name and street address? The App can only protect what the User enters in `protectedTerms`.
 4. Which cloud LLM provider, if any, should be used for stalling? The design works without one.
 5. Answered: confirmed by the User. Mute during a transfer: Requirement 13.10 says a muted Agent does not speak, and 4.9 says the Agent tells the Caller that nobody is available after 30 s. The design keeps the Agent silent while muted and speaks "nobody is available" right after the Bridging_Phrase when the User resumes.

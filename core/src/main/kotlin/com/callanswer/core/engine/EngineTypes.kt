@@ -17,15 +17,12 @@ import com.callanswer.core.model.Utterance
 import java.time.Instant
 import java.time.ZoneId
 
-enum class Phase { ANSWERING, GREETING, LISTENING, DELIVERY, TRANSFER, AWAITING_TAKEOVER, TRANSFERRED, STALLING, CLARIFYING, ENDED }
+enum class Phase { ANSWERING, GREETING, LISTENING, DELIVERY, AWAITING_TAKEOVER, TRANSFERRED, STALLING, CLARIFYING, ENDED }
 
 enum class Mode { AGENT_ACTIVE, AGENT_MUTED, TAKE_OVER }
 
 /** Where the User started a Take_Over. The reducer does not use it (Requirement 13.21). */
 enum class TakeoverOrigin { ALERT, LIVE_CALL_SCREEN }
-
-/** Result of a Path A transfer attempt. */
-enum class PathAResult { MERGED, NO_ANSWER_30S, FAILED }
 
 /** Who ended the call. */
 enum class EndedBy { CALLER, USER, APP }
@@ -98,7 +95,6 @@ sealed interface ConversationEvent {
     data class UserResume(override val atMs: Long) : ConversationEvent
     data class UserEndCall(override val atMs: Long) : ConversationEvent
     data class QuickReplySent(override val atMs: Long, val text: String) : ConversationEvent
-    data class TransferResult(override val atMs: Long, val result: PathAResult) : ConversationEvent
     data class ResponseFailed(override val atMs: Long, val attempt: Int) : ConversationEvent
     data class SpeechSynthesisFailed(override val atMs: Long, val attempt: Int) : ConversationEvent
     data class CallEnded(override val atMs: Long, val by: EndedBy) : ConversationEvent
@@ -138,7 +134,6 @@ sealed interface SpeechSpec {
 sealed interface Effect {
     data class Speak(val responseId: String, val spec: SpeechSpec, val language: Language) : Effect
     data object StopSpeaking : Effect
-    data class StartTransfer(val target: String, val callerNumber: String?) : Effect
     data class RaiseTakeoverAlert(val callerNumber: String?, val reason: AlertReason) : Effect
     data object ClearTakeoverAlert : Effect
     data class SendMapSms(val number: String) : Effect

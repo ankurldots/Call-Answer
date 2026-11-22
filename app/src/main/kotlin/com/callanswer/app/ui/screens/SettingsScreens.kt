@@ -2,6 +2,7 @@ package com.callanswer.app.ui.screens
 
 import com.callanswer.app.data.displayAgentName
 import com.callanswer.app.data.rememberAgentName
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -19,6 +20,7 @@ import com.callanswer.app.ui.components.ScreenHeader
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -43,6 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import com.callanswer.app.R
 import com.callanswer.app.data.SettingsStore
 import com.callanswer.app.data.UpdateResult
+import com.callanswer.app.tts.SampleSourcePlan
 import com.callanswer.app.tts.VoiceSamplePlayer
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppCard
@@ -284,7 +287,8 @@ private fun CallForm(store: SettingsStore, initial: Settings) {
     val context = LocalContext.current
     val live by store.settings.collectAsState(initial = initial)
     var toggleFailed by remember { mutableStateOf(false) }
-    var sampleFailed by remember { mutableStateOf(false) }
+    var sampleFailure by remember { mutableStateOf(VoiceSamplePlayer.Failure.NONE) }
+    var samplePlaying by remember { mutableStateOf(false) }
     val sampler = remember { VoiceSamplePlayer(context) }
     DisposableEffect(sampler) { onDispose { sampler.release() } }
 
@@ -309,17 +313,48 @@ private fun CallForm(store: SettingsStore, initial: Settings) {
         },
     )
     Text(stringResource(R.string.settings_voice_hint), style = MaterialTheme.typography.bodySmall)
-    Row(horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm), modifier = Modifier.fillMaxWidth()) {
         listOf(
             Language.EN to R.string.settings_voice_sample_en,
             Language.HI to R.string.settings_voice_sample_hi,
         ).forEach { (language, label) ->
-            AppButton(stringResource(label), primary = false, onClick = {
-                scope.launch { sampleFailed = !sampler.play(language, live.voiceGender, displayAgentName(live.agentName)) }
+            AppButton(stringResource(label), primary = false, enabled = !samplePlaying, modifier = Modifier.fillMaxWidth(), onClick = {
+                scope.launch {
+                    sampleFailure = VoiceSamplePlayer.Failure.NONE
+                    samplePlaying = true
+                    try {
+                        sampler.play(language, live.voiceGender, displayAgentName(live.agentName))
+                        sampleFailure = sampler.lastFailure
+                    } finally {
+                        samplePlaying = false
+                    }
+                }
             })
         }
     }
-    if (sampleFailed) StatusBanner(stringResource(R.string.settings_voice_sample_failed), BannerSeverity.ERROR)
+    val account = (context.applicationContext as com.callanswer.app.CallAnswerApp).authRepository
+    val authState by account.state.collectAsState()
+    if (SampleSourcePlan.suggestSignIn(authState is com.callanswer.app.auth.AuthState.SignedIn, account.isConfigured)) {
+        Text(stringResource(R.string.settings_voice_sample_signin_hint), style = MaterialTheme.typography.bodyMedium)
+    }
+    if (samplePlaying) StatusBanner(stringResource(R.string.settings_voice_sample_playing), BannerSeverity.INFO)
+    if (sampleFailure != VoiceSamplePlayer.Failure.NONE) {
+        StatusBanner(
+            stringResource(
+                when (sampleFailure) {
+                    VoiceSamplePlayer.Failure.HINDI_VOICE_DOWNLOADING -> R.string.settings_voice_sample_hindi_downloading
+                    VoiceSamplePlayer.Failure.PLAYBACK -> R.string.settings_voice_sample_playback_failed
+                    else -> R.string.settings_voice_sample_failed
+                },
+            ),
+            BannerSeverity.ERROR,
+        )
+        AppButton(stringResource(R.string.settings_voice_open_tts), primary = false, onClick = {
+            val intent = Intent("com.android.settings.TTS_SETTINGS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { context.startActivity(intent) }
+                .onFailure { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+        })
+    }
 
     AppSwitchRow(stringResource(R.string.settings_speaker, rememberAgentName()), live.speakerEnabled, {
         scope.launch { toggleFailed = !store.change { s -> s.copy(speakerEnabled = it) } }

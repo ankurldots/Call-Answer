@@ -17,12 +17,8 @@ import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.sqrt
 
-/** Where the AudioRecord is owned during an S2 run. */
-enum class S2Owner { ACCESSIBILITY_SERVICE, FOREGROUND_SERVICE }
-
-/** Hands the connected accessibility service to the S2 screen. Set from SpikeAccessibilityService. */
+/** Run guard: only one S2 capture at a time. */
 object S2Bridge {
-    @Volatile var accessibilityContext: Context? = null
     @Volatile var running: Boolean = false
 }
 
@@ -39,25 +35,65 @@ object S2Capture {
         "VOICE_COMMUNICATION" to MediaRecorder.AudioSource.VOICE_COMMUNICATION,
     )
 
+    /**
+     * Blocks until the phone state becomes OFFHOOK (TelephonyCallback on API 31+, else PhoneStateListener)
+     * or [timeoutSec] passes. Returns true if OFFHOOK was seen. Needs READ_PHONE_STATE.
+     */
+    @Suppress("DEPRECATION")
+    fun waitForOffhook(context: Context, timeoutSec: Int): Boolean {
+        val tm = context.getSystemService(android.telephony.TelephonyManager::class.java)
+        val latch = java.util.concurrent.CountDownLatch(1)
+        val exec = java.util.concurrent.Executors.newSingleThreadExecutor()
+        val cb = if (android.os.Build.VERSION.SDK_INT >= 31) {
+            object : android.telephony.TelephonyCallback(), android.telephony.TelephonyCallback.CallStateListener {
+                override fun onCallStateChanged(state: Int) {
+                    if (state == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK) latch.countDown()
+                }
+            }
+        } else null
+        val legacy = if (cb == null) object : android.telephony.PhoneStateListener() {
+            override fun onCallStateChanged(state: Int, phoneNumber: String?) {
+                if (state == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK) latch.countDown()
+            }
+        } else null
+        return try {
+            if (cb != null) tm.registerTelephonyCallback(exec, cb)
+            else android.os.Handler(android.os.Looper.getMainLooper()).post { tm.listen(legacy, android.telephony.PhoneStateListener.LISTEN_CALL_STATE) }
+            SpikeLog.log("S2", "waiting for OFFHOOK (up to $timeoutSec s)")
+            val ok = latch.await(timeoutSec.toLong(), java.util.concurrent.TimeUnit.SECONDS)
+            SpikeLog.log("S2", if (ok) "OFFHOOK seen, starting capture" else "OFFHOOK not seen within $timeoutSec s, starting anyway")
+            if (ok) Thread.sleep(1500) // let the in-call audio path settle
+            ok
+        } catch (e: Throwable) {
+            SpikeLog.log("S2", "waitForOffhook failed: $e"); false
+        } finally {
+            try {
+                if (cb != null) tm.unregisterTelephonyCallback(cb)
+                else android.os.Handler(android.os.Looper.getMainLooper()).post { tm.listen(legacy, android.telephony.PhoneStateListener.LISTEN_NONE) }
+            } catch (_: Throwable) {}
+            exec.shutdown()
+        }
+    }
+
     /** Blocking. Call from a worker thread. [seconds] is the capture length per source. */
-    fun runAll(context: Context, owner: S2Owner, seconds: Int) {
+    fun runAll(context: Context, seconds: Int, only: String? = null) {
         if (S2Bridge.running) { SpikeLog.log("S2", "run ignored: already running"); return }
         S2Bridge.running = true
         try {
             val am = context.getSystemService(AudioManager::class.java)
-            SpikeLog.log("S2", "run start owner=$owner secondsPerSource=$seconds audioMode=${modeName(am.mode)} " +
+            SpikeLog.log("S2", "run start secondsPerSource=$seconds source=${only ?: "ALL"} audioMode=${modeName(am.mode)} " +
                 "speakerphone=${am.isSpeakerphoneOn}")
-            for ((name, src) in SOURCES) captureOne(context, am, owner, name, src, seconds)
-            SpikeLog.log("S2", "run done owner=$owner")
+            for ((name, src) in SOURCES.filter { only == null || it.first == only }) captureOne(context, am, name, src, seconds)
+            SpikeLog.log("S2", "run done")
         } catch (e: Throwable) {
-            SpikeLog.log("S2", "run failed owner=$owner: $e")
+            SpikeLog.log("S2", "run failed: $e")
         } finally {
             S2Bridge.running = false
         }
     }
 
-    private fun captureOne(ctx: Context, am: AudioManager, owner: S2Owner, name: String, source: Int, seconds: Int) {
-        val tag = "$owner/$name"
+    private fun captureOne(ctx: Context, am: AudioManager, name: String, source: Int, seconds: Int) {
+        val tag = "FGS/$name"
         val minBuf = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (minBuf <= 0) { SpikeLog.log("S2", "$tag getMinBufferSize=$minBuf, skipped"); return }
         val rec = try {

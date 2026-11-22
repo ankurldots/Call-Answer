@@ -47,7 +47,7 @@ import com.callanswer.app.ui.theme.AppDimens
 import kotlinx.coroutines.launch
 /** Home: screening status, then every denied item with "Request again" and "Open settings" (9.7). */
 @Composable
-fun HomeScreen(model: SetupModel, actions: SetupActions, onOpenSettings: () -> Unit = {}, onOpenCallLog: () -> Unit = {}) {
+fun HomeScreen(model: SetupModel, actions: SetupActions, onOpenSettings: () -> Unit = {}, onOpenCallLog: () -> Unit = {}, onOpenAccount: () -> Unit = {}) {
     val status = model.status
     val scope = rememberCoroutineScope()
     val screeningActive = model.screeningEnabled &&
@@ -94,7 +94,7 @@ fun HomeScreen(model: SetupModel, actions: SetupActions, onOpenSettings: () -> U
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() },
             )
-            status.denied.forEach { item -> DeniedItem(item, actions) }
+            status.denied.forEach { item -> DeniedItem(item, actions, onOpenAccount) }
         }
     }
 }
@@ -165,17 +165,22 @@ private fun QuickLink(icon: ImageVector, title: String, subtitle: String, onClic
     }
 }
 @Composable
-private fun DeniedItem(item: SetupItem, actions: SetupActions) {
-    val message = deniedMessage(item)
+private fun DeniedItem(item: SetupItem, actions: SetupActions, onOpenAccount: () -> Unit) {
+    val signIn = item == SetupItem.SIGN_IN
+    val message = if (signIn) stringResource(R.string.home_signin_missing) else deniedMessage(item)
     AppCard(contentDescription = message) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceMd)) {
             IconBadge(item.icon(), size = AppDimens.iconLg + AppDimens.spaceSm)
             Text(stringResource(item.title), style = MaterialTheme.typography.titleSmall)
         }
         StatusBanner(message, BannerSeverity.WARNING, Modifier.padding(vertical = AppDimens.spaceSm))
-        Row(horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
-            AppButton(stringResource(R.string.action_request_again), onClick = { actions.request(item) })
-            AppButton(stringResource(R.string.action_open_settings), onClick = { actions.openSettings(item) }, primary = false)
+        if (signIn) {
+            AppButton(stringResource(R.string.action_sign_in), onClick = onOpenAccount)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm), modifier = Modifier.fillMaxWidth()) {
+                AppButton(stringResource(R.string.action_request_again), onClick = { actions.request(item) })
+                AppButton(stringResource(R.string.action_open_settings), onClick = { actions.openSettings(item) }, primary = false)
+            }
         }
     }
 }

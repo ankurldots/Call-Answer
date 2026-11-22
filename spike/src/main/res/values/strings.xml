@@ -1,4 +1,3 @@
 <resources>
     <string name="app_name">Call Answer Spike</string>
-    <string name="a11y_description">Spike only: lets the app capture microphone audio during a call and click Samsung in-call buttons.</string>
 </resources>

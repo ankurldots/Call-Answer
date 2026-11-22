@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.callanswer.app.R
@@ -35,9 +36,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
@@ -64,7 +67,7 @@ class CallForegroundService : Service() {
     private val lock = Any()
     private var session: CallSession? = null
     private var engineState = ConversationState()
-    private var startElapsedMs = 0L
+    @Volatile private var startElapsedMs = 0L
     private var pipeline: CallPipeline? = null
     private var executor: EffectExecutor? = null
     private var finishing = false
@@ -90,6 +93,7 @@ class CallForegroundService : Service() {
             ACTION_TAKE_OVER_UI -> dispatch { ConversationEvent.UserTakeOver(it, TakeoverOrigin.LIVE_CALL_SCREEN) }
             ACTION_MUTE -> dispatch { ConversationEvent.UserMute(it) }
             ACTION_RESUME -> dispatch { ConversationEvent.UserResume(it) }
+            ACTION_UPGRADE_MICROPHONE -> if (session == null) stopSelf(startId) else upgradeMicrophone()
             ACTION_END -> dispatch { ConversationEvent.UserEndCall(it) }
             ACTION_QUICK_REPLY -> intent.getStringExtra(EXTRA_TEXT)?.trim()?.takeIf { it.isNotEmpty() }
                 ?.let { text -> dispatch { ConversationEvent.QuickReplySent(it, text) } }
@@ -112,8 +116,21 @@ class CallForegroundService : Service() {
         val number = intent.getStringExtra(EXTRA_NUMBER)
         val id = intent.getStringExtra(EXTRA_SESSION_ID) ?: UUID.randomUUID().toString()
         val json = intent.getStringExtra(EXTRA_FROZEN_JSON)
+        com.callanswer.app.CallLog.begin(applicationContext, id)
+        com.callanswer.app.CallLog.i("FGS start: session=$id overlayVisible=${CallOverlay.isShowing} " +
+            "recordAudioGranted=${micGranted()} sdk=${Build.VERSION.SDK_INT}")
         // Show the notification first so the 2 s limit holds even when the snapshot has to be read.
-        enterForeground(buildNotification(number, _uiState.value.copy(active = true, callerNumber = number)))
+        NotificationCenter(this).createChannels()
+        try {
+            enterForeground(buildNotification(number, _uiState.value.copy(active = true, callerNumber = number)))
+        } catch (e: Exception) {
+            com.callanswer.app.CallLog.w("FGS start denied inside service", e)
+            CallOverlay.hide(applicationContext)
+            stopSelf()
+            return
+        }
+        _running.value = true
+        com.callanswer.app.CallLog.i("FGS running (mic type=$micTypeActive)")
         finishing = false
         logNotes.clear()
         voiceSubstitutions.clear()
@@ -146,9 +163,36 @@ class CallForegroundService : Service() {
                 logNote = { logNotes += it },
                 onVoiceSubstitution = { voiceSubstitutions += it },
             )
-            p.routeAudio()
-            dispatch { ConversationEvent.CallAnswered(it) }
-            p.startListening()
+            // The service starts before the call is answered: greet only once the call is really active.
+            com.callanswer.app.CallLog.i("waiting for call active")
+            val gate = awaitCallActive(
+                timeoutMs = CALL_ACTIVE_TIMEOUT_MS,
+                clockMs = { SystemClock.elapsedRealtime() },
+                isCancelled = { finishing },
+            ) { CallSample.read(applicationContext) }
+            when (gate) {
+                is CallGateResult.Active -> {
+                    com.callanswer.app.CallLog.i("call active after ${gate.afterMs} ms " +
+                        "(state=${gate.sample.state}, mode=${gate.sample.mode})")
+                    p.routeAudio()
+                    delay(AUDIO_SETTLE_MS)
+                    if (finishing) return@launch
+                    // Engine time and the silence rules count from the answer, not from the service start.
+                    startElapsedMs = SystemClock.elapsedRealtime()
+                    com.callanswer.app.CallLog.i("greeting dispatched")
+                    dispatch { ConversationEvent.CallAnswered(it) }
+                    p.startListening()
+                }
+                is CallGateResult.Idle -> {
+                    com.callanswer.app.CallLog.w("call never became active (went idle after ${gate.afterMs} ms)")
+                    dispatch { ConversationEvent.CallEnded(it, EndedBy.CALLER) }
+                }
+                CallGateResult.TimedOut -> {
+                    com.callanswer.app.CallLog.w("call never became active (timeout ${CALL_ACTIVE_TIMEOUT_MS} ms)")
+                    dispatch { ConversationEvent.CallEnded(it, EndedBy.APP) }
+                }
+                CallGateResult.Cancelled -> Unit
+            }
         }
     }
 
@@ -223,6 +267,7 @@ class CallForegroundService : Service() {
         finishing = true
         callEndWatcher?.stop()
         callEndWatcher = null
+        CallOverlay.hide(applicationContext)
         // Captured now: a later start must not see this call's state.
         val finished: FinishedCall? = synchronized(lock) {
             session?.let { s ->
@@ -258,6 +303,9 @@ class CallForegroundService : Service() {
                 }
             }
             _uiState.update { it.copy(active = false, takeoverAlertShown = false) }
+            _running.value = false
+            com.callanswer.app.CallLog.i("call finished, session closed")
+            com.callanswer.app.CallLog.end()
             ServiceCompat.stopForeground(this@CallForegroundService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -278,9 +326,62 @@ class CallForegroundService : Service() {
         }
     }
 
+    /**
+     * Enters the foreground with `mediaPlayback`, plus `microphone` when RECORD_AUDIO is granted. RECORD_AUDIO is a
+     * while-in-use permission: on Android 14+ a `microphone` service started while the app is in the background
+     * throws [SecurityException] (the screening service starts this one from the background). In that case the
+     * service stays in the foreground as `mediaPlayback` only, and [upgradeMicrophone] retries once an activity is
+     * visible or the User taps the notification.
+     */
     private fun enterForeground(n: Notification) {
-        val type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
+        if (Build.VERSION.SDK_INT < 29) {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, n, 0)
+            return
+        }
+        val media = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+        // Tried first on every start: with a visible overlay (or while the app is visible) it may be allowed.
+        com.callanswer.app.CallLog.i("FGS types requested: mediaPlayback|microphone (RECORD_AUDIO granted=${micGranted()}, " +
+            "overlay visible=${CallOverlay.isShowing})")
+        if (micGranted() && tryStartForeground(n, media or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)) {
+            micTypeActive = true
+            com.callanswer.app.CallLog.i("FGS types granted: ${typeNames(foregroundServiceType)}")
+            return
+        }
+        micTypeActive = false
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, n, media)
+        com.callanswer.app.CallLog.i("FGS types granted: ${typeNames(foregroundServiceType)}; microphone will be retried when an activity is visible")
+    }
+    private fun micGranted() =
+        checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    private fun tryStartForeground(n: Notification, type: Int): Boolean = try {
         ServiceCompat.startForeground(this, NOTIFICATION_ID, n, type)
+        true
+    } catch (e: SecurityException) {
+        com.callanswer.app.CallLog.w("mic type denied", e)
+        false
+    } catch (e: IllegalStateException) {
+        com.callanswer.app.CallLog.w("mic type denied", e)
+        false
+    }
+
+    private fun typeNames(t: Int): String = buildList {
+        if (t and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK != 0) add("mediaPlayback")
+        if (t and ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE != 0) add("microphone")
+    }.ifEmpty { listOf("none($t)") }.joinToString("|")
+    /** Adds the `microphone` type to the running foreground service. Called when the app has become visible. */
+    private fun upgradeMicrophone() {
+        if (session == null || micTypeActive || Build.VERSION.SDK_INT < 29 || !micGranted()) {
+            com.callanswer.app.CallLog.i("mic upgrade skipped: session=${session != null} alreadyActive=$micTypeActive " +
+                "recordAudioGranted=${micGranted()}")
+            return
+        }
+        com.callanswer.app.CallLog.i("mic upgrade attempt (ACTION_UPGRADE_MICROPHONE)")
+        val ui = _uiState.value
+        val n = buildNotification(ui.callerNumber, ui)
+        val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        micTypeActive = tryStartForeground(n, type)
+        com.callanswer.app.CallLog.i("mic upgrade result: granted=$micTypeActive types=${typeNames(foregroundServiceType)}")
+        if (micTypeActive) currentPipeline?.onMicrophoneTypeGranted()
     }
 
     private fun buildNotification(number: String?, ui: LiveCallUiState): Notification {
@@ -308,11 +409,15 @@ class CallForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        _running.value = false
+        micTypeActive = false
+        CallOverlay.hide(applicationContext)
         callEndWatcher?.stop()
         callEndWatcher = null
         executor?.close()
         executor = null
         pipeline?.stop()
+        com.callanswer.app.audio.CallAudioCaptureOwner.stop()
         currentPipeline = null
         scope.cancel()
         super.onDestroy()
@@ -324,6 +429,8 @@ class CallForegroundService : Service() {
         const val ACTION_TAKE_OVER_UI = "com.callanswer.app.action.TAKE_OVER_UI"
         const val ACTION_MUTE = "com.callanswer.app.action.MUTE_AGENT"
         const val ACTION_RESUME = "com.callanswer.app.action.RESUME_AGENT"
+        /** Sent by the Live_Call_Screen when it becomes visible: retries adding the `microphone` foreground type. */
+        const val ACTION_UPGRADE_MICROPHONE = "com.callanswer.app.action.UPGRADE_MICROPHONE"
         const val ACTION_END = "com.callanswer.app.action.END_CALL"
 
         /** Debug builds only: write the call trace (event and effect timeline) to the app's external files dir. */
@@ -341,6 +448,24 @@ class CallForegroundService : Service() {
         const val EXTRA_FROZEN_JSON = "frozenSettings"
         const val NOTIFICATION_ID = 1001
         private const val DRAIN_MS = 15_000L
+        private const val CALL_ACTIVE_TIMEOUT_MS = 20_000L
+        private const val AUDIO_SETTLE_MS = 300L
+        private const val TAG = "CallAnswer"
+
+        /** True while the foreground service holds the `microphone` type (capture is only audible then). */
+        @Volatile var micTypeActive = false
+            private set
+        /** Set once the service is in the foreground; the screener answers the call only after this is true. */
+        private val _running = MutableStateFlow(false)
+        val running: StateFlow<Boolean> = _running.asStateFlow()
+
+        /** Extras of the full-screen/tap fallback: the Live_Call_Screen starts the service, then answers. */
+        const val EXTRA_START_CALL = "startCall"
+        const val EXTRA_ANSWER_ON_START = "answerOnStart"
+
+        /** Waits up to [timeoutMs] for the service to be in the foreground. */
+        suspend fun awaitRunning(timeoutMs: Long): Boolean =
+            kotlinx.coroutines.withTimeoutOrNull(timeoutMs) { _running.first { it } } != null
         const val FALLBACK_NOTIFICATION_ID = 1002
 
         private val _uiState = MutableStateFlow(LiveCallUiState())
@@ -372,28 +497,42 @@ class CallForegroundService : Service() {
                 .apply { frozen?.let { putExtra(EXTRA_FROZEN_JSON, CoreJson.encodeToString(it)) } }
 
         /**
-         * Starts the service from the call-answer path. When the system refuses a background start
-         * (Android 12+ `ForegroundServiceStartNotAllowedException`), posts a full-screen-intent notification
-         * whose tap/launch opens the Live_Call_Screen and starts the service from that interaction (D2, R5).
-         * Returns true when the direct start worked.
+         * Asks the system to start the service as a foreground service. Returns false (and logs the exception)
+         * when the system refuses, e.g. `ForegroundServiceStartNotAllowedException` for a background start.
+         * The caller must still wait for [awaitRunning] before treating the service as running.
          */
-        fun startOrFallback(context: Context, number: String?, frozen: FrozenSettings?): Boolean {
-            val intent = startIntent(context, number, frozen)
+        fun start(context: Context, number: String?, frozen: FrozenSettings?): Boolean {
+            NotificationCenter(context).createChannels()
             return try {
-                context.startForegroundService(intent)
+                context.startForegroundService(startIntent(context, number, frozen))
+                Log.i(TAG, "FGS start ok (requested)")
                 true
             } catch (e: Exception) {
                 val refused = Build.VERSION.SDK_INT >= 31 && e is ForegroundServiceStartNotAllowedException ||
-                    e is IllegalStateException
+                    e is IllegalStateException || e is SecurityException
                 if (!refused) throw e
-                postFallback(context, number, intent)
+                Log.i(TAG, "FGS start denied: ${e.javaClass.simpleName}: ${e.message}")
                 false
             }
         }
 
-        private fun postFallback(context: Context, number: String?, startIntent: Intent) {
+        /** Intent for the Live_Call_Screen that starts the service from the visible activity, then answers. */
+        fun fallbackActivityIntent(context: Context, number: String?): Intent =
+            Intent(context, LiveCallActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(EXTRA_START_CALL, true)
+                .putExtra(EXTRA_ANSWER_ON_START, true)
+                .putExtra(EXTRA_NUMBER, number)
+
+        /**
+         * The call is still ringing and the service could not start: posts a full-screen alert "Tap to let the
+         * Agent answer". Tap and full-screen launch both open the Live_Call_Screen, which starts the service
+         * (allowed while visible) and then answers if the call is still ringing.
+         */
+        fun postFallback(context: Context, number: String?) {
+            NotificationCenter(context).createChannels()
             val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            val startPi = PendingIntent.getForegroundService(context, 20, startIntent, flags)
+            val pi = PendingIntent.getActivity(context, 21, fallbackActivityIntent(context, number), flags)
             val label = number ?: context.getString(R.string.call_notif_unknown_number)
             val n = NotificationCompat.Builder(context, NotificationChannels.TAKEOVER_ALERT)
                 .setSmallIcon(com.callanswer.app.R.drawable.ic_stat_call)
@@ -403,11 +542,16 @@ class CallForegroundService : Service() {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setAutoCancel(true)
-                .setContentIntent(startPi)
-                .setFullScreenIntent(NotificationCenter(context).liveCallPendingIntent(), true)
+                .setContentIntent(pi)
+                .setFullScreenIntent(pi, true)
                 .build()
             context.getSystemService(android.app.NotificationManager::class.java)
                 .notify(FALLBACK_NOTIFICATION_ID, n)
+            Log.i(TAG, "fallback alert posted (call left ringing)")
+        }
+
+        fun cancelFallback(context: Context) {
+            context.getSystemService(android.app.NotificationManager::class.java).cancel(FALLBACK_NOTIFICATION_ID)
         }
     }
 }

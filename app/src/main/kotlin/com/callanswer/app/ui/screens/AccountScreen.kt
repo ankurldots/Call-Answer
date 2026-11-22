@@ -1,15 +1,18 @@
 package com.callanswer.app.ui.screens
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.callanswer.app.R
 import com.callanswer.app.auth.AccountValidation
@@ -17,6 +20,7 @@ import com.callanswer.app.auth.AuthError
 import com.callanswer.app.auth.AuthException
 import com.callanswer.app.auth.AuthRepository
 import com.callanswer.app.auth.AuthState
+import com.callanswer.app.cloudtts.PollyPrefetchWorker
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppTextField
 import com.callanswer.app.ui.components.BannerSeverity
@@ -30,14 +34,31 @@ private enum class Mode { SIGN_IN, SIGN_UP, CONFIRM, FORGOT, RESET }
 /** Email and password account: sign in, create account, confirm email, reset password, sign out. */
 @Composable
 fun AccountScreen(auth: AuthRepository, onBack: () -> Unit) {
-    val state by auth.state.collectAsState()
     SettingsPage(stringResource(R.string.settings_section_account), onBack) {
         Text(stringResource(R.string.account_hint), style = MaterialTheme.typography.bodyMedium)
-        when {
-            !auth.isConfigured -> StatusBanner(stringResource(R.string.account_not_configured), BannerSeverity.WARNING)
-            state is AuthState.SignedIn -> SignedInView(auth, (state as AuthState.SignedIn).email)
-            else -> SignedOutForm(auth)
+        AccountPanel(auth)
+    }
+}
+
+/** The sign-in form, or the signed-in view. Shared by the account page and the first onboarding step. */
+@Composable
+fun AccountPanel(auth: AuthRepository) {
+    val state by auth.state.collectAsState()
+    val context = LocalContext.current
+    // Signing in downloads the Polly voice files (the debounced watcher would also do it; this is immediate).
+    val wasSignedIn = remember { booleanArrayOf(state is AuthState.SignedIn) }
+    LaunchedEffect(state) {
+        val signedIn = state is AuthState.SignedIn
+        if (signedIn && !wasSignedIn[0] && auth.isConfigured) {
+            Log.i("CallAnswer", "Signed in: starting Polly prefetch")
+            PollyPrefetchWorker.enqueue(context.applicationContext)
         }
+        wasSignedIn[0] = signedIn
+    }
+    when {
+        !auth.isConfigured -> StatusBanner(stringResource(R.string.account_not_configured), BannerSeverity.WARNING)
+        state is AuthState.SignedIn -> SignedInView(auth, (state as AuthState.SignedIn).email)
+        else -> SignedOutForm(auth)
     }
 }
 @Composable

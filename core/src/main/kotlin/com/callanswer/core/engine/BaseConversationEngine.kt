@@ -57,7 +57,6 @@ class BaseConversationEngine(
             // 13.7: voice activity never stops the Agent.
             is ConversationEvent.VoiceActivity -> Transition(state, emptyList())
             is ConversationEvent.CallEnded -> onCallEnded(state, event, ctx).let { it.copy(state = closeTakeover(it.state, event.atMs, ctx)) }
-            is ConversationEvent.TransferResult -> onTransferResult(state, event, ctx)
             else -> if (state.mode == Mode.TAKE_OVER) onTakeOverEvent(state, event, ctx) else onAgentEvent(state, event, ctx)
         }
     }
@@ -86,7 +85,7 @@ class BaseConversationEngine(
         val alertShown = transfer != null && transfer.alertRaisedAtMs != null && transfer.outcome != TransferOutcome.TAKEN_OVER_BY_USER
         if (alertShown) effects += Effect.ClearTakeoverAlert
         var updated = transfer
-        if (transfer != null && (state.phase == Phase.AWAITING_TAKEOVER || state.phase == Phase.TRANSFER)) {
+        if (transfer != null && (state.phase == Phase.AWAITING_TAKEOVER)) {
             effects += Effect.LogNote(LogNoteKind.TRANSFER_COMPLETED_BY_USER)
             updated = transfer.copy(outcome = TransferOutcome.TAKEN_OVER_BY_USER)
         }
@@ -472,16 +471,7 @@ class BaseConversationEngine(
         val target = ctx.frozen.transferTarget
         val hasTarget = !target.isNullOrBlank()
         val callerNumber = if (ctx.callerKnownNumber) ctx.callerNumber else null
-        if (ctx.frozen.pathAEnabled && hasTarget) {
-            return Transition(
-                cleared.copy(
-                    phase = Phase.TRANSFER,
-                    transfer = TransferState(TransferPath.PATH_A_MERGE, event.atMs),
-                ),
-                listOf(Effect.StartTransfer(target.orEmpty(), callerNumber), Effect.Notify(NotificationKind.TRANSFER_STARTED)),
-            )
-        }
-        val reason = if (hasTarget) AlertReason.PATH_A_UNAVAILABLE else AlertReason.TARGET_NOT_CONFIGURED
+        val reason = if (hasTarget) AlertReason.TAKEOVER_REQUIRED else AlertReason.TARGET_NOT_CONFIGURED
         val alert = alertTransition(
             cleared, TransferState(TransferPath.PATH_B_ALERT, event.atMs), reason, event.atMs, callerNumber,
         )
@@ -511,28 +501,6 @@ class BaseConversationEngine(
             ),
             effects,
         )
-    }
-
-    private fun onTransferResult(state: ConversationState, event: ConversationEvent.TransferResult, ctx: EngineContext): Transition {
-        val transfer = state.transfer
-        if (transfer != null && state.mode == Mode.TAKE_OVER && state.phase == Phase.TRANSFER) {
-            // After a take over a result only updates the record (4.8): a merge is recorded, nothing else reacts.
-            val updated = if (event.result == PathAResult.MERGED) transfer.copy(outcome = TransferOutcome.MERGED) else transfer
-            return Transition(state.copy(transfer = updated), emptyList())
-        }
-        if (state.phase != Phase.TRANSFER || transfer == null || state.mode == Mode.TAKE_OVER) return Transition(state, emptyList())
-        if (event.result == PathAResult.MERGED) {
-            return Transition(
-                state.copy(phase = Phase.TRANSFERRED, transfer = transfer.copy(outcome = TransferOutcome.MERGED)),
-                emptyList(),
-            )
-        }
-        val failed = event.result == PathAResult.FAILED
-        val reason = if (failed) AlertReason.FAILED_THEN_ALERT else AlertReason.NO_ANSWER_30S
-        val callerNumber = if (ctx.callerKnownNumber) ctx.callerNumber else null
-        val alert = alertTransition(state, transfer, reason, event.atMs, callerNumber)
-        val extra = if (failed) listOf(Effect.Notify(NotificationKind.TRANSFER_FAILED), Effect.LogNote(LogNoteKind.TRANSFER_FAILED)) else emptyList()
-        return Transition(alert.state, alert.effects + extra)
     }
 
     /**

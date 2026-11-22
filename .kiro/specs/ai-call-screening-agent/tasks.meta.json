@@ -33,6 +33,16 @@
         "executionId": "c37c1784-f9c9-4782-bb66-359a365cf70b",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795286631355
+      },
+      {
+        "executionId": "8e07c43b-cd69-49a2-893b-2a4972ec5e8e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795324659084
+      },
+      {
+        "executionId": "8e07c43b-cd69-49a2-893b-2a4972ec5e8e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795324802580
       }
     ],
     "1.3 Implement spike S2: microphone capture as accessibility service": [
@@ -723,6 +733,16 @@
         "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795291707169
+      },
+      {
+        "executionId": "7e996e5d-51e6-4410-b3ce-452ddad9c99f",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795332378490
+      },
+      {
+        "executionId": "7e996e5d-51e6-4410-b3ce-452ddad9c99f",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795332704994
       }
     ],
     "25.1 Implement `CallAudioAccessibilityService`, `CallAudioCapture` and `InCallUiAutomator`": [
@@ -740,6 +760,16 @@
         "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795291579478
+      },
+      {
+        "executionId": "08d24c23-b6f3-4aa0-8820-1edb2f1a9acd",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795330763789
+      },
+      {
+        "executionId": "33c8b41a-e446-4175-90ef-395478920f6b",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795331087643
       }
     ],
     "25.2 Implement `AgentAudioPlayer` and `EchoGate`": [
@@ -937,6 +967,31 @@
         "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795292153231
+      },
+      {
+        "executionId": "1309b263-d75d-4f18-9b7d-7317147ae7e2",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795337264158
+      },
+      {
+        "executionId": "1309b263-d75d-4f18-9b7d-7317147ae7e2",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795337870449
+      },
+      {
+        "executionId": "9a6fdf10-4f20-4833-b592-cbf453070b2e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795337962806
+      },
+      {
+        "executionId": "4f947467-4e93-45d0-8834-80a706943128",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795338065383
+      },
+      {
+        "executionId": "4f947467-4e93-45d0-8834-80a706943128",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795338162554
       }
     ],
     "29.2 Implement the effect executor and `MapSmsSender`": [
@@ -1134,6 +1189,36 @@
         "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795293552733
+      },
+      {
+        "executionId": "dd105f4f-b375-4060-8b24-d2ca041cf70c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795332874168
+      },
+      {
+        "executionId": "85307dfb-2112-4197-9d1d-45cf7e621379",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795334463427
+      },
+      {
+        "executionId": "85307dfb-2112-4197-9d1d-45cf7e621379",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795334796878
+      },
+      {
+        "executionId": "f1e47d37-72c8-4ed5-a2b8-74ffe833ee61",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795336187478
+      },
+      {
+        "executionId": "14a12c9a-f03d-45b2-adc2-6578c580196d",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795336325456
+      },
+      {
+        "executionId": "14a12c9a-f03d-45b2-adc2-6578c580196d",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795336705712
       }
     ],
     "32.3 Build the Delivery_Steps editor": [
@@ -1453,6 +1538,13 @@
         "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795293865556
+      }
+    ],
+    "25.1 Implement `CallAudioCapture` and `CallAudioCaptureOwner` (plain foreground service owner, no accessibility service)": [
+      {
+        "executionId": "33c8b41a-e446-4175-90ef-395478920f6b",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795331504960
       }
     ]
   }

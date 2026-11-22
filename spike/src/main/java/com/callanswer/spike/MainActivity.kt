@@ -42,14 +42,9 @@ class MainActivity : Activity() {
         root.addView(header("Setup"))
         root.addView(button("Request runtime permissions") { requestPermissions(runtimePermissions, REQ_PERMS) })
         root.addView(button("Request call screening role") { requestScreeningRole() })
-        root.addView(button("Open accessibility settings") {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        })
         root.addView(button("Full-screen intent access (Android 14+)") { openFullScreenIntentSettings() })
         root.addView(button("Battery: set to Unrestricted") { openBatterySettings() })
-        root.addView(button("App info (Allow restricted settings, if accessibility is greyed out)") {
-            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
-        })
+        S1Settings.addSelector(this, root) { refreshStatus() }
         root.addView(button("Export log") { exportLog() })
         root.addView(button("Clear log") { SpikeLog.clear(); refreshStatus() })
         status = TextView(this).apply { textSize = 13f }
@@ -125,13 +120,11 @@ class MainActivity : Activity() {
             "${if (ok) "OK  " else "NO  "}${it.substringAfterLast('.')}"
         }
         val role = rm.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
-        val a11y = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-            ?.contains("$packageName/") == true
         val fsi = if (Build.VERSION.SDK_INT >= 34) {
             getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent()
         } else true
         val battery = getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
-        status.text = "$perms\n${flag(role)}call screening role\n${flag(a11y)}accessibility service enabled\n" +
+        status.text = "S1 auto behaviour: ${S1Settings.describe(this)}\n$perms\n${flag(role)}call screening role\n" +
             "${flag(fsi)}full-screen intent allowed\n${flag(battery)}battery unrestricted"
     }
 

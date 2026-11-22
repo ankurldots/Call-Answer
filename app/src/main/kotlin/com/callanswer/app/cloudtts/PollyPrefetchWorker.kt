@@ -1,5 +1,6 @@
 package com.callanswer.app.cloudtts
 import android.content.Context
+import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -27,10 +28,18 @@ import java.util.concurrent.TimeUnit
 class PollyPrefetchWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val app = applicationContext as CallAnswerApp
-        if (!app.authRepository.isConfigured || app.authRepository.state.value !is AuthState.SignedIn) return Result.success()
+        if (!app.authRepository.isConfigured || app.authRepository.state.value !is AuthState.SignedIn) {
+            Log.i("CallAnswer", "Prefetch skipped: not signed in (configured=${app.authRepository.isConfigured})")
+            return Result.success()
+        }
         val settings = app.settingsStore.current()
-        if (settings.voiceGender != VoiceGender.FEMALE) return Result.success()
+        if (settings.voiceGender != VoiceGender.FEMALE) {
+            Log.i("CallAnswer", "Prefetch skipped: male voice selected")
+            return Result.success()
+        }
+        Log.i("CallAnswer", "Prefetch start (attempt ${runAttemptCount + 1})")
         val result = app.pollyPrefetcher.refresh(settings, MlKitStepTranslator())
+        Log.i("CallAnswer", "Prefetch done fetched=${result.fetched} cached=${result.alreadyCached} stoppedBy=${result.stoppedBy}")
         return when (result.stoppedBy) {
             PollyException.Kind.NETWORK, PollyException.Kind.SERVER ->
                 if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.failure()
@@ -41,6 +50,7 @@ class PollyPrefetchWorker(context: Context, params: WorkerParameters) : Coroutin
         private const val NAME = "polly-prefetch"
         private const val MAX_ATTEMPTS = 5
         fun enqueue(context: Context) {
+            Log.i("CallAnswer", "Prefetch enqueued")
             val request = OneTimeWorkRequestBuilder<PollyPrefetchWorker>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)

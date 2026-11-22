@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.callanswer.app.ui.theme.AppDimens
 import com.callanswer.app.ui.theme.AppTheme
@@ -25,11 +26,14 @@ fun AppButton(
         .defaultMinSize(minHeight = AppDimens.minTouchTarget)
         .semantics { this.contentDescription = contentDescription }
     if (primary) {
-        Button(onClick = onClick, modifier = m, enabled = enabled) { Text(text) }
+        Button(onClick = onClick, modifier = m, enabled = enabled) { ButtonLabel(text) }
     } else {
-        OutlinedButton(onClick = onClick, modifier = m, enabled = enabled) { Text(text) }
+        OutlinedButton(onClick = onClick, modifier = m, enabled = enabled) { ButtonLabel(text) }
     }
 }
+
+@Composable
+private fun ButtonLabel(text: String) = Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
 
 @Preview
 @Composable

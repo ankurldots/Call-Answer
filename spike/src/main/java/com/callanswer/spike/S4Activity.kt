@@ -2,6 +2,7 @@ package com.callanswer.spike
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioRecord
@@ -52,7 +53,7 @@ class S4Activity : Activity() {
         }
         root.addView(TextView(this).apply {
             textSize = 14f
-            text = "Needs RECORD_AUDIO, the accessibility service connected (capture owner as in S2) and the Whisper " +
+            text = "Needs RECORD_AUDIO, the S2 capture service (plain foreground service, microphone type) started by the Start button and the Whisper " +
                 "base model from S7 (spike/S7-README.md) for the transcripts. Start a call with the second phone, " +
                 "put it on the loudspeaker, press Start. 20 turns play (10 Hindi, 10 English). Talk over the Agent " +
                 "on some turns from the second phone. Results table goes to the log under S4; WAVs go to s4/."
@@ -81,8 +82,9 @@ class S4Activity : Activity() {
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(this, "Grant RECORD_AUDIO on the main screen", Toast.LENGTH_LONG).show(); return
         }
-        val owner: Context = S2Bridge.accessibilityContext ?: this
-        val ownerName = if (S2Bridge.accessibilityContext != null) "ACCESSIBILITY_SERVICE" else "ACTIVITY"
+        val owner: Context = this
+        val ownerName = "FOREGROUND_SERVICE"
+        startForegroundService(Intent(this, S2CaptureService::class.java).putExtra(S2CaptureService.EXTRA_HOLD, true))
         val srcIdx = source.selectedItemPosition
         val useAec = aec.isChecked
         val usage = if (comm.isChecked) AudioAttributes.USAGE_VOICE_COMMUNICATION else AudioAttributes.USAGE_MEDIA
@@ -97,6 +99,7 @@ class S4Activity : Activity() {
                 SpikeLog.log("S4", "run failed: $e")
                 runOnUiThread { status.text = "Failed: $e" }
             } finally {
+                stopService(Intent(this, S2CaptureService::class.java))
                 running = false
             }
         }.start()

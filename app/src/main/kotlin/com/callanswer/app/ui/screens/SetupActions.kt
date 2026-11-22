@@ -32,8 +32,8 @@ class SetupActions(
         setPending(item)
         when (item) {
             SetupItem.CALL_SCREENING_ROLE -> requestRole(item)
-            SetupItem.ACCESSIBILITY -> start(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             SetupItem.FULL_SCREEN_INTENT -> openFullScreenIntentSettings()
+            SetupItem.OVERLAY -> openOverlaySettings()
             SetupItem.BATTERY -> start(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             SetupItem.RECORDING_FOLDER -> launchFolderPicker()
             SetupItem.AUTO_RECORD -> model.acknowledgeAutoRecord()
@@ -50,14 +50,14 @@ class SetupActions(
     fun openSettings(item: SetupItem) {
         when (item) {
             SetupItem.CALL_SCREENING_ROLE -> start(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
-            SetupItem.ACCESSIBILITY -> start(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             SetupItem.FULL_SCREEN_INTENT -> openFullScreenIntentSettings()
+            SetupItem.OVERLAY -> openOverlaySettings()
             SetupItem.BATTERY -> start(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             else -> openAppInfo()
         }
     }
 
-    /** App info page; also where "Allow restricted settings" lives for sideloaded apps (Android 13+). */
+    /** App info page, where the User can grant a runtime permission by hand. */
     fun openAppInfo() = start(
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
     )
@@ -73,6 +73,10 @@ class SetupActions(
             else -> launchRole(rm.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
         }
     }
+
+    private fun openOverlaySettings() = start(
+        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
+    )
 
     private fun openFullScreenIntentSettings() {
         if (Build.VERSION.SDK_INT >= 34) {

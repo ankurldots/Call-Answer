@@ -43,6 +43,11 @@
     <string name="settings_voice_sample_en">Play English sample</string>
     <string name="settings_voice_sample_hi">Play Hindi sample</string>
     <string name="settings_voice_sample_failed">No voice could play the sample.</string>
+    <string name="settings_voice_sample_signin_hint">Sign in for the natural Indian voice</string>
+    <string name="settings_voice_sample_playing">Playing…</string>
+    <string name="settings_voice_sample_hindi_downloading">Hindi voice is downloading, try again in a minute.</string>
+    <string name="settings_voice_sample_playback_failed">The sample could not be played on the phone speaker.</string>
+    <string name="settings_voice_open_tts">Open text-to-speech settings</string>
     <string name="settings_speaker">Turn on the speakerphone when %1$s answers</string>
     <string name="settings_quick_replies">Quick replies</string>
     <string name="settings_quick_reply_en">English text</string>

@@ -2,6 +2,9 @@ package com.callanswer.app.telecom
 
 import android.content.Context
 import android.telecom.Call
+import android.util.Log
+import com.callanswer.app.CallLog
+import com.callanswer.app.service.CallOverlay
 import android.telecom.CallScreeningService
 import android.telecom.TelecomManager
 import com.callanswer.app.data.SettingsStore
@@ -45,6 +48,7 @@ class CallScreenerService : CallScreeningService() {
         respondToCall(callDetails, CallResponse.Builder().build())
         if (callDetails.callDirection != Call.Details.DIRECTION_INCOMING) return
 
+        Log.i(TAG, "call screened (incoming)")
         val number = callDetails.handle?.schemeSpecificPart?.takeIf { it.isNotBlank() }
         val hidden = number == null || callDetails.handlePresentation != TelecomManager.PRESENTATION_ALLOWED
         val store = SettingsStore.create(applicationContext)
@@ -68,8 +72,47 @@ class CallScreenerService : CallScreeningService() {
         val ctx = applicationContext
         scope.launch {
             val frozen: FrozenSettings? = runCatching { store.snapshot() }.getOrNull()
-            CallForegroundService.startOrFallback(ctx, number, frozen)
-            TelecomCallAnswerer(ctx, number).answer()
+            // Visible overlay first: with SYSTEM_ALERT_WINDOW it is what allows a background FGS start (Android 15+).
+            val overlay = CallOverlay.show(ctx)
+            val outcome = StartThenAnswer(
+                start = { CallForegroundService.start(ctx, number, frozen) },
+                awaitRunning = {
+                    CallForegroundService.awaitRunning(START_CONFIRM_TIMEOUT_MS).also {
+                        Log.i(TAG, "service foreground confirmed=$it")
+                    }
+                },
+                answer = { TelecomCallAnswerer(ctx, number).answer() },
+                onNotStarted = {
+                    // Leave the call ringing; the User taps the alert and the activity starts the service.
+                    CallOverlay.hide(ctx)
+                    CallForegroundService.postFallback(ctx, number)
+                },
+            ).run()
+            CallLog.i("screened call outcome=$outcome overlay=$overlay")
+            if (outcome == StartThenAnswer.Outcome.ANSWERED) {
+                CallForegroundService.cancelFallback(ctx)
+                launchLiveCall(ctx)
+            }
+        }
+    }
+
+    /**
+     * A visible activity must exist so the `microphone` foreground type can be added (while-in-use permission).
+     * With the overlay window visible the background activity start is allowed; the FGS notification's
+     * full-screen intent is the second path.
+     */
+    private fun launchLiveCall(ctx: Context) {
+        val overlay = CallOverlay.isShowing
+        val started = runCatching {
+            ctx.startActivity(
+                android.content.Intent(ctx, com.callanswer.app.service.LiveCallActivity::class.java)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            )
+        }.onFailure { CallLog.w("LiveCallActivity auto-launch threw", it) }.isSuccess
+        scope.launch {
+            kotlinx.coroutines.delay(1_500L)
+            CallLog.i("LiveCallActivity auto-launch: startActivity ok=$started overlayVisible=$overlay " +
+                "shown=${com.callanswer.app.service.LiveCallActivity.visible}")
         }
     }
 
@@ -79,6 +122,8 @@ class CallScreenerService : CallScreeningService() {
     }
 
     private companion object {
+        const val TAG = "CallAnswer"
+        const val START_CONFIRM_TIMEOUT_MS = 1_500L
         const val SETTINGS_TIMEOUT_MS = 1_000L
     }
 }

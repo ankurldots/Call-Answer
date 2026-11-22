@@ -7,7 +7,6 @@ import android.util.Base64
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.Serializer
-import com.callanswer.app.BuildConfig
 import com.callanswer.core.delivery.StepListError
 import com.callanswer.core.delivery.StepListResult
 import com.callanswer.core.model.FrozenSettings
@@ -110,8 +109,6 @@ sealed class UpdateResult {
 class SettingsStore(
     private val dataStore: DataStore<Settings>,
     private val secrets: SecretStore,
-    private val accessibilityServiceEnabled: () -> Boolean,
-    private val pathASupported: Boolean = BuildConfig.PATH_A_SUPPORTED,
 ) {
     val settings: Flow<Settings> get() = dataStore.data
 
@@ -130,8 +127,7 @@ class SettingsStore(
     /** Builds the [FrozenSettings] used for one call; later changes apply from the next call. */
     suspend fun snapshot(): FrozenSettings {
         val s = current()
-        val pathA = pathASupported && s.transferTarget != null && accessibilityServiceEnabled()
-        return s.freeze(pathA)
+        return s.freeze()
     }
 
     fun getCloudApiKey(): String? = secrets.get()
@@ -158,8 +154,7 @@ class SettingsStore(
 
         /**
          * Returns the single process-wide store. AndroidX DataStore forbids two active instances
-         * for one file, so every caller must share this one. The accessibility check is resolved
-         * from the application context inside the store.
+         * for one file, so every caller must share this one.
          */
         fun create(context: Context): SettingsStore {
             instance?.let { return it }
@@ -173,20 +168,10 @@ class SettingsStore(
                 val store = SettingsStore(
                     ds,
                     KeystoreSecretStore(File(app.filesDir, "secrets/cloud_api_key")),
-                    accessibilityServiceEnabled = { isAccessibilityServiceEnabled(app) },
                 )
                 instance = store
                 return store
             }
-        }
-
-        private fun isAccessibilityServiceEnabled(app: Context): Boolean {
-            val component = "${app.packageName}/com.callanswer.app.audio.CallAudioAccessibilityService"
-            val enabled = android.provider.Settings.Secure.getString(
-                app.contentResolver,
-                android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-            )
-            return enabled?.split(':')?.any { it.equals(component, ignoreCase = true) } == true
         }
     }
 }

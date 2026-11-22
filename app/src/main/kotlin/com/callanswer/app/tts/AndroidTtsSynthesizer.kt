@@ -13,6 +13,7 @@ import com.callanswer.core.voice.VoiceSelector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -55,7 +56,10 @@ class AndroidTtsSynthesizer(
         var anySubstituted = false
         for (run in runs) {
             val choice = VoiceSelector.select(gender, run.language, infos)
-                ?: throw IllegalStateException("No Android TTS voice for ${run.language}")
+                ?: run {
+                    Log.w(CA, "Android TTS has no voice for ${run.language} (installed: ${infos.size})")
+                    throw TtsVoiceUnavailableException(run.language, "No Android TTS voice for ${run.language}")
+                }
             if (choice.substituted) {
                 anySubstituted = true
                 Log.w(TAG, "Voice substituted for ${run.language}: wanted $gender, using ${choice.voice.id}")
@@ -63,27 +67,45 @@ class AndroidTtsSynthesizer(
             }
             if (first == null) first = choice
             engine.voice = voices.first { it.name == choice.voice.id }
-            parts.add(render(engine, run.text))
+            Log.i(CA, "TTS synth start lang=${run.language} voice=${choice.voice.id} chars=${run.text.length}")
+            val part = try {
+                render(engine, run.text, run.language)
+            } catch (e: TtsVoiceUnavailableException) {
+                Log.w(CA, "TTS synth fail lang=${run.language}: ${e.message}")
+                throw e
+            }
+            Log.i(CA, "TTS synth done lang=${run.language} samples=${part.first.size} rate=${part.second}")
+            parts.add(part)
         }
         val rate = parts.first().second
         return SynthResult(PcmJoin.concat(parts, rate), rate, first!!.voice, anySubstituted)
     }
 
-    private suspend fun render(engine: TextToSpeech, text: String): Pair<ShortArray, Int> {
+    private suspend fun render(engine: TextToSpeech, text: String, language: Language): Pair<ShortArray, Int> {
         val file = File(context.cacheDir, "tts-${UUID.randomUUID()}.wav")
         try {
             val id = UUID.randomUUID().toString()
-            val ok = suspendCancellableCoroutine<Boolean> { cont ->
-                engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) = Unit
-                    override fun onDone(utteranceId: String?) { if (utteranceId == id && cont.isActive) cont.resume(true) }
-                    @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) { if (utteranceId == id && cont.isActive) cont.resume(false) }
-                })
-                val r = engine.synthesizeToFile(text, null, file, id)
-                if (r != TextToSpeech.SUCCESS && cont.isActive) cont.resume(false)
+            val ok = withTimeoutOrNull(SYNTH_TIMEOUT_MS) {
+                suspendCancellableCoroutine<Boolean> { cont ->
+                    engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                        override fun onStart(utteranceId: String?) = Unit
+                        override fun onDone(utteranceId: String?) { if (utteranceId == id && cont.isActive) cont.resume(true) }
+                        @Deprecated("Deprecated in Java")
+                        override fun onError(utteranceId: String?) { if (utteranceId == id && cont.isActive) cont.resume(false) }
+                        override fun onError(utteranceId: String?, errorCode: Int) {
+                            Log.w(CA, "TTS engine error code=$errorCode")
+                            if (utteranceId == id && cont.isActive) cont.resume(false)
+                        }
+                        override fun onStop(utteranceId: String?, interrupted: Boolean) {
+                            if (utteranceId == id && cont.isActive) cont.resume(false)
+                        }
+                    })
+                    val r = engine.synthesizeToFile(text, null, file, id)
+                    if (r != TextToSpeech.SUCCESS && cont.isActive) cont.resume(false)
+                }
             }
-            if (!ok) throw IllegalStateException("Android TTS failed to synthesize")
+            if (ok == null) throw TtsVoiceUnavailableException(language, "Android TTS timed out after ${SYNTH_TIMEOUT_MS} ms")
+            if (!ok) throw TtsVoiceUnavailableException(language, "Android TTS failed to synthesize")
             return withContext(Dispatchers.IO) { readWav(file.readBytes()) }
         } finally {
             file.delete()
@@ -97,6 +119,8 @@ class AndroidTtsSynthesizer(
 
     companion object {
         private const val TAG = "AndroidTts"
+        private const val CA = "CallAnswer"
+        private const val SYNTH_TIMEOUT_MS = 25_000L
 
         /** Maps a platform voice to a [VoiceInfo]; null for languages the Agent does not speak. */
         internal fun toInfo(v: Voice): VoiceInfo? {
@@ -127,15 +151,22 @@ class AndroidTtsSynthesizer(
                     channels = bb.getShort(pos + 10).toInt().coerceAtLeast(1)
                     rate = bb.getInt(pos + 12)
                 } else if (tag == "data") {
-                    val len = minOf(size.toLong().and(0xFFFFFFFFL), (bytes.size - pos - 8).toLong()).toInt()
+                    val remaining = (bytes.size - pos - 8).toLong()
+                    val declared = size.toLong().and(0xFFFFFFFFL)
+                    // Streaming writers leave the size as 0 or 0xFFFFFFFF; use the rest of the file then.
+                    val len = (if (declared == 0L || declared > remaining) remaining else declared).toInt()
                     val frames = len / 2 / channels
                     val out = ShortArray(frames)
                     for (i in 0 until frames) out[i] = bb.getShort(pos + 8 + i * 2 * channels)
                     return out to rate
                 }
+                if (size < 0) break
                 pos += 8 + size + (size and 1)
             }
             throw IllegalStateException("WAV has no data chunk")
         }
     }
 }
+
+/** The platform TTS has no usable voice for [language] (missing, still downloading, or synthesis failed/timed out). */
+class TtsVoiceUnavailableException(val language: Language, message: String) : IllegalStateException(message)

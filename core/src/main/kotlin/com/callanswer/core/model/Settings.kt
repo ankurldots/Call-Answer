@@ -48,11 +48,8 @@ data class Settings(
     val cloudLlmEnabled: Boolean = false,
     val silentSendSpamReports: Boolean = false,
 ) {
-    /**
-     * Snapshot taken at call start. [pathAEnabled] is true only when the S6 build flag is on, a Transfer_Target
-     * is configured and the accessibility service is enabled (decided by the caller of this function).
-     */
-    fun freeze(pathAEnabled: Boolean): FrozenSettings = FrozenSettings(
+    /** Snapshot taken at call start. */
+    fun freeze(): FrozenSettings = FrozenSettings(
         mapLocation = mapLocation,
         address = address,
         addressHi = addressHi,
@@ -68,7 +65,6 @@ data class Settings(
         protectedTerms = protectedTerms,
         cloudLlmEnabled = cloudLlmEnabled,
         silentSendSpamReports = silentSendSpamReports,
-        pathAEnabled = pathAEnabled,
         agentName = agentName,
     )
 }
@@ -91,7 +87,6 @@ data class FrozenSettings(
     val protectedTerms: List<String> = emptyList(),
     val cloudLlmEnabled: Boolean = false,
     val silentSendSpamReports: Boolean = false,
-    val pathAEnabled: Boolean = false,
     /** Name the agent gives itself on the call. */
     val agentName: String = DEFAULT_AGENT_NAME,
 )

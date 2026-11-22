@@ -43,6 +43,7 @@ class TakeoverAlertPresenterImpl(
     private var toneJob: Job? = null
 
     override fun raise(callerNumber: String?, reason: AlertReason) {
+        NotificationCenter(context).createChannels()
         manager.notify(NOTIFICATION_ID, buildNotification(callerNumber, reason))
         synchronized(lock) {
             toneJob?.cancel()
@@ -75,7 +76,7 @@ class TakeoverAlertPresenterImpl(
 
     fun buildNotification(callerNumber: String?, reason: AlertReason): Notification {
         val label = callerNumber ?: context.getString(R.string.takeover_alert_unknown_number)
-        // Path A was tried and failed, so the Caller may be on hold with the second call.
+        // Reasons left from the removed transfer path; the engine no longer raises them.
         val mayBeOnHold = reason == AlertReason.NO_ANSWER_30S || reason == AlertReason.FAILED_THEN_ALERT
         val text = context.getString(
             if (mayBeOnHold) R.string.takeover_alert_text_hold else R.string.takeover_alert_text, label,

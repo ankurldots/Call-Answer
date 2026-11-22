@@ -19,10 +19,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.callanswer.app.CallAnswerApp
 import com.callanswer.app.R
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppCard
@@ -76,7 +78,7 @@ fun OnboardingScreen(model: SetupModel, actions: SetupActions, onFinished: () ->
         AppCard(contentDescription = stringResource(item.purpose, rememberAgentName())) {
             Text(stringResource(item.purpose, rememberAgentName()), style = MaterialTheme.typography.bodyLarge)
         }
-        StepHelp(item, actions)
+        StepHelp(item)
 
         if (item in model.deniedThisSession && !granted) {
             StatusBanner(deniedMessage(item), BannerSeverity.WARNING)
@@ -85,7 +87,15 @@ fun OnboardingScreen(model: SetupModel, actions: SetupActions, onFinished: () ->
             StatusBanner(stringResource(R.string.onboarding_granted), BannerSeverity.INFO)
         }
 
-        if (item == SetupItem.AUTO_RECORD) {
+        if (item == SetupItem.SIGN_IN) {
+            // Reuses the Account page's sign-in flow. Skipping is fine: the app works offline with local voices.
+            AccountPanel((LocalContext.current.applicationContext as CallAnswerApp).authRepository)
+            if (granted) {
+                AppButton(stringResource(R.string.onboarding_next), onClick = ::next)
+            } else {
+                AppButton(stringResource(R.string.onboarding_skip), onClick = ::next, primary = false)
+            }
+        } else if (item == SetupItem.AUTO_RECORD) {
             AppButton(stringResource(R.string.onboarding_got_it), onClick = { model.acknowledgeAutoRecord(); next() })
         } else if (granted) {
             AppButton(stringResource(R.string.onboarding_next), onClick = ::next)
@@ -98,12 +108,8 @@ fun OnboardingScreen(model: SetupModel, actions: SetupActions, onFinished: () ->
 
 /** Extra guidance for the steps that need it. */
 @Composable
-private fun StepHelp(item: SetupItem, actions: SetupActions) {
+private fun StepHelp(item: SetupItem) {
     when (item) {
-        SetupItem.ACCESSIBILITY -> {
-            Text(stringResource(R.string.setup_accessibility_restricted_help), style = MaterialTheme.typography.bodyMedium)
-            AppButton(stringResource(R.string.setup_open_app_info), onClick = actions::openAppInfo, primary = false)
-        }
         SetupItem.BATTERY -> Text(stringResource(R.string.setup_battery_help), style = MaterialTheme.typography.bodyMedium)
         SetupItem.RECORDING_FOLDER -> Text(stringResource(R.string.setup_folder_help), style = MaterialTheme.typography.bodyMedium)
         else -> Unit
@@ -112,7 +118,7 @@ private fun StepHelp(item: SetupItem, actions: SetupActions) {
 
 private fun actionLabel(item: SetupItem): Int = when (item) {
     SetupItem.CALL_SCREENING_ROLE -> R.string.action_set_role
-    SetupItem.ACCESSIBILITY, SetupItem.FULL_SCREEN_INTENT, SetupItem.BATTERY -> R.string.action_open_settings
+    SetupItem.FULL_SCREEN_INTENT, SetupItem.OVERLAY, SetupItem.BATTERY -> R.string.action_open_settings
     SetupItem.RECORDING_FOLDER -> R.string.action_choose_folder
     else -> R.string.action_allow
 }

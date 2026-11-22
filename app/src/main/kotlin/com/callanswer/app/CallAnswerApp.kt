@@ -1,6 +1,8 @@
 package com.callanswer.app
 
 import android.app.Application
+import android.util.Log
+import com.callanswer.app.auth.AuthState
 import com.callanswer.app.auth.AuthConfig
 import com.callanswer.app.auth.AuthRepository
 import com.callanswer.app.auth.KeystoreTokenStore
@@ -17,6 +19,7 @@ import com.callanswer.app.sms.AndroidSmsIntentLauncher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.io.File
 
 /** Application entry. Registers the [SpamReporter] for silent send results at app start (task 31.3). */
@@ -45,7 +48,12 @@ class CallAnswerApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.callanswer.app.service.NotificationCenter(this).createChannels()
         spamReporter.register()
-        if (authConfig.isConfigured) PollyPrefetchWorker.watch(this, appScope)
+        Log.i("CallAnswer", "Auth configured=${authConfig.isConfigured}")
+        if (authConfig.isConfigured) {
+            appScope.launch { authRepository.state.collect { Log.i("CallAnswer", "Auth state: ${if (it is AuthState.SignedIn) "SignedIn" else "SignedOut"}") } }
+            PollyPrefetchWorker.watch(this, appScope)
+        }
     }
 }

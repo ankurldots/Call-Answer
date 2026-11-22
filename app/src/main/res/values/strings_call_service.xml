@@ -24,6 +24,7 @@
     <string name="live_quick_reply_field">Type a reply for the caller</string>
     <string name="live_quick_reply_send">Send reply</string>
     <string name="live_call_ended">The call has ended.</string>
-    <string name="call_fallback_title">Call being answered</string>
-    <string name="call_fallback_text">Tap to open the live call screen: %1$s</string>
+    <string name="call_fallback_title">Tap to let the Agent answer</string>
+    <string name="call_fallback_text">Call from %1$s is still ringing. Tap to let the Agent answer it.</string>
+    <string name="call_overlay_text">Call Answer is handling this call</string>
 </resources>

@@ -39,7 +39,7 @@ Run each in Hindi, English and Hinglish. Mark P/F, note the measured ms for the 
 | # | Scenario | Hindi | English | Hinglish |
 |---|---|---|---|---|
 | 1 | Delivery: agent gives directions | | | |
-| 2 | Door not opened, Path A enabled (S6 ok, target set, accessibility on) | | | |
+| 2 | (removed: Path A no longer exists) | n/a | n/a | n/a |
 | 3 | Door not opened, Path B (Takeover_Alert; User takes over) | | | |
 | 4 | Door not opened, Path B, User does not take over (30 s "call again" phrase) | | | |
 | 5 | Solicitation: stalling replies, no real PII spoken | | | |

@@ -4,6 +4,11 @@ import com.callanswer.app.data.rememberAgentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import androidx.lifecycle.lifecycleScope
+import com.callanswer.app.telecom.StartThenAnswer
+import com.callanswer.app.telecom.TelecomCallAnswerer
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -39,7 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.callanswer.app.R
-import com.callanswer.app.audio.CallAudioAccessibilityService
+import com.callanswer.app.audio.CallAudioCaptureOwner
 import com.callanswer.app.translate.textFor
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppTextField
@@ -66,10 +71,11 @@ class LiveCallActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)
         setTurnScreenOn(true)
+        startCallIfRequested(intent)
         setContent {
             AppTheme {
                 val state by CallForegroundService.uiState.collectAsState()
-                val assisted by CallAudioAccessibilityService.assistedMode.collectAsState()
+                val assisted by CallAudioCaptureOwner.assistedMode.collectAsState()
                 val ctx: Context = this
                 LiveCallScreen(
                     state = state,
@@ -86,6 +92,48 @@ class LiveCallActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        startCallIfRequested(intent)
+    }
+
+    /** Fallback path: the activity is visible, so starting the service is allowed; then the call is answered. */
+    private fun startCallIfRequested(intent: Intent?) {
+        if (intent?.getBooleanExtra(CallForegroundService.EXTRA_START_CALL, false) != true) return
+        intent.removeExtra(CallForegroundService.EXTRA_START_CALL)
+        val number = intent.getStringExtra(CallForegroundService.EXTRA_NUMBER)
+        val ctx = applicationContext
+        lifecycleScope.launch {
+            Log.i("CallAnswer", "fallback tap: starting service from visible activity")
+            StartThenAnswer(
+                start = { CallForegroundService.start(ctx, number, null) },
+                awaitRunning = { CallForegroundService.awaitRunning(2_500L) },
+                answer = { TelecomCallAnswerer(ctx, number, requireRinging = true).answer() },
+                onNotStarted = { Log.i("CallAnswer", "fallback tap: service still not running; call left ringing") },
+            ).run()
+            CallForegroundService.cancelFallback(ctx)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        visible = true
+        com.callanswer.app.CallLog.i("LiveCallActivity visible (onStart)")
+        // The app is visible now, so a microphone foreground type refused in the background can be added.
+        if (CallForegroundService.uiState.value.active) send(this, CallForegroundService.ACTION_UPGRADE_MICROPHONE)
+    }
+    override fun onStop() {
+        visible = false
+        super.onStop()
+    }
+
+    companion object {
+        /** True while the Live_Call_Screen is started (visible). */
+        @Volatile var visible = false
+            private set
     }
 
     private fun send(context: Context, action: String, extras: Intent.() -> Unit = {}) {
@@ -221,26 +269,26 @@ fun LiveCallScreen(
                 primary = false,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm), modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm), modifier = Modifier.fillMaxWidth()) {
                 AppButton(
                     text = stringResource(R.string.call_action_take_over),
                     onClick = onTakeOver,
                     enabled = state.active && !takeOver,
-                    modifier = Modifier.weight(1f).defaultMinSize(minHeight = AppDimens.largeControl),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = AppDimens.largeControl),
                 )
                 AppButton(
                     text = stringResource(R.string.call_action_mute, rememberAgentName()),
                     onClick = onMute,
                     enabled = state.active && agentActive,
                     primary = false,
-                    modifier = Modifier.weight(1f).defaultMinSize(minHeight = AppDimens.largeControl),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = AppDimens.largeControl),
                 )
                 AppButton(
                     text = stringResource(R.string.call_action_resume, rememberAgentName()),
                     onClick = onResume,
                     enabled = state.active && !agentActive,
                     primary = false,
-                    modifier = Modifier.weight(1f).defaultMinSize(minHeight = AppDimens.largeControl),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = AppDimens.largeControl),
                 )
             }
             val endLabel = stringResource(R.string.call_action_end)

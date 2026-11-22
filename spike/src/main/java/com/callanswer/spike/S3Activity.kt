@@ -1,14 +1,12 @@
 package com.callanswer.spike
 
 import android.app.Activity
-import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
-import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -32,6 +30,8 @@ class S3Activity : Activity() {
     private lateinit var usageGroup: RadioGroup
     private lateinit var clip: EditText
     private lateinit var heard: CheckBox
+    private lateinit var banner: TextView
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private var volume = 80
 
     private val usages = listOf(
@@ -51,6 +51,8 @@ class S3Activity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 32, 32, 32)
         }
+        banner = TextView(this).apply { textSize = 14f; setPadding(16, 16, 16, 16) }
+        root.addView(banner)
         root.addView(label("Language"))
         lang = RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
@@ -94,7 +96,6 @@ class S3Activity : Activity() {
         root.addView(label("Speaker route"))
         root.addView(button("1. setSpeakerphoneOn(true)") { routeSpeakerphone() })
         root.addView(button("2. setCommunicationDevice(speaker)") { routeCommunicationDevice() })
-        root.addView(button("3. Click Samsung Speaker button") { routeAccessibilityClick() })
         root.addView(button("Speaker off and clear") { clearRoute() })
         status = TextView(this).apply { textSize = 13f }
         root.addView(status)
@@ -102,7 +103,14 @@ class S3Activity : Activity() {
         SpikeLog.log("S3", "opened mode=${modeName()} speakerphoneOn=${audio.isSpeakerphoneOn}")
     }
 
+    override fun onResume() {
+        super.onResume()
+        banner.text = S1Settings.bannerText(this)
+        banner.setBackgroundColor(if (S1Settings.mode(this) == S1Mode.AUTO_ANSWER_AND_END) 0xFFFFCDD2.toInt() else 0xFFC8E6C9.toInt())
+    }
+
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         player.stop()
         super.onDestroy()
     }
@@ -160,61 +168,6 @@ class S3Activity : Activity() {
         val now = audio.communicationDevice?.type
         SpikeLog.log("S3", "route 2 setCommunicationDevice(speaker) -> accepted=$ok communicationDeviceType=$now mode=${modeName()}")
         show("Route 2: accepted=$ok current type=$now. Check whether the speaker is really on.")
-    }
-
-    private fun routeAccessibilityClick() {
-        val svc = S2Bridge.accessibilityContext as? AccessibilityService
-        if (svc == null) {
-            SpikeLog.log("S3", "route 3 accessibility service not connected")
-            show("Accessibility service not connected")
-            return
-        }
-        val root = svc.rootInActiveWindow
-        if (root == null) {
-            SpikeLog.log("S3", "route 3 no active window")
-            show("No active window; bring the in-call screen to the front, then tap again after switching back")
-            return
-        }
-        val pkg = root.packageName
-        val node = findSpeaker(root)
-        if (node == null) {
-            val dump = mutableListOf<String>()
-            dumpNodes(root, dump, 0)
-            SpikeLog.log("S3", "route 3 Speaker button not found pkg=$pkg nodes=${dump.size}")
-            dump.take(60).forEach { SpikeLog.log("S3", "node $it") }
-            show("Speaker button not found in $pkg (nodes dumped to log)")
-            return
-        }
-        var target: AccessibilityNodeInfo? = node
-        while (target != null && !target.isClickable) target = target.parent
-        val ok = target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) ?: false
-        SpikeLog.log(
-            "S3",
-            "route 3 click Speaker pkg=$pkg id=${node.viewIdResourceName} desc=${node.contentDescription} text=${node.text} clicked=$ok " +
-                "isSpeakerphoneOn=${@Suppress("DEPRECATION") audio.isSpeakerphoneOn}"
-        )
-        show("Route 3: clicked=$ok pkg=$pkg")
-    }
-
-    private fun findSpeaker(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        val words = listOf("speaker", "स्पीकर")
-        fun matches(n: AccessibilityNodeInfo): Boolean {
-            val s = "${n.text ?: ""} ${n.contentDescription ?: ""} ${n.viewIdResourceName ?: ""}".lowercase()
-            return words.any { s.contains(it) }
-        }
-        val stack = ArrayDeque<AccessibilityNodeInfo>()
-        stack.add(root)
-        while (stack.isNotEmpty()) {
-            val n = stack.removeLast()
-            if (matches(n)) return n
-            for (i in 0 until n.childCount) n.getChild(i)?.let(stack::add)
-        }
-        return null
-    }
-
-    private fun dumpNodes(n: AccessibilityNodeInfo, out: MutableList<String>, depth: Int) {
-        out += "d=$depth cls=${n.className} id=${n.viewIdResourceName} text=${n.text} desc=${n.contentDescription} clickable=${n.isClickable}"
-        for (i in 0 until n.childCount) n.getChild(i)?.let { dumpNodes(it, out, depth + 1) }
     }
 
     private fun clearRoute() {

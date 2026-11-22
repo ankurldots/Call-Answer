@@ -2,6 +2,8 @@ package com.callanswer.app.ui.screens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import com.callanswer.app.CallAnswerApp
 import com.callanswer.app.data.SettingsStore
@@ -35,7 +37,9 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
     val actions = rememberSetupActions(model)
     // One process-wide store, shared with the services.
     val store = SettingsStore.create(LocalContext.current)
-    LaunchedEffect(resumeTick) { model.refresh() }
+    val auth = (LocalContext.current.applicationContext as CallAnswerApp).authRepository
+    val authState by auth.state.collectAsState()
+    LaunchedEffect(resumeTick, authState) { model.refresh() }
 
     NavHost(
         navController = navController,
@@ -51,6 +55,7 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
                 model, actions,
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenCallLog = { navController.navigate(Routes.CALL_LOG) },
+                onOpenAccount = { navController.navigate(Routes.SETTINGS_ACCOUNT) },
             )
         }
         val back: () -> Unit = { navController.popBackStack() }

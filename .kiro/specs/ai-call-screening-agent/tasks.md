@@ -9,14 +9,14 @@ The plan is in Kotlin, the language used by the design. It runs in four phases:
 3. The Android `:app` module wires `:core` to Room, DataStore, Telecom, audio, ASR/VAD/TTS, notifications, SAF/Media3 and SMS, and builds the Compose screens from the shared components in `ui/components` and the single theme in `ui/theme`.
 4. Final on-device validation on the M34 5G: patchy-network matrix, airplane-mode tests and end-to-end call scenarios in Hindi, English and Hinglish.
 
-Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEnabled`), `ASR_ENGINE` (S7: `WHISPER_BASE_INT8` or `VOSK_STREAMING`), `SILENT_SMS_ENABLED` (S8).
+Build flags decided by the spike: `ASR_ENGINE` (S7: `WHISPER_BASE_INT8` or `VOSK_STREAMING`), `SILENT_SMS_ENABLED` (S8).
 
 ## Tasks
 
 - [x] 1. Build the feasibility spike app (`:spike`) for the Galaxy M34 5G
   - [x] 1.1 Create the Gradle root project and the `:spike` Android module
     - Root `settings.gradle.kts`, `gradle/libs.versions.toml`, Kotlin and Android Gradle plugin setup, `minSdk 29`, `targetSdk` of the current stable API
-    - `:spike` manifest declaring every component and permission the spike needs up front (CallScreeningService, AccessibilityService with package filter `com.samsung.android.incallui` and `com.samsung.android.dialer`, foreground service type `mediaPlayback`, `READ_CONTACTS`, `ANSWER_PHONE_CALLS`, `READ_PHONE_STATE`, `CALL_PHONE`, `RECORD_AUDIO`, `POST_NOTIFICATIONS`, `SEND_SMS`, `USE_FULL_SCREEN_INTENT`, `<queries>` for `SENDTO sms:`)
+    - `:spike` manifest declaring every component and permission the spike needs up front (CallScreeningService, foreground service types `mediaPlayback` and `microphone`, `READ_CONTACTS`, `ANSWER_PHONE_CALLS`, `READ_PHONE_STATE`, `CALL_PHONE`, `RECORD_AUDIO`, `POST_NOTIFICATIONS`, `SEND_SMS`, `USE_FULL_SCREEN_INTENT`, `<queries>` for `SENDTO sms:`)
     - A spike menu screen with one entry per check S0 to S8, a shared `SpikeLog` that writes timestamped results to an exportable text file, and role/permission request buttons
     - S0 readout: model number, Android and One UI version, security patch level, RAM, carrier, VoLTE state, default dialer package, and whether the Samsung call-recording settings activity resolves
     - _Requirements: 9.2, 12 (platform constraint), target-device constraint_
@@ -26,15 +26,15 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
     - Log ring-to-answer time, foreground-service start result (including `ForegroundServiceStartNotAllowedException`), notification post time, and `endCall()` result; fallback start through a full-screen-intent notification
     - _Requirements: 1.1, 1.2, 1.4, 13.12, 13.19_
 
-  - [x] 1.3 Implement spike S2: microphone capture as accessibility service
-    - `SpikeAccessibilityService` owns an `AudioRecord` (16 kHz mono PCM16); a toggle captures from a plain foreground service instead for comparison
+  - [x] 1.3 Implement spike S2: microphone capture (plain foreground service owner)
+    - `S2CaptureService` (plain foreground service, type `microphone`) owns an `AudioRecord` (16 kHz mono PCM16); source and seconds selectors, optional start when the phone is OFFHOOK
     - Cycle sources `VOICE_RECOGNITION`, `MIC`, `UNPROCESSED`, `VOICE_COMMUNICATION`; log `AudioRecordingCallback.isClientSilenced()`; dump one WAV per source to app storage with an RMS summary in the log
     - _Requirements: 13.15, platform constraint on call audio_
 
   - [x] 1.4 Implement spike S3: Agent speech audible to the Caller, and speaker route
     - `AudioTrack` player for bundled test WAVs of 10 Hindi and 10 English sentences, switchable usage (`USAGE_VOICE_COMMUNICATION`, `USAGE_ASSISTANT`, `USAGE_MEDIA`) and call volume 60 to 100%
     - Measure stop latency (`pause` plus `flush`) and log it
-    - Speaker route attempts in order: `setSpeakerphoneOn(true)`, `setCommunicationDevice(speaker)`, accessibility click on the Samsung Speaker button; log which one works
+    - Speaker route attempts in order: `setSpeakerphoneOn(true)`, `setCommunicationDevice(speaker)`; log which one works
     - _Requirements: 13.1, 13.6, 13.10, 13.17_
 
   - [x] 1.5 Implement spike S4: echo handling prototype
@@ -47,10 +47,9 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
     - Log the folder path, the file name pattern and which sides (Caller, Agent, User) are audible, entered by the User in a note field
     - _Requirements: 9.11, 12.1, 12.2, 12.3_
 
-  - [x] 1.7 Implement spike S6: transfer Path A and Path B
-    - Path A: `TelecomManager.placeCall(tel:target)` during the active call, accessibility click on Samsung Merge, 30 s no-answer timer, end second call and click Swap/Resume; run with mobile data off
+  - [x] 1.7 Implement spike S6: transfer Path B (Takeover_Alert)
     - Path B: Takeover_Alert on channel `takeover_alert` (`IMPORTANCE_HIGH`, category `CALL`, full-screen intent, sound, vibration), an App-played alert tone through the S3 player, and a "Take over" action that reaches the foreground service from the lock screen; test with and without full-screen intent access
-    - Log 5 tries per path with pass/fail
+    - Log 5 tries with pass/fail
     - _Requirements: 4.2, 4.3, 4.7, 4.8, 8.10_
 
   - [x] 1.8 Implement spike S7: on-device AI benchmark
@@ -65,7 +64,7 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
 
 - [ ] 2. Checkpoint - Spike go/no-go on the Galaxy M34 5G
   - Ask the User to install the `:spike` build on the M34 5G, run S0 to S8 with a second phone as the Caller, and record every result in a new "Spike results" subsection of design.md (under "Feasibility spike").
-  - Go/no-go rules: S1, S2 and S3 must pass. S6 Path B must pass. S6 Path A only sets the `PATH_A_SUPPORTED` build flag. S7 picks the ASR engine (`WHISPER_BASE_INT8` only if end-to-end p90 is at most 2.5 s cold and sustained with intent accuracy of at least 90%, otherwise `VOSK_STREAMING`). S8 decides `SILENT_SMS_ENABLED`.
+  - Go/no-go rules: S1, S2 and S3 must pass. S6 must pass. S7 picks the ASR engine (`WHISPER_BASE_INT8` only if end-to-end p90 is at most 2.5 s cold and sustained with intent accuracy of at least 90%, otherwise `VOSK_STREAMING`). S8 decides `SILENT_SMS_ENABLED`.
   - If S2 or S3 fails, stop and ask the User to choose fallback F1 (speak-only assisted mode) or pivot F2 (VoIP/SIP number). Do not continue with task 3 until the User decides.
   - Ensure all tests pass, ask the user if questions arise.
 
@@ -73,7 +72,7 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
   - [x] 3.1 Create the `:core` and `:app` Gradle modules
     - `:core`: Kotlin/JVM, kotlinx.serialization, kotlinx-coroutines (core and test), Kotest (`kotest-runner-junit5`, `kotest-property`), no Android dependencies; package skeleton from the design (`model`, `phone`, `gate`, `intent`, `language`, `delivery`, `conversation`, `stalling`, `echo`, `network`, `recording`, `settings`, `voice`, `report`)
     - `:app`: Android, Jetpack Compose with Material 3, Room, DataStore, WorkManager, Media3 ExoPlayer, sherpa-onnx, and Vosk or Whisper per the recorded S7 result; `noCompress "onnx", "bin"`; `android:allowBackup="false"` with `dataExtractionRules`; HTTPS-only network security config; package skeleton from the design
-    - `BuildConfig` fields `PATH_A_SUPPORTED`, `ASR_ENGINE`, `SILENT_SMS_ENABLED` set from the spike results in design.md
+    - `BuildConfig` fields `ASR_ENGINE`, `SILENT_SMS_ENABLED` set from the spike results in design.md
     - One Kotest smoke test in `:core` and one JVM unit test in `:app` so `./gradlew test` runs green
     - _Requirements: 2.9, 8.11, 10.6, 14.28_
 
@@ -89,7 +88,7 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
 - [x] 4. Implement core models, defaults and settings validation
   - [x] 4.1 Create the core data models and defaults
     - Enums `Language`, `VoiceGender`, `IntentCategory`, `NetworkQuality`, `Speaker`, `Outcome`, `EndReason`, `RecordingStatus`, `ReportStatus`, `TransferPath`, `AlertReason`, `TransferOutcome`, `LogNoteKind`, `NotificationKind`
-    - `@Serializable` `LocalTimeHm`, `Gate`, `NightWindow`, `GateConfig`, `DeliveryStep`, `QuickReply`, `Settings`, `FrozenSettings` (including `pathAEnabled`), `Utterance`, `CallLogEntry`, `GateStatement`, `TakeoverRecord`, `InterruptionRecord`, `VoiceSubstitution`, `TransferRecord`, `RecordingInfo`, `ReportStamp`, `SpamReportInfo`
+    - `@Serializable` `LocalTimeHm`, `Gate`, `NightWindow`, `GateConfig`, `DeliveryStep`, `QuickReply`, `Settings`, `FrozenSettings`, `Utterance`, `CallLogEntry`, `GateStatement`, `TakeoverRecord`, `InterruptionRecord`, `VoiceSubstitution`, `TransferRecord`, `RecordingInfo`, `ReportStamp`, `SpamReportInfo`
     - `DefaultGates` (Gate 1 Press Enclave Road near Punjab National Bank, Gate 3 opposite Aurobindo College, 22:30 to 05:30), `DefaultDeliverySteps` (the four English and Hindi steps with `{map_location}`), `DefaultQuickReplies` ("Please wait", "I am coming")
     - Shared `CoreJson` configuration (`encodeDefaults = true`, `ignoreUnknownKeys = true`, enums by name)
     - _Requirements: 1.7, 3.2, 9.1, 9.8, 9.14, 9.15, 9.25, 9.26, 10.1, 10.13, 11.16, 13.13_
@@ -380,10 +379,9 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
     - Stalling filler then retry then end; synthesis retry then fallback; processing error fallback; UNKNOWN notification payload with and without number
     - _Requirements: 5.10, 6.3, 6.6, 7.9, 8.9_
 
-- [x] 18. Implement the transfer flow in the engine (Path A and AWAITING_TAKEOVER)
+- [x] 18. Implement the transfer flow in the engine (AWAITING_TAKEOVER)
   - [x] 18.1 Add transfer handling to the reducer
-    - On `AgentSpeechFinished` of TransferNotice: with `pathAEnabled` and a Transfer_Target, `StartTransfer` plus `Notify(TRANSFER_STARTED)` and phase TRANSFER; otherwise `RaiseTakeoverAlert` (PATH_A_UNAVAILABLE or TARGET_NOT_CONFIGURED), `Speak(PleaseWait)`, `Notify(TRANSFER_STARTED)`, `Notify(TRANSFER_TARGET_MISSING)` without a target, phase AWAITING_TAKEOVER
-    - `TransferResult`: MERGED gives TRANSFERRED; NO_ANSWER_30S or FAILED gives `RaiseTakeoverAlert`, PleaseWait and AWAITING_TAKEOVER; FAILED adds `Notify(TRANSFER_FAILED)` and `LogNote(TRANSFER_FAILED)`
+    - On `AgentSpeechFinished` of TransferNotice: always `RaiseTakeoverAlert` (TAKEOVER_REQUIRED or TARGET_NOT_CONFIGURED), `Speak(PleaseWait)`, `Notify(TRANSFER_STARTED)`, `Notify(TRANSFER_TARGET_MISSING)` without a target, phase AWAITING_TAKEOVER
     - AWAITING_TAKEOVER: PleaseWait every 10 s from `lastPleaseWaitAtMs`, no other speech, Caller utterances transcribed only; at 30 s after the alert one NobodyAvailable, outcome NO_TAKEOVER_30S, phase LISTENING, no `ClearTakeoverAlert`; CALL_ENDED_WHILE_WAITING on call end; `TransferRecord` kept in state
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.9, 4.10, 4.11, 8.10_
 
@@ -400,13 +398,13 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
     - **Validates: Requirements 4.3, 4.9**
 
   - [ ]* 18.5 Write unit tests for transfer outcomes
-    - TRANSFER_STARTED and TRANSFER_FAILED notifications with the Caller's number, `FAILED_THEN_ALERT` with the 8.10 log note, no "please wait" during the Path A wait
+    - TRANSFER_STARTED notification with the Caller's number
     - _Requirements: 4.4, 4.6, 8.10_
 
 - [x] 19. Implement override modes in the engine (take over, mute, resume, quick replies, end call)
   - [x] 19.1 Add override handling to the reducer
     - `UserTakeOver` (origin ignored): StopSpeaking, ClearTakeoverAlert when an alert is shown, mode TAKE_OVER, takeover start stored; in AWAITING_TAKEOVER or TRANSFER also `LogNote(TRANSFER_COMPLETED_BY_USER)` and outcome TAKEN_OVER_BY_USER; a later `TransferResult` only updates the record
-    - TAKE_OVER: no Speak, EndCall, StartTransfer, RaiseTakeoverAlert, silence or max-duration reaction; utterances labelled LIVE and appended
+    - TAKE_OVER: no Speak, EndCall, RaiseTakeoverAlert, silence or max-duration reaction; utterances labelled LIVE and appended
     - `UserMute`: StopSpeaking, mode AGENT_MUTED, no Speak; timers and outcomes still run; `nobodyAvailablePending` when 30 s pass while muted
     - `UserResume`: Speak(BridgingPhrase) in the Caller's language, then NobodyAvailable when pending, mode AGENT_ACTIVE with phase and intent unchanged; takeover period closed as a `TakeoverRecord`
     - `QuickReplySent` speaks the reply in the Caller's language (ignored while muted or in TAKE_OVER); `UserEndCall` gives EndCall from every phase; `VoiceActivity` never stops speech
@@ -429,7 +427,7 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
     - **Validates: Requirements 4.8, 13.20, 13.21**
 
   - [ ]* 19.6 Write unit tests for controls during a transfer
-    - Mute and resume during the Path A wait and during AWAITING_TAKEOVER; the 30 s point passing while muted, then NobodyAvailable right after the Bridging_Phrase; quick replies during a transfer
+    - Mute and resume during AWAITING_TAKEOVER; the 30 s point passing while muted, then NobodyAvailable right after the Bridging_Phrase; quick replies during a transfer
     - _Requirements: 13.10, 13.14, 13.20_
 
 - [x] 20. Implement Call_Log entry building, ordering and serialization
@@ -472,7 +470,7 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
     - **Validates: Requirements 10.8, 10.13**
 
   - [x] 22.4 Implement `SettingsStore` with DataStore
-    - Typed DataStore with a JSON serializer for `Settings`; `update(candidate)` runs `SettingsValidator` and leaves the stored value unchanged on rejection; `snapshot()` builds `FrozenSettings` at call start, with `pathAEnabled = BuildConfig.PATH_A_SUPPORTED && transferTarget != null && accessibility service enabled`; cloud API key in an encrypted entry backed by the Android Keystore
+    - Typed DataStore with a JSON serializer for `Settings`; `update(candidate)` runs `SettingsValidator` and leaves the stored value unchanged on rejection; `snapshot()` builds `FrozenSettings` at call start; cloud API key in an encrypted entry backed by the Android Keystore
     - _Requirements: 1.7, 4.2, 9.1, 9.4, 9.5, 9.6, 9.14, 9.15, 9.22, 9.25, 9.26, 13.13_
 
   - [ ]* 22.5 Write property test for settings persistence
@@ -517,9 +515,8 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
     - _Requirements: 1.2, 1.3, 1.5, 1.6, 1.9_
 
 - [x] 25. Implement the audio path
-  - [x] 25.1 Implement `CallAudioAccessibilityService`, `CallAudioCapture` and `InCallUiAutomator`
-    - Accessibility service config with minimum event types and the Samsung package filter; `AudioRecord` 16 kHz mono PCM16 with the source chosen in S2; `frames: Flow<PcmFrame>` and `silenced: StateFlow<Boolean>` from `AudioRecordingCallback`; silenced capture switches to assisted mode F1 and alerts the User
-    - `InCallUiAutomator` for the Samsung Speaker, Merge and Swap/Resume buttons (view ids or labels recorded in S3 and S6)
+  - [x] 25.1 Implement `CallAudioCapture` and `CallAudioCaptureOwner` (plain foreground service owner, no accessibility service)
+    - `CallForegroundService` with `foregroundServiceType="mediaPlayback|microphone"` and `FOREGROUND_SERVICE_MICROPHONE` (microphone type only when `RECORD_AUDIO` is granted; added once the Live_Call_Screen is visible if the system refuses a background start); `AudioRecord` 16 kHz mono PCM16 with the source chosen in S2; `frames: Flow<PcmFrame>` and `silenced: StateFlow<Boolean>` from `AudioRecordingCallback`; silenced capture switches to assisted mode F1 and alerts the User
     - _Requirements: 13.8, 13.15, 13.17, D1_
 
   - [x] 25.2 Implement `AgentAudioPlayer` and `EchoGate`
@@ -535,11 +532,10 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
     - Robolectric: route controller with headset connected and with all route methods failing; JVM: `EchoGate` window marking and chunk gap timing with a fake clock
     - _Requirements: 13.15, 13.16, 13.17_
 
-- [x] 26. Implement the transfer controller (Path A) and the Takeover_Alert (Path B)
-  - [x] 26.1 Implement `TransferController` behind the `pathAEnabled` flag
-    - `connect(target)`: `placeCall`, wait up to 30 s for Merge to be enabled, press Merge, return MERGED; on timeout or failure end the second call, press Swap/Resume and return NO_ANSWER_30S or FAILED; uses the cellular voice network only
-    - Never called when `FrozenSettings.pathAEnabled` is false
-    - _Requirements: 4.2, 4.3, 4.4, 4.7, 8.10_
+- [x] 26. Implement the Takeover_Alert
+  - [x] 26.1 Raise the Takeover_Alert as the only transfer (Path A removed)
+    - The engine always raises the Takeover_Alert after the transfer notice; the App never dials the Transfer_Target
+    - _Requirements: 4.2, 4.3, 4.7, 8.10_
 
   - [x] 26.2 Implement `TakeoverAlertPresenter`
     - `raise(callerNumber, reason)` posts the `takeover_alert` notification with a full-screen intent to `LiveCallActivity` and one Take over action (a `PendingIntent` to `CallForegroundService` sending `UserTakeOver(origin = TAKEOVER_ALERT)`); heads-up fallback without full-screen intent access; text notes when the Caller may be on hold
@@ -646,7 +642,8 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
 
 - [x] 32. Build the remaining screens
   - [x] 32.1 Build onboarding, permissions and Home
-    - Navigation graph; onboarding with purpose text before each request: call screening role, `READ_CONTACTS`, `ANSWER_PHONE_CALLS` and `READ_PHONE_STATE`, `CALL_PHONE`, `RECORD_AUDIO`, `POST_NOTIFICATIONS`, `SEND_SMS`, accessibility service (with restricted-settings help), full-screen intent access, battery unrestricted, Recording_Folder picker, one-time auto-record instruction; no broad storage permission
+    - Navigation graph; onboarding with purpose text before each request: **Sign in first (step 1, reuses the Account sign-in flow; "Skip for now" keeps the app working offline with local voices; a successful sign-in starts the Polly prefetch)**, then call screening role, `READ_CONTACTS`, `ANSWER_PHONE_CALLS` and `READ_PHONE_STATE`, `CALL_PHONE`, `RECORD_AUDIO`, `POST_NOTIFICATIONS`, `SEND_SMS`, full-screen intent access, "Display over other apps" (`SYSTEM_ALERT_WINDOW`; purpose text says it lets the Agent start when a call comes in and that some banking/UPI apps may warn about overlays), battery unrestricted, Recording_Folder picker, one-time auto-record instruction; no broad storage permission
+    - Home lists "Signed in" as a setup item with a "Sign in" action when signed out
     - Home with screening status, denied-permission list with "Request again" and "Open settings", and a `StatusBanner` within 2 s naming the disabled feature and permission
     - _Requirements: 9.2, 9.3, 9.7, 9.11, 9.12, 9.13_
 
@@ -683,7 +680,7 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
 
   - [ ] 34.3 Add the end-to-end scenario script and run it with the User
     - A scenario checklist file and a debug "export call trace" action (event and effect timeline with timings) to check the 1 s, 2 s, 3 s and 500 ms limits
-    - Ask the User to place calls from a second phone for delivery, door not opened (Path A if enabled, Path B), solicitation and unknown in Hindi, English and Hinglish, including gate queries during and outside the Night_Window, and record results in design.md
+    - Ask the User to place calls from a second phone for delivery, door not opened (Takeover_Alert), solicitation and unknown in Hindi, English and Hinglish, including gate queries during and outside the Night_Window, and record results in design.md
     - _Requirements: 1.1, 1.2, 1.4, 2.1, 3.1, 4.2, 5.2, 7.1, 11.1, 12.3, 13.1, 13.5, 13.6, 13.10, 13.19_
 
 - [ ] 35. Final checkpoint - Ensure all tests pass
@@ -696,7 +693,7 @@ Build flags decided by the spike: `PATH_A_SUPPORTED` (S6 Path A, feeds `pathAEna
 - The `:spike` module is throwaway code; production modules do not depend on it.
 - Each property test implements exactly one Correctness Property from design.md, runs at least 100 iterations (1,000 for classifier and gate properties) and carries the tag `// Feature: ai-call-screening-agent, Property N: <title>`.
 - Properties 25 and 47 are split into a JSON part in `:core` (tasks 20.2, 20.3) and an entity-mapper part in `:app` (tasks 22.2, 22.3).
-- The transfer controller and Takeover_Alert (task 26) come after the audio path because both use the accessibility service and the Agent audio player.
+- The Takeover_Alert (task 26) comes after the audio path because it uses the Agent audio player.
 - All screens use `ui/components` and `ui/theme` only; a missing variant is added to the shared component, not created locally.
 
 ## Task Dependency Graph

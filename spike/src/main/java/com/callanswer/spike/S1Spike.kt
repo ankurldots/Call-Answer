@@ -26,8 +26,6 @@ object S1Spike {
     const val EXTRA_S1_START_FGS = "s1_start_fgs"
     private const val RETRY_INTERVAL_MS = 100L
     private const val RETRY_LIMIT_MS = 2000L
-    /** The spike ends the answered call by itself after this delay so a test call does not hang. */
-    const val AUTO_END_DELAY_MS = 15_000L
 
     private val main = Handler(Looper.getMainLooper())
 
@@ -150,6 +148,7 @@ object S1Spike {
 
     fun scheduleAutoEnd(ctx: Context) {
         val app = ctx.applicationContext
-        main.postDelayed({ endCall(app, "auto after ${AUTO_END_DELAY_MS} ms") }, AUTO_END_DELAY_MS)
+        val delayMs = S1Settings.endDelaySeconds(app) * 1000L
+        main.postDelayed({ endCall(app, "auto after $delayMs ms") }, delayMs)
     }
 }

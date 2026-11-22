@@ -14,7 +14,9 @@ class SpikeScreeningService : CallScreeningService() {
         )
         respondToCall(callDetails, CallResponse.Builder().build())
         S1Spike.startForeground(applicationContext)
-        S1Spike.answerWithRetries(applicationContext)
-        S1Spike.scheduleAutoEnd(applicationContext)
+        val mode = S1Settings.mode(applicationContext)
+        SpikeLog.log(S1Spike.CHECK, "active mode: ${S1Settings.describe(applicationContext)}")
+        if (mode != S1Mode.OFF) S1Spike.answerWithRetries(applicationContext)
+        if (mode == S1Mode.AUTO_ANSWER_AND_END) S1Spike.scheduleAutoEnd(applicationContext)
     }
 }

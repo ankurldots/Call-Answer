@@ -5,12 +5,13 @@ import android.os.SystemClock
 import android.util.Log
 import com.callanswer.app.asr.SpeechRecognizerPort
 import com.callanswer.app.asr.createSpeechRecognizer
+import com.callanswer.app.CallLog
 import com.callanswer.app.audio.AndroidAudioRouteController
+import com.callanswer.app.audio.AudioRecordCallAudioCapture
 import com.callanswer.app.audio.AudioRouteController
-import com.callanswer.app.audio.CallAudioAccessibilityService
+import com.callanswer.app.audio.CallAudioCaptureOwner
 import com.callanswer.app.audio.CallAudioCapture
 import com.callanswer.app.audio.EchoGate
-import com.callanswer.app.audio.InCallUiAutomator
 import com.callanswer.app.audio.SpeechSegment
 import com.callanswer.app.audio.SpeechSegmenter
 import com.callanswer.app.audio.VoiceActivityDetector
@@ -61,7 +62,6 @@ class CallPipeline(
     private val route: AudioRouteController = AndroidAudioRouteController(
         context,
         NotificationCenter(context),
-        CallAudioAccessibilityService.instance.value?.uiAutomator ?: InCallUiAutomator { null },
     ) { frozen.speakerEnabled }
     private val detector = ScriptLanguageDetector.withBundledLexicon()
     private val agentUtterances = ArrayList<AgentUtterance>()
@@ -79,22 +79,29 @@ class CallPipeline(
     @Volatile private var lastLanguage: Language? = null
     @Volatile private var lastUnusableMs = 0L
     @Volatile private var stopped = false
+    @Volatile private var routeApplied = false
+    @Volatile private var captureStarted = false
+    @Volatile private var captureRef: CallAudioCapture? = null
 
     /** Applies the speaker policy. Never throws (13.1, 13.2). */
     suspend fun routeAudio() {
         try {
-            route.enableSpeaker()
+            val on = route.enableSpeaker()
+            CallLog.i("speaker route applied: speakerOn=$on audioMode=${AudioRecordCallAudioCapture.modeName(audioMode())}")
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
             Log.w(TAG, "speaker routing failed", t)
+        } finally {
+            routeApplied = true
         }
     }
 
     /** Starts the network monitor, capture, the ASR consumer and the Tick loop. */
     fun startListening() {
+        // The silence count starts at the answer, not at pipeline creation (the call may have been ringing).
+        lastAgentEndMs = clockMs()
         runCatching { network.start(scope) }.onFailure { Log.w(TAG, "network monitor failed", it) }
-        val capture = runCatching { CallAudioAccessibilityService.instance.value?.startCapture() }.getOrNull()
         val seg = SpeechSegmenter(
             vad = createVad().also { vad = it },
             gate = { s, e -> echoGate.isFullyCovered(s, e) },
@@ -104,8 +111,53 @@ class CallPipeline(
         )
         segmenter = seg
         jobs += scope.launch(Dispatchers.IO) { consumeSegments() }
-        if (capture != null) jobs += scope.launch(audioDispatcher) { collectFrames(capture, seg) }
         jobs += scope.launch(audioDispatcher) { tickLoop(seg) }
+        jobs += scope.launch(audioDispatcher) { startCapture(seg) }
+    }
+
+    /**
+     * The microphone foreground type was granted after capture started. A silenced `AudioRecord` does not recover
+     * by itself, so it is recreated unless audio is already flowing.
+     */
+    fun onMicrophoneTypeGranted() {
+        val seg = segmenter ?: return
+        if (captureStarted && !seg.heardAudio) CallAudioCaptureOwner.restart()
+    }
+
+    /**
+     * Starts capture only when the call is OFFHOOK (or in call audio mode), the speaker route is applied and the
+     * microphone foreground type is held. The first two are required: before the call is answered the platform
+     * hands the app silence. The third is waited for [MIC_TYPE_WAIT_MS] and then capture starts anyway, so the
+     * upgrade path ([onMicrophoneTypeGranted]) can restart it.
+     */
+    private suspend fun startCapture(seg: SpeechSegmenter) {
+        val active = waitUntil(CALL_ACTIVE_WAIT_MS) { callIsActive() }
+        CallLog.i("capture gate: callActive=$active audioMode=${AudioRecordCallAudioCapture.modeName(audioMode())} speakerRouteApplied=$routeApplied")
+        // The route set before the answer can be reset by the telephony stack: apply it again now.
+        if (active) routeAudio()
+        waitUntil(ROUTE_WAIT_MS) { routeApplied }
+        val micType = waitUntil(MIC_TYPE_WAIT_MS) { CallForegroundService.micTypeActive }
+        CallLog.i("capture gate: micTypeActive=$micType, starting capture")
+        val capture = runCatching {
+            CallAudioCaptureOwner.start(context) { NotificationCenter(context).captureSilenced() }
+        }.getOrNull()
+        captureStarted = capture != null
+        if (capture == null) return
+        captureRef = capture
+        collectFrames(capture, seg)
+    }
+
+    private fun audioMode(): Int = CallSample.read(context).mode
+
+    private fun callIsActive(): Boolean = CallSample.read(context).active
+
+    private suspend fun waitUntil(timeoutMs: Long, cond: () -> Boolean): Boolean {
+        val end = clockMs() + timeoutMs
+        while (!cond()) {
+            if (clockMs() >= end || stopped) return cond()
+            delay(100)
+        }
+        return true
     }
 
     /** Called by the effect executor when an Agent utterance finished playing. Restarts the silence count (5.6). */
@@ -127,7 +179,7 @@ class CallPipeline(
         jobs.forEach { it.cancel() }
         segments.close()
         runCatching { segmenter?.flush() }
-        runCatching { CallAudioAccessibilityService.instance.value?.stopCapture() }
+        runCatching { CallAudioCaptureOwner.stop() }
         runCatching { network.stop() }
         runCatching { vad?.release() }
         runCatching { recognizer?.release() }
@@ -163,7 +215,11 @@ class CallPipeline(
                 val t = seg.tick(now)
                 // The silence count restarts after each Agent utterance (BaseConversationEngine.onTick).
                 val silent = minOf(t.silentForMs, (now - lastAgentEndMs).coerceAtLeast(0))
-                emit { at -> t.copy(atMs = at, silentForMs = silent) }
+                // Our own capture being silenced or never delivering is not a call interruption (8.8 applies
+                // only to a real loss after audio had been flowing); the engine then works on its silence timers.
+                val ownCaptureDown = captureRef?.silenced?.value ?: true
+                val noAudio = if (ownCaptureDown) 0L else t.noAudioForMs
+                emit { at -> t.copy(atMs = at, silentForMs = silent, noAudioForMs = noAudio) }
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
@@ -232,5 +288,8 @@ class CallPipeline(
         const val TAG = "CallPipeline"
         const val TICK_MS = 1000L
         const val MAX_UTTERANCES = 32
+        const val CALL_ACTIVE_WAIT_MS = 20_000L
+        const val ROUTE_WAIT_MS = 3_000L
+        const val MIC_TYPE_WAIT_MS = 2_000L
     }
 }

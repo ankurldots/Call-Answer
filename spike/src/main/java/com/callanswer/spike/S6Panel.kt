@@ -1,7 +1,6 @@
 package com.callanswer.spike
 
 import android.Manifest
-import android.accessibilityservice.AccessibilityService
 import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
@@ -18,17 +17,13 @@ import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import android.telecom.TelecomManager
-import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * Spike S6: transfer Path A and Path B. Five tries per path, each logged pass/fail.
- *
- * Path A: placeCall(tel:target) during an active call, accessibility click on Samsung Merge, 30 s no-answer timer,
- * end the second call and click Swap/Resume. Run with mobile data off (state is logged with every step).
+ * Spike S6: transfer Path B (the only path; Path A was removed with the accessibility service). Five tries, each logged pass/fail.
  *
  * Path B: Takeover_Alert on channel `takeover_alert` (IMPORTANCE_HIGH, category CALL, full-screen intent, sound,
  * vibration), an alert tone through the S3 [AudioPlayer], and a "Take over" action that reaches
@@ -36,39 +31,14 @@ import android.widget.TextView
  */
 object S6Panel {
     private const val TAG = "S6"
-    private const val NO_ANSWER_MS = 30_000L
     private const val TRIES = 5
     private val main = Handler(Looper.getMainLooper())
-    private val tries = mutableMapOf("A" to 0, "B" to 0)
-    private val passes = mutableMapOf("A" to 0, "B" to 0)
-    private var noAnswerTimer: Runnable? = null
-    private var secondCallPlacedAt = 0L
+    private val tries = mutableMapOf("B" to 0)
+    private val passes = mutableMapOf("B" to 0)
 
     fun build(activity: Activity, root: LinearLayout, body: TextView) {
         root.addView(TextView(activity).apply {
-            text = "Path A. Start a real call and answer it first. Run with mobile data off."
-        })
-        val target = EditText(activity).apply {
-            hint = "Transfer target number"
-            inputType = android.text.InputType.TYPE_CLASS_PHONE
-        }
-        root.addView(target)
-        root.addView(btn(activity, "A1 Place second call (starts 30 s no-answer timer)") {
-            placeSecondCall(activity, target.text.toString().trim(), body)
-        })
-        root.addView(btn(activity, "A2 Click Merge (target answered)") {
-            cancelTimer()
-            clickByWords(activity, "A-merge", listOf("merge", "मर्ज"), body)
-        })
-        root.addView(btn(activity, "A3 End second call, then click Swap/Resume") {
-            cancelTimer()
-            endSecondCallAndResume(activity, body)
-        })
-        root.addView(btn(activity, "A pass") { record("A", true, body) })
-        root.addView(btn(activity, "A fail") { record("A", false, body) })
-
-        root.addView(TextView(activity).apply {
-            text = "\nPath B. Lock the phone within the delay to test the lock screen."
+            text = "Path B. Lock the phone within the delay to test the lock screen."
             textSize = 14f
         })
         root.addView(btn(activity, "B1 Post Takeover_Alert now") {
@@ -88,92 +58,11 @@ object S6Panel {
         root.addView(btn(activity, "B fail") { record("B", false, body) })
         root.addView(btn(activity, "Clear alert and stop tone") { S6Alert.cancel(activity) })
 
-        body.text = "Tries are logged per path (target $TRIES each). ${summary()}\n${dataState(activity)}"
+        body.text = "Tries are logged (target $TRIES each). ${summary()}\n${dataState(activity)}"
         SpikeLog.log(TAG, "panel opened; ${dataState(activity)}")
     }
 
     private fun has(ctx: Context, perm: String) = ctx.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
-
-    private fun placeSecondCall(ctx: Context, number: String, body: TextView) {
-        if (number.isEmpty()) { body.text = "Enter the target number"; return }
-        if (!has(ctx, Manifest.permission.CALL_PHONE)) {
-            SpikeLog.log(TAG, "A placeCall: CALL_PHONE not granted")
-            body.text = "CALL_PHONE not granted"
-            return
-        }
-        val tm = ctx.getSystemService(TelecomManager::class.java)
-        secondCallPlacedAt = SystemClock.elapsedRealtime()
-        SpikeLog.log(TAG, "A placeCall tel:$number during active call; ${dataState(ctx)}; inCall=${tm.isInCall}")
-        try {
-            tm.placeCall(Uri.fromParts("tel", number, null), null)
-            SpikeLog.log(TAG, "A placeCall accepted; 30 s no-answer timer started")
-            body.text = "Second call placed. Timer 30 s. When the target answers press A2."
-        } catch (e: Exception) {
-            SpikeLog.log(TAG, "A placeCall FAILED: ${e.javaClass.simpleName}: ${e.message}")
-            body.text = "placeCall failed: $e"
-            return
-        }
-        cancelTimer()
-        noAnswerTimer = Runnable {
-            SpikeLog.log(TAG, "A no-answer timer fired after ${SystemClock.elapsedRealtime() - secondCallPlacedAt} ms")
-            endSecondCallAndResume(ctx, body)
-        }.also { main.postDelayed(it, NO_ANSWER_MS) }
-    }
-
-    private fun cancelTimer() {
-        noAnswerTimer?.let { main.removeCallbacks(it) }
-        noAnswerTimer = null
-    }
-
-    private fun endSecondCallAndResume(ctx: Context, body: TextView) {
-        val tm = ctx.getSystemService(TelecomManager::class.java)
-        val ended = try {
-            if (has(ctx, Manifest.permission.ANSWER_PHONE_CALLS)) tm.endCall() else false
-        } catch (e: Exception) {
-            SpikeLog.log(TAG, "A endCall threw $e"); false
-        }
-        SpikeLog.log(TAG, "A endCall (second call) result=$ended")
-        main.postDelayed({
-            clickByWords(ctx, "A-swap/resume", listOf("swap", "resume", "unhold", "स्वैप", "फिर से शुरू"), body)
-        }, 1_000)
-    }
-
-    /** Finds a node whose text, description or view id contains one of [words] and clicks it. Dumps nodes when absent. */
-    private fun clickByWords(ctx: Context, step: String, words: List<String>, body: TextView) {
-        val svc = S2Bridge.accessibilityContext as? AccessibilityService
-        if (svc == null) {
-            SpikeLog.log(TAG, "$step accessibility service not connected")
-            body.text = "Accessibility service not connected"
-            return
-        }
-        val root = svc.rootInActiveWindow
-        if (root == null) {
-            SpikeLog.log(TAG, "$step no active window")
-            body.text = "No active window. Bring the in-call screen to the front."
-            return
-        }
-        val dump = mutableListOf<String>()
-        var found: AccessibilityNodeInfo? = null
-        val stack = ArrayDeque<AccessibilityNodeInfo>().apply { add(root) }
-        while (stack.isNotEmpty()) {
-            val n = stack.removeLast()
-            val s = "${n.text ?: ""} ${n.contentDescription ?: ""} ${n.viewIdResourceName ?: ""}".lowercase()
-            dump += "cls=${n.className} id=${n.viewIdResourceName} text=${n.text} desc=${n.contentDescription} clickable=${n.isClickable}"
-            if (found == null && words.any { s.contains(it) }) found = n
-            for (i in 0 until n.childCount) n.getChild(i)?.let(stack::add)
-        }
-        if (found == null) {
-            SpikeLog.log(TAG, "$step button not found pkg=${root.packageName} nodes=${dump.size}")
-            dump.take(60).forEach { SpikeLog.log(TAG, "node $it") }
-            body.text = "$step: button not found in ${root.packageName} (nodes dumped to log)"
-            return
-        }
-        var target: AccessibilityNodeInfo? = found
-        while (target != null && !target.isClickable) target = target.parent
-        val ok = target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) ?: false
-        SpikeLog.log(TAG, "$step click pkg=${root.packageName} id=${found.viewIdResourceName} desc=${found.contentDescription} text=${found.text} clicked=$ok")
-        body.text = "$step: clicked=$ok"
-    }
 
     private fun postAlert(ctx: Context, body: TextView) {
         val t0 = SystemClock.elapsedRealtime()
@@ -212,7 +101,7 @@ object S6Panel {
         body.text = summary()
     }
 
-    private fun summary() = "Path A ${passes["A"]}/${tries["A"]} passed, Path B ${passes["B"]}/${tries["B"]} passed"
+    private fun summary() = "Path B ${passes["B"]}/${tries["B"]} passed"
 
     private fun btn(ctx: Context, label: String, onClick: () -> Unit) = Button(ctx).apply {
         text = label

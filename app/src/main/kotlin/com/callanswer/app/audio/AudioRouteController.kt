@@ -26,14 +26,13 @@ interface AudioRouteController {
 /**
  * Routes call audio to the speaker (requirements 13.1, 13.2, 13.3, 13.16, 13.17).
  *
- * Route order (spike S3): [AudioManager.setSpeakerphoneOn], then [AudioManager.setCommunicationDevice],
- * then a click on the Speaker button of the in-call UI. Each step is verified before the next is tried.
+ * Route order (spike S3): [AudioManager.setSpeakerphoneOn], then [AudioManager.setCommunicationDevice].
+ * Each step is verified before the next is tried.
  * Once on, the speaker is never touched again, so a User who turns it off keeps it off.
  */
 class AndroidAudioRouteController(
     context: Context,
     private val notifications: NotificationCenter,
-    private val automator: InCallUiAutomator,
     private val speakerSetting: suspend () -> Boolean,
 ) : AudioRouteController {
 
@@ -100,7 +99,7 @@ class AndroidAudioRouteController(
                     ?.let { audio.setCommunicationDevice(it) }
             }
         ) return true
-        return attempt { automator.clickSpeaker() }
+        return false
     }
 
     /** Runs one route step and waits up to [VERIFY_MS] for the speaker to be reported on. */

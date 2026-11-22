@@ -14,9 +14,14 @@
     <string name="banner_denied">%1$s is turned off. Permission not granted: %2$s.</string>
     <string name="setup_role_unavailable">The call screening role is not available on this phone.</string>
     <string name="setup_settings_unavailable">This settings page could not be opened on this phone.</string>
-    <string name="setup_open_app_info">Open App info</string>
 
     <!-- Items: title, purpose shown before the request, feature disabled on denial, permission name -->
+    <string name="setup_signin_title">Sign in</string>
+    <string name="setup_signin_purpose">Signing in turns on the natural Indian voice (Polly Kajal) and syncs it to this phone. Calls still work offline: the voice files are downloaded once and stay on the phone. You can skip this and use the on-device voices.</string>
+    <string name="feature_cloud_voice">Natural Indian voice</string>
+    <string name="perm_signin">Signed in</string>
+    <string name="home_signin_missing">The natural Indian voice is off. Sign in to turn it on. The on-device voice is used until then.</string>
+    <string name="action_sign_in">Sign in</string>
     <string name="setup_role_title">Call screening app</string>
     <string name="setup_role_purpose">Android lets only the call screening app see incoming calls before they ring. Call Answer needs this role to check who is calling and to answer unknown callers for you.</string>
     <string name="feature_screening">Call screening</string>
@@ -32,10 +37,6 @@
     <string name="feature_answering">Answering and ending calls</string>
     <string name="perm_phone">Answer phone calls and phone state (ANSWER_PHONE_CALLS, READ_PHONE_STATE)</string>
 
-    <string name="setup_call_phone_title">Place calls</string>
-    <string name="setup_call_phone_purpose">When a caller says nobody is opening the door, Call Answer calls your transfer number and joins it to the call. This permission is only used for that transfer call.</string>
-    <string name="feature_transfer">Call transfer</string>
-    <string name="perm_call_phone">Phone calls (CALL_PHONE)</string>
 
     <string name="setup_mic_title">Microphone</string>
     <string name="setup_mic_purpose">Call Answer listens to the caller to understand what they want. Audio is processed on the phone and is not saved by the App.</string>
@@ -52,16 +53,16 @@
     <string name="feature_sms">Map location text and silent spam reports</string>
     <string name="perm_sms">Send SMS (SEND_SMS)</string>
 
-    <string name="setup_accessibility_title">Accessibility service</string>
-    <string name="setup_accessibility_purpose">Call Answer uses an accessibility service to route the call audio so %1$s can hear the caller and speak into the call. It does not read your screen content.</string>
-    <string name="setup_accessibility_restricted_help">If the switch is greyed out, Android is blocking this app\'s restricted settings because it was installed from outside the Play Store. Open App info, tap the three-dot menu, choose Allow restricted settings, then come back and turn the service on under Accessibility.</string>
-    <string name="feature_call_audio">Call audio handling</string>
-    <string name="perm_accessibility">Accessibility service</string>
 
     <string name="setup_fsi_title">Full-screen alerts</string>
     <string name="setup_fsi_purpose">When a caller needs you, Call Answer shows its alert on top of the lock screen. On Android 14 and later this needs full-screen notification access.</string>
     <string name="feature_takeover_alert">Full-screen Take over alert</string>
     <string name="perm_fsi">Full-screen notifications</string>
+
+    <string name="setup_overlay_title">Display over other apps</string>
+    <string name="setup_overlay_purpose">This lets the Agent start when a call comes in. Android blocks apps that are not on screen from starting call handling, so Call Answer shows a small bar, \"Call Answer is handling this call\", while it answers and for as long as the call lasts. Some banking and UPI apps warn when another app is displayed over them; the bar disappears when the call ends.</string>
+    <string name="feature_overlay">Starting the Agent when a call comes in</string>
+    <string name="perm_overlay">Display over other apps</string>
 
     <string name="setup_battery_title">Battery: unrestricted</string>
     <string name="setup_battery_purpose">Android can stop background apps to save battery. Call Answer must keep running during a call, so it needs unrestricted battery use.</string>

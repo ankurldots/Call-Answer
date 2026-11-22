@@ -116,4 +116,16 @@ class BaseConversationEngineTest : FunSpec({
             t.state.phase shouldBe Phase.LISTENING
         }
     }
+
+    test("tick without audio for over 10 s ends the call as interrupted") {
+        val t = engine.reduce(ConversationState(phase = Phase.GREETING), ConversationEvent.Tick(20_000, 1_000, 10_500), ctx())
+        t.effects.filterIsInstance<Effect.EndCall>().single().reason shouldBe com.callanswer.core.model.EndReason.AUDIO_INTERRUPTED
+    }
+
+    test("tick that reports no audio count (capture unavailable) re-greets on the silence timer instead of interrupting") {
+        val long = FrozenSettings().silenceTimeoutSeconds * 1000L + 1
+        val t = engine.reduce(ConversationState(phase = Phase.GREETING), ConversationEvent.Tick(20_000, long, 0), ctx())
+        t.effects.filterIsInstance<Effect.EndCall>() shouldBe emptyList()
+        specs(t) shouldBe listOf(SpeechSpec.Greeting)
+    }
 })

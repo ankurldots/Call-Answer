@@ -18,7 +18,7 @@ fun interface AgentWindowGate {
  * - Speech outside Agent windows is reported through [onVoiceActivity] (the engine treats it as
  *   information only, never as an interrupt).
  * - [tick] builds the engine `Tick` with `silentForMs` and `noAudioForMs`. A frame of all zero samples
- *   counts as no audio (silenced capture).
+ *   counts as no audio; before the first non-zero frame `noAudioForMs` is 0.
  *
  * Not thread-safe: call from one coroutine.
  */
@@ -39,8 +39,12 @@ class SpeechSegmenter(
     private var lastSpeechMs = startMs
     private var lastAudioMs = startMs
 
+    /** True once a frame with a non-zero sample has been seen. Until then our own capture, not the call, is the suspect. */
+    var heardAudio = false
+        private set
+
     fun onFrame(frame: PcmFrame) {
-        if (frame.samples.any { it.toInt() != 0 }) lastAudioMs = frame.timestampMs
+        if (frame.samples.any { it.toInt() != 0 }) { lastAudioMs = frame.timestampMs; heardAudio = true }
         val buf = pending + frame.samples
         val baseMs = frame.timestampMs - pending.size / SAMPLES_PER_MS
         var pos = 0
@@ -62,7 +66,8 @@ class SpeechSegmenter(
     fun tick(nowMs: Long): ConversationEvent.Tick = ConversationEvent.Tick(
         atMs = nowMs,
         silentForMs = (nowMs - lastSpeechMs).coerceAtLeast(0),
-        noAudioForMs = (nowMs - lastAudioMs).coerceAtLeast(0),
+        // No audio ever delivered means our capture never worked: that is not a call interruption.
+        noAudioForMs = if (heardAudio) (nowMs - lastAudioMs).coerceAtLeast(0) else 0,
     )
 
     private fun process(chunk: ShortArray, startMs: Long, endMs: Long) {

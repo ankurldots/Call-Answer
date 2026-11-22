@@ -47,6 +47,13 @@ class NotificationCenter(private val context: Context) {
     private val manager: NotificationManager =
         context.getSystemService(NotificationManager::class.java)
 
+    /** Posts after making sure the channels exist (a missing channel silently drops the notification). */
+    private fun post(id: Int, n: Notification) {
+        createChannels()
+        manager.notify(id, n)
+    }
+
+    /** Idempotent: re-creating an existing channel keeps the user's settings for it. */
     fun createChannels() {
         val alertAudio = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
@@ -137,7 +144,7 @@ class NotificationCenter(private val context: Context) {
         alertBuilder(alertText(kind, callerNumber, extra)).build()
 
     fun postAlert(kind: AlertKind, callerNumber: String? = null, extra: String? = null) {
-        manager.notify(kind.notificationId, buildAlert(kind, callerNumber, extra))
+        post(kind.notificationId, buildAlert(kind, callerNumber, extra))
     }
 
     fun cancelAlert(kind: AlertKind) = manager.cancel(kind.notificationId)
@@ -176,7 +183,7 @@ class NotificationCenter(private val context: Context) {
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .addAction(0, context.getString(R.string.notif_action_report_spam), report)
             .build()
-        manager.notify(SPAM_NOTIFICATION_BASE + (entryId.hashCode() and 0xFFFF), n)
+        post(SPAM_NOTIFICATION_BASE + (entryId.hashCode() and 0xFFFF), n)
     }
 
     /** "Sent to 1909: <text>" after a silent spam report (14.16). Shows only the report text; it is never logged. */
@@ -199,14 +206,40 @@ class NotificationCenter(private val context: Context) {
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .build()
-        manager.notify(SPAM_REPORT_NOTIFICATION_BASE + (entryId.hashCode() and 0xFFFF), n)
+        post(SPAM_REPORT_NOTIFICATION_BASE + (entryId.hashCode() and 0xFFFF), n)
     }
 
     fun silentCaller(number: String) = postAlert(AlertKind.SILENT_CALLER, number)
     fun callNotLogged(number: String) = postAlert(AlertKind.CALL_NOT_LOGGED, number)
     fun recordingNotFound(number: String) = postAlert(AlertKind.RECORDING_NOT_FOUND, number)
     fun folderAccessLost() = postAlert(AlertKind.FOLDER_ACCESS_LOST)
-    fun captureSilenced() = postAlert(AlertKind.CAPTURE_SILENCED)
+    /**
+     * "Agent can't hear the caller - tap to take over", in the Takeover_Alert style: `takeover_alert` channel,
+     * tap opens the Live_Call_Screen, and a Take over action. Posted once per call by the capture owner.
+     */
+    fun captureSilenced() {
+        createChannels()
+        val agent = currentAgentName(context)
+        val text = context.getString(R.string.notif_capture_silenced_tap, agent)
+        val n = NotificationCompat.Builder(context, NotificationChannels.TAKEOVER_ALERT)
+            .setSmallIcon(com.callanswer.app.R.drawable.ic_stat_call)
+            .setContentTitle(context.getString(R.string.notif_capture_silenced_title, agent))
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(false)
+            .setContentIntent(liveCallPendingIntent())
+            .addAction(
+                0,
+                context.getString(R.string.call_action_take_over),
+                CallForegroundService.controlIntent(context, CallForegroundService.ACTION_TAKE_OVER, 15),
+            )
+            .build()
+        post(AlertKind.CAPTURE_SILENCED.notificationId, n)
+        com.callanswer.app.CallLog.i("posted capture-silenced take-over notification")
+    }
     fun permissionBanner(permissionName: String) = postAlert(AlertKind.PERMISSION_REQUIRED, extra = permissionName)
 
     companion object {

@@ -1,9 +1,12 @@
 package com.callanswer.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -57,7 +60,8 @@ private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
     val live by store.settings.collectAsState(initial = initial)
     val rows = remember { mutableStateListOf<DeliveryStep>().apply { addAll(initial.deliverySteps) } }
     var status by remember { mutableStateOf<StepsStatus?>(null) }
-    var sampleFailed by remember { mutableStateOf(false) }
+    var sampleFailure by remember { mutableStateOf(VoiceSamplePlayer.Failure.NONE) }
+    var samplePlaying by remember { mutableStateOf(false) }
     val sampler = remember { VoiceSamplePlayer(context) }
     DisposableEffect(sampler) { onDispose { sampler.release() } }
 
@@ -74,7 +78,7 @@ private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
                 row.textHi, { rows[i] = row.copy(textHi = it) }, stringResource(R.string.settings_quick_reply_hi),
                 singleLine = false,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
                 AppButton(
                     stringResource(R.string.settings_step_up), primary = false, enabled = i > 0,
                     contentDescription = stringResource(R.string.settings_step_up_cd, i + 1),
@@ -144,19 +148,45 @@ private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
         }
     })
 
-    Row(horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm), modifier = Modifier.fillMaxWidth()) {
         listOf(
             Language.EN to R.string.settings_steps_sample_en,
             Language.HI to R.string.settings_steps_sample_hi,
         ).forEach { (language, label) ->
-            AppButton(stringResource(label), primary = false, onClick = {
+            AppButton(stringResource(label), primary = false, enabled = !samplePlaying, modifier = Modifier.fillMaxWidth(), onClick = {
                 scope.launch {
                     val text = DeliveryStepsDraft.sampleText(rows.toList(), language, live.mapLocation)
-                    sampleFailed = text.isBlank() || !sampler.speak(text, language, live.voiceGender)
+                    Log.i("CallAnswer", "Directions playback requested lang=$language gender=${live.voiceGender} textLength=${text.length}")
+                    sampleFailure = VoiceSamplePlayer.Failure.NONE
+                    if (text.isBlank()) {
+                        Log.w("CallAnswer", "Directions playback fail: no text for $language")
+                        sampleFailure = VoiceSamplePlayer.Failure.NO_VOICE
+                        return@launch
+                    }
+                    samplePlaying = true
+                    try {
+                        val ok = sampler.speak(text, language, live.voiceGender)
+                        sampleFailure = if (ok) VoiceSamplePlayer.Failure.NONE else sampler.lastFailure
+                        Log.i("CallAnswer", "Directions playback ${if (ok) "done" else "fail"} lang=$language failure=${sampler.lastFailure}")
+                    } finally {
+                        samplePlaying = false
+                    }
                 }
             })
         }
     }
     Text(stringResource(R.string.settings_steps_sample_hint), style = MaterialTheme.typography.bodySmall)
-    if (sampleFailed) StatusBanner(stringResource(R.string.settings_voice_sample_failed), BannerSeverity.ERROR)
+    if (samplePlaying) StatusBanner(stringResource(R.string.settings_voice_sample_playing), BannerSeverity.INFO)
+    if (sampleFailure != VoiceSamplePlayer.Failure.NONE) {
+        StatusBanner(
+            stringResource(
+                when (sampleFailure) {
+                    VoiceSamplePlayer.Failure.HINDI_VOICE_DOWNLOADING -> R.string.settings_voice_sample_hindi_downloading
+                    VoiceSamplePlayer.Failure.PLAYBACK -> R.string.settings_voice_sample_playback_failed
+                    else -> R.string.settings_voice_sample_failed
+                },
+            ),
+            BannerSeverity.ERROR,
+        )
+    }
 }

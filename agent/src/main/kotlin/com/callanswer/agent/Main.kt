@@ -3,7 +3,15 @@ package com.callanswer.agent
 import com.callanswer.agent.api.COMPANION_API_HOST
 import com.callanswer.agent.api.JwtVerifier
 import com.callanswer.agent.api.RateLimiter
+import com.callanswer.agent.api.SettingsRouteDeps
 import com.callanswer.agent.api.companionApi
+import com.callanswer.agent.api.profileActiveCheck
+import com.callanswer.agent.api.settingsRoutes
+import com.callanswer.agent.store.AwsStores
+import com.callanswer.agent.store.DirectoryRepository
+import com.callanswer.agent.store.SettingsStore
+import com.callanswer.agent.store.UserScopedRepository
+import com.callanswer.core.tenant.UserId
 import io.ktor.http.ContentType
 import io.ktor.server.application.Application
 import io.ktor.server.engine.embeddedServer
@@ -30,7 +38,13 @@ fun main() {
             clientId = System.getenv("COGNITO_CLIENT_ID") ?: "",
             jwksSource = JwtVerifier.downloadJwks(),
         )
-        // isUserActive is replaced by the profile lookup when the stores exist (tasks 10.2/10.3).
-        companionApi(verifier, RateLimiter(), isUserActive = { true }, host = COMPANION_API_HOST) {}
+        val items = AwsStores.itemStore(config.region, config.tableName)
+        val blobs = AwsStores.blobStore(config.region, config.recordingsBucket)
+        val directory = DirectoryRepository(items)
+        val repoFor = { u: UserId -> UserScopedRepository(u, items, blobs) }
+        val deps = SettingsRouteDeps(repoFor, SettingsStore(items, directory), directory, SystemClock)
+        companionApi(verifier, RateLimiter(), isUserActive = profileActiveCheck(repoFor), host = COMPANION_API_HOST) {
+            settingsRoutes(deps)
+        }
     }) }.start(wait = true)
 }

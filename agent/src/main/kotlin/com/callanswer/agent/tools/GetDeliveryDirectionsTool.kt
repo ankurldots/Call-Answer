@@ -35,7 +35,7 @@ class GetDeliveryDirectionsTool(
 
     override suspend fun execute(args: JsonObject, callState: CallState): JsonObject {
         // Stalling_Mode never receives real gate, step, or location data.
-        if (callState.stallingMode) return ToolResults.rejected("NOT_AVAILABLE")
+        if (callState.stallingMode) return StallingResults.directions(callState, resolveLanguage(args))
 
         val used = callState.counters[COUNTER] ?: 0
         if (used > MAX_REPETITIONS) {

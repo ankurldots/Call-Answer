@@ -8,7 +8,14 @@ object RetentionPolicy {
 
     fun clampDays(days: Int): Int = days.coerceIn(MIN_DAYS, MAX_DAYS)
 
-    /** True when a record created at [createdAtEpochMs] is older than the retention period at [nowEpochMs]. */
+    /** True when start time plus the retention period is not after [nowEpochMs]. */
     fun isExpired(createdAtEpochMs: Long, nowEpochMs: Long, retentionDays: Int): Boolean =
-        nowEpochMs - createdAtEpochMs > clampDays(retentionDays) * DAY_MS
+        createdAtEpochMs + clampDays(retentionDays) * DAY_MS <= nowEpochMs
+
+    /** The latest start time (inclusive) of items that are expired at [nowEpochMs]. */
+    fun cutoffMs(nowEpochMs: Long, retentionDays: Int): Long = nowEpochMs - clampDays(retentionDays) * DAY_MS
+
+    /** Pure selection of the items whose start time plus retention is not after [nowEpochMs]. */
+    fun <T> select(items: Iterable<T>, nowEpochMs: Long, retentionDays: Int, startMs: (T) -> Long): List<T> =
+        items.filter { isExpired(startMs(it), nowEpochMs, retentionDays) }
 }

@@ -19,6 +19,8 @@ interface CallState {
     val stallingMode: Boolean
     var intent: IntentCategory?
     val counters: MutableMap<String, Int>
+    /** Call identifier; seeds the consistent fictitious identity in Stalling_Mode. */
+    val callId: String get() = userId
 }
 
 /** In-memory [CallState] used by the call session. */
@@ -29,6 +31,7 @@ class MutableCallState(
     override val stallingMode: Boolean = false,
     override var intent: IntentCategory? = null,
     override val counters: MutableMap<String, Int> = mutableMapOf(),
+    override val callId: String = userId,
 ) : CallState
 
 /** One Agent_Tool. Tools are plain classes; `ToolRegistry` registers them. */

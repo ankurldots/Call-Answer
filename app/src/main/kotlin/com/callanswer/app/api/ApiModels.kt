@@ -23,6 +23,9 @@ data class Profile(
 data class CallPage(val calls: List<CallLogEntry>, val nextCursor: String? = null)
 
 @Serializable
+internal data class ConsentBody(val version: String)
+
+@Serializable
 internal data class PutSettingsBody(val expectedVersion: Long, val settings: JsonObject)
 
 @Serializable

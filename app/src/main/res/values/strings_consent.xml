@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="consent_title">Privacy and consent</string>
+    <string name="consent_intro">Before the assistant can answer your calls, please read how your calls are handled.</string>
+    <string name="consent_point_region">Call audio is sent outside India. It is processed by Amazon Bedrock in AWS Tokyo (ap-northeast-1).</string>
+    <string name="consent_point_assistant">Callers are answered by an automated assistant, not by a person. By default it says so at the start of the call.</string>
+    <string name="consent_point_recording">Calls may be recorded. You can turn recording off in the agent settings.</string>
+    <string name="consent_point_retention">Call logs, transcripts, and recordings are deleted after %1$d days by default. You can set this from 1 to 365 days.</string>
+    <string name="consent_point_no_other">Call data goes only to Exotel, Amazon Bedrock, and this app\'s own storage. It is not used to train a model.</string>
+    <string name="consent_accept">I agree</string>
+    <string name="consent_accepted_status">You accepted this consent. The assistant can be turned on and the forwarding codes are available.</string>
+    <string name="consent_not_accepted_status">The assistant stays off and the forwarding codes stay hidden until you agree.</string>
+    <string name="consent_withdraw">Withdraw consent</string>
+    <string name="consent_withdraw_title">Withdraw consent?</string>
+    <string name="consent_withdraw_body">The assistant turns off and calls go to your fallback route within a minute. You can agree again later.</string>
+    <string name="consent_withdrawn_status">Consent withdrawn. The assistant is off.</string>
+    <string name="consent_loading">Checking your consent status\u2026</string>
+    <string name="consent_retry">Try again</string>
+    <string name="consent_err_network">Cannot reach the server. Check your connection and try again.</string>
+    <string name="consent_err_unauthorized">Your session has ended. Please sign in again.</string>
+    <string name="consent_err_other">The request failed. Please try again.</string>
+</resources>

@@ -249,7 +249,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Report Sonic start failures and stream errors as events to the caller
     - _Requirements: 4.4, 5.1, 5.4, 8.2, 15.6_
 
-  - [~] 5.6 Implement `SessionRenewer`
+  - [x] 5.6 Implement `SessionRenewer`
     - Open a replacement session at 80 percent of `sonic.maxSessionSeconds`, build history from the stored transcript, switch at a quiet moment or after 3 seconds, replay the 1-second Caller ring buffer once, close the old session, and use the same procedure for the idle limit and unexpected stream end
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.8_
 
@@ -316,7 +316,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 8: Streaming PII guard detects every protected term**
     - **Validates: Requirements 12.8, 12.9, 12.13**
 
-  - [~] 6.14 Implement `get_stalling_persona` and the Stalling_Mode results
+  - [x] 6.14 Implement `get_stalling_persona` and the Stalling_Mode results
     - In Stalling_Mode, `get_gate_info` and `get_delivery_directions` return fictitious values from `FictitiousGate` and `FictitiousReplyLibrary` and never real gates, Night_Window times, Map_Location, or Protected_Terms
     - Build the persona text with `core.stalling.PromptBuilder`
     - _Requirements: 9.9, 12.6, 12.12, 20.9_
@@ -399,7 +399,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 19: Cost estimate and monthly limit**
     - **Validates: Requirements 22.1, 22.4, 22.5, 1.5**
 
-  - [~] 9.6 Implement `RetentionPolicy` and `RetentionSweeper`
+  - [x] 9.6 Implement `RetentionPolicy` and `RetentionSweeper`
     - A pure selection of items whose start time plus retention is not after now; a sweeper that runs at start and every 6 hours, lists active Users from the `DirectoryRepository`, and for each User deletes that User's call items, trace items, and S3 objects under `users/<sub>/` with that User's retention, and retries on failure; immediate deletion of one call on request
     - _Requirements: 17.5, 17.6, 17.7, 28.7_
 
@@ -461,7 +461,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Serve the Companion_API on `api.leadingdots.com` with the base path `/api/v1`
     - _Requirements: 16.6, 16.7, 16.9, 28.2, 26.5_
 
-  - [~] 10.2 Implement the settings, consent, and device routes
+  - [x] 10.2 Implement the settings, consent, and device routes
     - `GET /me` (creates the profile on first use and returns the assigned number or null), `GET /settings` (`{version, settings}`), and `PUT /settings` with `expectedVersion` through `SettingsStore` (200, 400 with the field name, 409 with the stored document; answer within 3 seconds)
     - `POST` and `DELETE /consent`, and `PUT` and `DELETE /devices/{deviceId}` (up to 5 devices per User, oldest replaced)
     - _Requirements: 17.1, 17.3, 20.3, 20.4, 20.8, 26.1, 26.8, 27.2, 27.3, 27.4, 27.6, 30.1_
@@ -529,7 +529,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Declare all navigation destinations in one shared `Routes.kt` so that screen tasks do not edit the same file
     - _Requirements: 20.6, 16.6_
 
-  - [~] 12.4 Add the Privacy_Consent screen
+  - [x] 12.4 Add the Privacy_Consent screen
     - Show the consent text (processing outside India in the Agent_Region, recording, and retention) after first sign-in; keep the Agent off and the forwarding codes hidden until accepted; support withdrawal
     - _Requirements: 17.1, 17.2, 17.3_
 

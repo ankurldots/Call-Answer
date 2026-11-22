@@ -52,6 +52,14 @@ class CompanionApi(
 
     suspend fun deleteCall(id: String) { send("DELETE", "/calls/${enc(id)}") }
 
+    /** `POST /consent`: the server stores the acceptance with the version of the consent text and the time. */
+    suspend fun acceptConsent(version: String) {
+        send("POST", "/consent", CoreJson.encodeToString(ConsentBody.serializer(), ConsentBody(version)))
+    }
+
+    /** `DELETE /consent`: the server turns the Agent off and applies the Fallback_Route. */
+    suspend fun withdrawConsent() { send("DELETE", "/consent") }
+
     internal class Reply(val status: Int, val body: String, val retryAfterSec: Long? = null)
 
     internal suspend fun send(

@@ -59,5 +59,8 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
             CallDetailScreen(id, resumeTick, back)
         }
         composable(Routes.SETTINGS_SPAM) { SpamSettingsScreen(back) }
+        composable(Routes.CONSENT) {
+            ConsentScreen((LocalContext.current.applicationContext as CallAnswerApp).companionApi, back)
+        }
     }
 }

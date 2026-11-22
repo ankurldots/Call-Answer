@@ -52,6 +52,18 @@ class CompanionApi(
 
     suspend fun deleteCall(id: String) { send("DELETE", "/calls/${enc(id)}") }
 
+    /** `GET /calls/{id}/recording`. 404 ([ApiException.NotFound]) when the call has no recording. */
+    suspend fun recordingUrl(id: String): RecordingUrl =
+        decode(RecordingUrl.serializer(), send("GET", "/calls/${enc(id)}/recording"))
+
+    /** `GET /usage/month`. */
+    suspend fun usageMonth(): MonthUsage = decode(MonthUsage.serializer(), send("GET", "/usage/month"))
+
+    /** `POST /calls/{id}/report-status`: the server stores the spam report status of one call (204). */
+    suspend fun reportStatus(id: String, status: com.callanswer.core.model.ReportStatus) {
+        send("POST", "/calls/${enc(id)}/report-status", "{\"status\":\"${status.name}\"}")
+    }
+
     /** `POST /consent`: the server stores the acceptance with the version of the consent text and the time. */
     suspend fun acceptConsent(version: String) {
         send("POST", "/consent", CoreJson.encodeToString(ConsentBody.serializer(), ConsentBody(version)))

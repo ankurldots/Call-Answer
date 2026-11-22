@@ -53,7 +53,8 @@ sealed interface ReportUiState {
 /**
  * Runs the spam report flow (Requirement 14). Decisions come from [ReportFlowPolicy] and
  * [ReportStatusMachine]; this class loads the entry, applies the machine's action and writes the result with
- * [CallLogDao.casReport]. It has no network dependency, logs nothing and writes nothing to the Outbox (14.28).
+ * [CallLogDao.casReport]. The report message is never sent to the server; only the resulting status is synced through
+ * [syncStatus] (`POST /calls/{id}/report-status`), best effort. It logs nothing and writes nothing to the Outbox (14.28).
  */
 class SpamReporter(
     private val dao: CallLogDao,
@@ -66,6 +67,8 @@ class SpamReporter(
     private val newAttemptId: () -> String = { UUID.randomUUID().toString() },
     private val casRetries: Int = CAS_RETRIES,
     private val casRetryDelayMs: Long = CAS_RETRY_DELAY_MS,
+    /** Sends the new status to `POST /calls/{id}/report-status`. Best effort: a failure never changes the local result. */
+    private val syncStatus: suspend (entryId: String, status: ReportStatus) -> Unit = { _, _ -> },
 ) {
 
     private val locks = ConcurrentHashMap<String, Mutex>()
@@ -98,7 +101,10 @@ class SpamReporter(
             val applied = applyLocked(entryId, event) ?: return@withLock ReportUiState.Idle
             val (step, fresh) = applied
             when (val action = step.action) {
-                ReportAction.ShowCannotReport -> ReportUiState.CannotReport
+                ReportAction.ShowCannotReport -> {
+                    sync(entryId, step.info.status)
+                    ReportUiState.CannotReport
+                }
                 ReportAction.AskRepeatConfirmation ->
                     ReportUiState.AskRepeat(fresh.report.status, fresh.report.reportedAtEpochMs)
                 is ReportAction.ShowForConfirmation -> {
@@ -169,10 +175,21 @@ class SpamReporter(
         val event = if (handedOff) ReportEvent.HandedOff(clock.millis(), attemptId)
         else ReportEvent.NoMessagingApp(clock.millis(), attemptId)
         val applied = applyLocked(entryId, event) ?: return ReportUiState.Idle
+        sync(entryId, applied.first.info.status)
         return when (applied.first.action) {
             ReportAction.ShowNoMessagingApp -> ReportUiState.NoMessagingApp
             ReportAction.None -> if (handedOff) ReportUiState.HandedToMessagingApp else ReportUiState.Idle
             else -> ReportUiState.Idle
+        }
+    }
+
+    private suspend fun sync(entryId: String, status: ReportStatus) {
+        try {
+            syncStatus(entryId, status)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            // Offline or rejected: the local status stays; the report itself does not depend on the server.
         }
     }
 
@@ -237,8 +254,11 @@ class SpamReporter(
         const val CAS_RETRY_DELAY_MS = 300L
 
         /** Wires the Android collaborators. */
-        fun create(@Suppress("UNUSED_PARAMETER") context: Context, dao: CallLogDao, settings: SettingsStore, launcher: SmsIntentLauncher): SpamReporter =
+        fun create(@Suppress("UNUSED_PARAMETER") context: Context, dao: CallLogDao, settings: SettingsStore, launcher: SmsIntentLauncher,
+            syncStatus: suspend (String, ReportStatus) -> Unit = { _, _ -> },
+        ): SpamReporter =
             SpamReporter(
+                syncStatus = syncStatus,
                 dao = dao,
                 settings = settings,
                 launcher = launcher,

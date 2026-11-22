@@ -148,6 +148,17 @@ class SettingsRepositoryTest {
         assertEquals(0, fake.puts)
     }
 
+    @Test fun discardPendingDropsTheEditAndKeepsTheCache() = runBlocking {
+        fake.version = 1; fake.settings = obj("agentName" to "A")
+        repo.sync()
+        repo.saveEdit(obj("userMobile" to "bad"))
+        assertTrue(repo.sync() is SyncResult.Invalid)
+        repo.discardPending()
+        assertNull(repo.pendingEdit())
+        assertEquals(JsonPrimitive("A"), repo.effective()!!["agentName"])
+        assertNull(repo.effective()!!["userMobile"])
+    }
+
     @Test fun a409DuringPutIsRetriedWithTheReturnedDocument() = runBlocking {
         fake.version = 1; fake.settings = obj("agentName" to "A", "voiceId" to "kiara")
         repo.sync()

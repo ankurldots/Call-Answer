@@ -1,0 +1,33 @@
+<resources>
+    <string name="cost_row_estimate">Estimated cost %1$s</string>
+    <string name="cost_month_title">This month (estimate)</string>
+    <string name="cost_month_total">Estimated total for %1$s: %2$s</string>
+    <string name="cost_month_limit">Monthly limit ₹%1$d</string>
+    <string name="cost_month_unavailable">Month total unavailable</string>
+    <string name="cost_disclaimer">Estimates from configured rates. This is not a bill.</string>
+    <string name="cost_detail_title">Cost (estimate)</string>
+    <string name="cost_detail_value">Estimated cost: %1$s. This is not a bill.</string>
+    <string name="cost_detail_none">No cost estimate for this call yet.</string>
+    <string name="calllog_refresh_failed">Could not refresh from the server. Showing saved calls.</string>
+    <string name="latency_title">Latency report</string>
+    <string name="latency_ttfa">Time to first Agent audio: %1$s</string>
+    <string name="latency_median">Median reply time: %1$s</string>
+    <string name="latency_max">Slowest reply: %1$s</string>
+    <string name="latency_none">No latency figures for this call.</string>
+    <string name="trace_title">Call trace</string>
+    <string name="trace_line">%1$s  %2$s</string>
+    <string name="trace_detail">%1$s (%2$s)</string>
+    <string name="trace_sonic_start">Voice session started</string>
+    <string name="trace_sonic_end">Voice session ended</string>
+    <string name="trace_fallback">Fallback applied</string>
+    <string name="trace_takeover">Takeover</string>
+    <string name="trace_interruption">Audio interrupted</string>
+    <string name="trace_call_end">Call ended</string>
+    <string name="recording_title">Recording</string>
+    <string name="recording_play">Play recording</string>
+    <string name="recording_stop">Stop playback</string>
+    <string name="recording_loading">Preparing the recording</string>
+    <string name="recording_none">No recording is available for this call.</string>
+    <string name="recording_failed">The recording could not be played. Check your connection and try again.</string>
+    <string name="detail_delete_entry_body_cloud">The entry, its transcript, and its recording are deleted from the server.</string>
+</resources>

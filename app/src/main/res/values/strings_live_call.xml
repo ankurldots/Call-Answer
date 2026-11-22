@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="livecall_title">Live call</string>
+    <string name="livecall_number">Caller: %1$s</string>
+    <string name="livecall_intent">Intent: %1$s</string>
+    <string name="livecall_language">Language: %1$s</string>
+    <string name="livecall_elapsed">Elapsed: %1$s</string>
+    <string name="livecall_unknown">Unknown</string>
+    <string name="livecall_ended">This call has ended.</string>
+    <string name="livecall_reconnecting">Reconnecting to the live feed…</string>
+    <string name="livecall_take_over">Take over</string>
+    <string name="livecall_end_call">End call</string>
+    <string name="livecall_bridge_connecting">Connecting you to the caller…</string>
+    <string name="livecall_bridge_connected">Connected to the caller.</string>
+    <string name="livecall_bridge_failed">Could not connect you to the caller.</string>
+    <string name="livecall_quick_replies">Quick replies</string>
+    <string name="livecall_transcript">Live transcript</string>
+    <string name="livecall_transcript_empty">Nothing has been said yet.</string>
+    <string name="livecall_action_failed">The action failed. Check the connection and try again.</string>
+    <string name="livecall_end_confirm_title">End the call?</string>
+    <string name="livecall_end_confirm_body">The Agent says a short goodbye and ends the call.</string>
+</resources>

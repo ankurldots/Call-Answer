@@ -43,8 +43,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.callanswer.app.R
-import com.callanswer.app.data.SettingsStore
-import com.callanswer.app.data.UpdateResult
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppCard
 import com.callanswer.app.ui.components.AppSwitchRow
@@ -59,25 +57,31 @@ import com.callanswer.core.model.Settings
 import com.callanswer.core.model.VoiceGender
 import kotlinx.coroutines.launch
 
-/** Outcome of a save through [SettingsStore.update]. A rejection leaves the stored values unchanged. */
+/** Outcome of a save. A rejection leaves the saved values unchanged. */
 sealed interface SaveOutcome {
     data object Saved : SaveOutcome
+    /** Kept on the device; the Agent does not use it yet. */
+    data object NotYetApplied : SaveOutcome
+    /** Fields changed on both sides; the User chooses on [Routes.SETTINGS_CONFLICTS]. */
+    data object NeedsChoice : SaveOutcome
     data class Rejected(val fieldErrors: Map<SettingsField, String>) : SaveOutcome
+    /** The server rejected [field] (HTTP 400). */
+    data class ServerRejected(val field: String) : SaveOutcome
 }
 
-/** Validates the draft, then saves it against the latest stored settings. */
-suspend fun SettingsStore.commit(build: (Settings) -> DraftResult): SaveOutcome =
-    when (val draft = build(current())) {
+/** Validates the draft, then saves the changed fields against the latest settings and sends them. */
+suspend fun CloudSettingsState.commit(build: (Settings) -> DraftResult): SaveOutcome =
+    when (val draft = build(settings ?: Settings())) {
         is DraftResult.Invalid -> SaveOutcome.Rejected(draft.errors)
-        is DraftResult.Ok -> when (update(draft.settings)) {
-            UpdateResult.Saved -> SaveOutcome.Saved
-            is UpdateResult.Rejected -> SaveOutcome.Rejected(emptyMap())
-        }
+        is DraftResult.Ok -> save(draft.settings).toSaveOutcome()
     }
 
-/** Saves a toggle-style change. Returns false when the store rejected it. */
-private suspend fun SettingsStore.change(f: (Settings) -> Settings): Boolean =
-    update(f(current())) == UpdateResult.Saved
+internal fun EditOutcome.toSaveOutcome(): SaveOutcome = when (this) {
+    EditOutcome.Applied -> SaveOutcome.Saved
+    EditOutcome.NotYetApplied -> SaveOutcome.NotYetApplied
+    EditOutcome.NeedsChoice -> SaveOutcome.NeedsChoice
+    is EditOutcome.Rejected -> SaveOutcome.ServerRejected(field)
+}
 
 @Composable
 internal fun SettingsPage(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
@@ -98,20 +102,52 @@ internal fun SaveStatus(outcome: SaveOutcome?, failed: Boolean = false) {
     when {
         failed -> StatusBanner(stringResource(R.string.settings_save_failed), BannerSeverity.ERROR)
         outcome == SaveOutcome.Saved -> StatusBanner(stringResource(R.string.settings_saved))
+        outcome == SaveOutcome.NotYetApplied -> StatusBanner(stringResource(R.string.settings_not_applied), BannerSeverity.WARNING)
+        outcome == SaveOutcome.NeedsChoice -> StatusBanner(stringResource(R.string.settings_needs_choice), BannerSeverity.WARNING)
+        outcome is SaveOutcome.ServerRejected ->
+            StatusBanner(stringResource(R.string.settings_server_rejected, outcome.field), BannerSeverity.ERROR)
         outcome is SaveOutcome.Rejected -> StatusBanner(stringResource(R.string.settings_not_saved), BannerSeverity.ERROR)
     }
 }
 
-/** Loads the stored settings once for form drafts. */
+/** Shows that changes are not yet applied (with a retry) or that a conflict waits for the User's choice. */
 @Composable
-internal fun rememberInitialSettings(store: SettingsStore): Settings? =
-    produceState<Settings?>(null, store) { value = store.current() }.value
+internal fun SyncBanner(state: CloudSettingsState, onOpenConflicts: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    when {
+        state.needsChoice -> {
+            StatusBanner(stringResource(R.string.settings_needs_choice), BannerSeverity.WARNING)
+            AppButton(stringResource(R.string.settings_resolve), onClick = onOpenConflicts)
+        }
+        state.pending -> {
+            StatusBanner(stringResource(R.string.settings_not_applied), BannerSeverity.WARNING)
+            AppButton(stringResource(R.string.settings_send_now), primary = false, onClick = { scope.launch { state.refresh() } })
+        }
+    }
+}
+
+/** Runs [content] once the settings are read (from the server, or from the cache when offline). */
+@Composable
+internal fun CloudSettingsPage(
+    title: String,
+    state: CloudSettingsState,
+    onOpenConflicts: () -> Unit,
+    onBack: () -> Unit,
+    content: @Composable (Settings) -> Unit,
+) {
+    SettingsPage(title, onBack) {
+        SyncBanner(state, onOpenConflicts)
+        val s = state.settings
+        if (!state.loaded || s == null) Text(stringResource(R.string.settings_loading)) else content(s)
+    }
+}
 
 /** List of the settings sections. */
 @Composable
 fun SettingsHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     SettingsPage(stringResource(R.string.settings_title), onBack) {
         listOf(
+            Triple(Routes.SETTINGS_AGENT, R.string.settings_section_agent, Icons.Filled.Home),
             Triple(Routes.SETTINGS_GENERAL, R.string.settings_section_general, Icons.Filled.Settings),
             Triple(Routes.SETTINGS_GATES, R.string.settings_section_gates, Icons.Filled.Lock),
             Triple(Routes.SETTINGS_CALL, R.string.settings_section_call, Icons.Filled.Call),
@@ -134,27 +170,21 @@ fun SettingsHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     }
 }
 
-/** Screening, Location URL, Address, Transfer_Target, maximum stalling, protected terms, cloud LLM (1.7, 9.1, 9.4, 9.6, 13.x). */
+/** Location URL, Address, Transfer_Target, maximum stalling, protected terms, cloud LLM (1.7, 9.1, 9.4, 9.6, 13.x). */
 @Composable
-fun GeneralSettingsScreen(store: SettingsStore, onBack: () -> Unit) {
-    val initial = rememberInitialSettings(store)
-    SettingsPage(stringResource(R.string.settings_section_general), onBack) {
-        if (initial != null) GeneralForm(store, initial)
-    }
+fun GeneralSettingsScreen(state: CloudSettingsState, onOpenConflicts: () -> Unit, onBack: () -> Unit) {
+    CloudSettingsPage(stringResource(R.string.settings_section_general), state, onOpenConflicts, onBack) { GeneralForm(state, it) }
 }
 
 @Composable
-private fun GeneralForm(store: SettingsStore, initial: Settings) {
+private fun GeneralForm(store: CloudSettingsState, initial: Settings) {
     val scope = rememberCoroutineScope()
-    val live by store.settings.collectAsState(initial = initial)
+    val live = store.settings ?: initial
     var draft by remember { mutableStateOf(GeneralDraft.from(initial)) }
     var outcome by remember { mutableStateOf<SaveOutcome?>(null) }
     var toggleFailed by remember { mutableStateOf(false) }
     val errors = (outcome as? SaveOutcome.Rejected)?.fieldErrors.orEmpty()
 
-    AppSwitchRow(stringResource(R.string.settings_screening), live.screeningEnabled, {
-        scope.launch { toggleFailed = !store.change { s -> s.copy(screeningEnabled = it) } }
-    })
     AppTextField(
         draft.agentName, { draft = draft.copy(agentName = it) },
         stringResource(R.string.settings_agent_name),
@@ -202,15 +232,12 @@ private fun GeneralForm(store: SettingsStore, initial: Settings) {
 
 /** Gate_1, Gate_3 and the Night_Window (9.8, 9.9, 9.10). */
 @Composable
-fun GatesSettingsScreen(store: SettingsStore, onBack: () -> Unit) {
-    val initial = rememberInitialSettings(store)
-    SettingsPage(stringResource(R.string.settings_section_gates), onBack) {
-        if (initial != null) GatesForm(store, initial)
-    }
+fun GatesSettingsScreen(state: CloudSettingsState, onOpenConflicts: () -> Unit, onBack: () -> Unit) {
+    CloudSettingsPage(stringResource(R.string.settings_section_gates), state, onOpenConflicts, onBack) { GatesForm(state, it) }
 }
 
 @Composable
-private fun GatesForm(store: SettingsStore, initial: Settings) {
+private fun GatesForm(store: CloudSettingsState, initial: Settings) {
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf(GatesDraft.from(initial)) }
     var outcome by remember { mutableStateOf<SaveOutcome?>(null) }
@@ -271,24 +298,21 @@ private fun GatesForm(store: SettingsStore, initial: Settings) {
 
 /** Disclosure, voice and the quick replies editor (9.14, 9.15, 9.25, 13.3, 13.13). */
 @Composable
-fun CallSettingsScreen(store: SettingsStore, onBack: () -> Unit) {
-    val initial = rememberInitialSettings(store)
-    SettingsPage(stringResource(R.string.settings_section_call), onBack) {
-        if (initial != null) CallForm(store, initial)
-    }
+fun CallSettingsScreen(state: CloudSettingsState, onOpenConflicts: () -> Unit, onBack: () -> Unit) {
+    CloudSettingsPage(stringResource(R.string.settings_section_call), state, onOpenConflicts, onBack) { CallForm(state, it) }
 }
 
 @Composable
-private fun CallForm(store: SettingsStore, initial: Settings) {
+private fun CallForm(store: CloudSettingsState, initial: Settings) {
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val live by store.settings.collectAsState(initial = initial)
+    val live = store.settings ?: initial
     var toggleFailed by remember { mutableStateOf(false) }
 
     AppSwitchRow(stringResource(R.string.settings_disclosure), live.disclosureEnabled, {
         scope.launch { toggleFailed = !store.change { s -> s.copy(disclosureEnabled = it) } }
     })
     Text(stringResource(R.string.settings_disclosure_hint), style = MaterialTheme.typography.bodySmall)
+    if (disclosureOffWarning(live)) StatusBanner(stringResource(R.string.settings_disclosure_off_warning), BannerSeverity.WARNING)
 
     Text(
         stringResource(R.string.settings_voice),
@@ -305,6 +329,16 @@ private fun CallForm(store: SettingsStore, initial: Settings) {
             scope.launch { toggleFailed = !store.change { s -> s.copy(voiceGender = gender) } }
         },
     )
+    Text(stringResource(R.string.settings_voice_id), style = MaterialTheme.typography.bodyMedium)
+    val defaultVoice = stringResource(R.string.settings_voice_default)
+    ChipRow(
+        labels = listOf(defaultVoice) + VOICE_IDS,
+        selected = setOf(live.voiceId ?: defaultVoice),
+        onChipClick = { label ->
+            val id = if (label == defaultVoice) null else label
+            scope.launch { toggleFailed = !store.change { s -> s.copy(voiceId = id) } }
+        },
+    )
     Text(stringResource(R.string.settings_voice_hint), style = MaterialTheme.typography.bodySmall)
     SaveStatus(null, toggleFailed)
 
@@ -312,7 +346,7 @@ private fun CallForm(store: SettingsStore, initial: Settings) {
 }
 
 @Composable
-private fun QuickRepliesEditor(store: SettingsStore, initial: Settings) {
+private fun QuickRepliesEditor(store: CloudSettingsState, initial: Settings) {
     val scope = rememberCoroutineScope()
     val rows = remember { mutableStateListOf<QuickReply>().apply { addAll(initial.quickReplies) } }
     var outcome by remember { mutableStateOf<SaveOutcome?>(null) }

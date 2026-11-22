@@ -9,7 +9,6 @@ import androidx.compose.material3.Text
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,8 +21,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.callanswer.app.R
-import com.callanswer.app.data.SettingsStore
-import com.callanswer.app.data.UpdateResult
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppCard
 import com.callanswer.app.ui.components.AppTextField
@@ -39,24 +36,23 @@ import java.util.UUID
 
 /** Delivery_Steps editor: add, edit, delete, reorder, reset, and full-directions sample (9.16 to 9.22). */
 @Composable
-fun DeliveryStepsScreen(store: SettingsStore, onBack: () -> Unit) {
-    val initial = rememberInitialSettings(store)
-    SettingsPage(stringResource(R.string.settings_section_steps), onBack) {
-        if (initial != null) DeliveryStepsForm(store, initial)
+fun DeliveryStepsScreen(state: CloudSettingsState, onOpenConflicts: () -> Unit, onBack: () -> Unit) {
+    CloudSettingsPage(stringResource(R.string.settings_section_steps), state, onOpenConflicts, onBack) {
+        DeliveryStepsForm(state, it)
     }
 }
 
 private sealed interface StepsStatus {
     data class Saved(val warnings: List<String>) : StepsStatus
     data class Invalid(val message: String) : StepsStatus
-    data object StoreRejected : StepsStatus
+    data object NotYetApplied : StepsStatus
+    data object NeedsChoice : StepsStatus
+    data class ServerRejected(val field: String) : StepsStatus
 }
 
 @Composable
-private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
+private fun DeliveryStepsForm(store: CloudSettingsState, initial: Settings) {
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val live by store.settings.collectAsState(initial = initial)
     val rows = remember { mutableStateListOf<DeliveryStep>().apply { addAll(initial.deliverySteps) } }
     var status by remember { mutableStateOf<StepsStatus?>(null) }
     Text(stringResource(R.string.settings_steps_hint), style = MaterialTheme.typography.bodyMedium)
@@ -101,44 +97,44 @@ private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
             s.warnings.forEach { StatusBanner(it, BannerSeverity.WARNING) }
         }
         is StepsStatus.Invalid -> StatusBanner(s.message, BannerSeverity.ERROR)
-        StepsStatus.StoreRejected -> StatusBanner(stringResource(R.string.settings_save_failed), BannerSeverity.ERROR)
+        StepsStatus.NotYetApplied -> StatusBanner(stringResource(R.string.settings_not_applied), BannerSeverity.WARNING)
+        StepsStatus.NeedsChoice -> StatusBanner(stringResource(R.string.settings_needs_choice), BannerSeverity.WARNING)
+        is StepsStatus.ServerRejected ->
+            StatusBanner(stringResource(R.string.settings_server_rejected, s.field), BannerSeverity.ERROR)
         null -> Unit
     }
 
     val missingFormat = stringResource(R.string.settings_step_missing_language)
     AppButton(stringResource(R.string.settings_save), onClick = {
         scope.launch {
-            val base = store.current()
+            val base = store.settings ?: initial
             status = when (val r = DeliveryStepsDraft.applyTo(base, rows.toList())) {
                 is DeliveryStepsDraft.Result.Invalid -> StepsStatus.Invalid(r.message)
-                is DeliveryStepsDraft.Result.Ok -> when (store.update(r.settings)) {
-                    UpdateResult.Saved -> {
-                        val order = rows.map { it.id }
-                        StepsStatus.Saved(
-                            r.warnings.map { w ->
-                                String.format(
-                                    missingFormat,
-                                    order.indexOf(w.stepId) + 1,
-                                    DeliveryStepsDraft.languageName(w.missing),
-                                )
-                            },
-                        )
+                is DeliveryStepsDraft.Result.Ok -> {
+                    val order = rows.map { it.id }
+                    val warnings = r.warnings.map { w ->
+                        String.format(missingFormat, order.indexOf(w.stepId) + 1, DeliveryStepsDraft.languageName(w.missing))
                     }
-                    is UpdateResult.Rejected -> StepsStatus.StoreRejected
+                    store.save(r.settings).toStepsStatus(warnings)
                 }
             }
         }
     })
     AppButton(stringResource(R.string.settings_steps_reset), primary = false, onClick = {
         scope.launch {
-            val result = store.update(store.current().copy(deliverySteps = DefaultDeliverySteps))
-            if (result == UpdateResult.Saved) {
+            val result = store.save((store.settings ?: initial).copy(deliverySteps = DefaultDeliverySteps))
+            if (result !is EditOutcome.Rejected) {
                 rows.clear()
                 rows.addAll(DefaultDeliverySteps)
-                status = StepsStatus.Saved(emptyList())
-            } else {
-                status = StepsStatus.StoreRejected
             }
+            status = result.toStepsStatus(emptyList())
         }
     })
+}
+
+private fun EditOutcome.toStepsStatus(warnings: List<String>): StepsStatus = when (this) {
+    EditOutcome.Applied -> StepsStatus.Saved(warnings)
+    EditOutcome.NotYetApplied -> StepsStatus.NotYetApplied
+    EditOutcome.NeedsChoice -> StepsStatus.NeedsChoice
+    is EditOutcome.Rejected -> StepsStatus.ServerRejected(field)
 }

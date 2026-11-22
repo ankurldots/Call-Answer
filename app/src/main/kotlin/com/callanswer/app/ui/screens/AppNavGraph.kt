@@ -6,7 +6,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import com.callanswer.app.CallAnswerApp
-import com.callanswer.app.data.SettingsStore
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -19,8 +18,6 @@ import androidx.navigation.compose.rememberNavController
 fun AppNavGraph(model: SetupModel, resumeTick: Int) {
     val navController = rememberNavController()
     val actions = rememberSetupActions(model)
-    // One process-wide store, shared with the services.
-    val store = SettingsStore.create(LocalContext.current)
     val auth = (LocalContext.current.applicationContext as CallAnswerApp).authRepository
     val authState by auth.state.collectAsState()
     LaunchedEffect(resumeTick, authState) { model.refresh() }
@@ -44,13 +41,21 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
         }
         val back: () -> Unit = { navController.popBackStack() }
         composable(Routes.SETTINGS) { SettingsHubScreen(onOpen = { navController.navigate(it) }, onBack = back) }
-        composable(Routes.SETTINGS_GENERAL) { GeneralSettingsScreen(store, back) }
-        composable(Routes.SETTINGS_GATES) { GatesSettingsScreen(store, back) }
-        composable(Routes.SETTINGS_CALL) { CallSettingsScreen(store, back) }
+        val openConflicts: () -> Unit = { navController.navigate(Routes.SETTINGS_CONFLICTS) }
+        composable(Routes.SETTINGS_GENERAL) { GeneralSettingsScreen(rememberCloudSettings(), openConflicts, back) }
+        composable(Routes.SETTINGS_GATES) { GatesSettingsScreen(rememberCloudSettings(), openConflicts, back) }
+        composable(Routes.SETTINGS_CALL) { CallSettingsScreen(rememberCloudSettings(), openConflicts, back) }
+        composable(Routes.SETTINGS_AGENT) {
+            AgentSettingsScreen(
+                (LocalContext.current.applicationContext as CallAnswerApp).companionApi, rememberCloudSettings(),
+                onOpenConsent = { navController.navigate(Routes.CONSENT) }, onOpenConflicts = openConflicts, onBack = back,
+            )
+        }
+        composable(Routes.SETTINGS_CONFLICTS) { SettingsConflictsScreen(rememberCloudSettings(), back) }
         composable(Routes.SETTINGS_ACCOUNT) {
             AccountScreen((LocalContext.current.applicationContext as CallAnswerApp).authRepository, back)
         }
-        composable(Routes.SETTINGS_STEPS) { DeliveryStepsScreen(store, back) }
+        composable(Routes.SETTINGS_STEPS) { DeliveryStepsScreen(rememberCloudSettings(), openConflicts, back) }
         composable(Routes.CALL_LOG) {
             CallLogScreen(resumeTick, onOpenEntry = { navController.navigate(Routes.callDetail(it)) }, onBack = back)
         }
@@ -78,6 +83,9 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
                 (LocalContext.current.applicationContext as CallAnswerApp).companionApi, back,
                 onOpenConsent = { navController.navigate(Routes.CONSENT) },
             )
+        }
+        composable(Routes.LIVE_CALL) { entry ->
+            LiveCallScreen(entry.arguments?.getString("callId").orEmpty(), back)
         }
         composable(Routes.CONSENT) {
             ConsentScreen((LocalContext.current.applicationContext as CallAnswerApp).companionApi, back)

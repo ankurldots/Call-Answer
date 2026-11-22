@@ -40,6 +40,7 @@ class CallAnswerApp : Application() {
             dao = database.callLogDao(),
             settings = settingsStore,
             launcher = AndroidSmsIntentLauncher(this),
+            syncStatus = { id, status -> companionApi.reportStatus(id, status) },
         )
     }
     override fun onCreate() {

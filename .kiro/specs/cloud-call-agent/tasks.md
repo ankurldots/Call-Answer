@@ -548,20 +548,20 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Add `google-services.json` from task 0.3 to the app project and to `.gitignore`
     - _Requirements: 11.2, 11.4, 19.8_
 
-  - [-] 12.8 Add the live call screen
+  - [x] 12.8 Add the live call screen
     - Full-screen screen with the Caller number, intent, language, elapsed time, live transcript from `/live`, "Take over", "End call", Quick_Replies, and bridge status; show an ended call as ended and disable Take over
     - _Requirements: 19.1, 19.9, 11.4_
 
-  - [-] 12.9 Add the settings sync
+  - [x] 12.9 Add the settings sync
     - Settings fields of Requirement 20 (including the User_Mobile for Take_Over, voice choice `kiara` or `arjun` with `tiffany` and `matthew` as alternatives, retention, Disclosure_Setting warning, cost rates, and monthly limit), validated with `SettingsValidator` and saved with `PUT /settings` and `expectedVersion`
     - Offline and conflict handling: keep the cache and the pending edit, send on reconnect when the versions match, otherwise run `SettingsMerge.threeWay`, show a per-field choice for fields changed on both sides, and retry with the stored version (at most 3 attempts); replace the cache with every document received from the server
     - _Requirements: 6.4, 7.6, 20.1, 20.3, 20.4, 20.6, 27.8, 27.9, 27.10, 27.11_
 
-  - [-] 12.10 Add the call detail and cost screens
+  - [x] 12.10 Add the call detail and cost screens
     - Latency report, trace events, transcript, cost labeled as an estimate, month total, and recording playback through the presigned URL; show a finished call in the list within 10 seconds
     - _Requirements: 18.7, 19.10, 22.4, 22.7, 23.2_
 
-  - [-] 12.11 Keep the spam report flow
+  - [x] 12.11 Keep the spam report flow
     - Verify that `core.report.SpamReportBuilder` and the report status flow still work against the new call log (report status through `POST /calls/{id}/report-status`)
     - _Requirements: 21.10_
 

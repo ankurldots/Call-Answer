@@ -58,3 +58,11 @@ sealed class ApiException(message: String, cause: Throwable? = null) : Exception
     class Client(val status: Int, val field: String? = null) : ApiException("client error $status")
     class Server(val status: Int) : ApiException("server error $status")
 }
+
+/** `GET /calls/{id}/recording`: a temporary https URL that expires within 15 minutes. */
+@Serializable
+data class RecordingUrl(val url: String, val expiresInSeconds: Long)
+
+/** `GET /usage/month`: the Cost_Estimate total of the current month in paise and the limit in INR (null when unset). */
+@Serializable
+data class MonthUsage(val month: String, val totalPaise: Long, val monthlyLimitInr: Long? = null)

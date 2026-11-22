@@ -119,6 +119,8 @@ fun CallDetailScreen(entryId: String, resumeTick: Int, onBack: () -> Unit) {
                     ),
                 )
             }
+            CostLatencyTrace(e)
+            RecordingSection(e.id, e.recordingKey != null)
             Section(stringResource(R.string.detail_transcript))
             if (e.transcript.isEmpty()) Text(stringResource(R.string.detail_transcript_empty))
             e.transcript.forEach { u -> TranscriptBubble(u.speaker.bubble(), u.text) }
@@ -138,16 +140,52 @@ fun CallDetailScreen(entryId: String, resumeTick: Int, onBack: () -> Unit) {
             onConfirm = {
                 confirmEntryDelete = false
                 scope.launch {
-                    if (dao.deleteById(current.id) > 0) {
+                    // Server first: it also removes the recording and trace (Requirement 17 criterion 7).
+                    try {
+                        context.callAnswerApp().callLogRepository.delete(current.id)
                         entry = null
                         onBack()
-                    } else {
+                    } catch (e: com.callanswer.app.api.ApiException) {
                         error = R.string.detail_delete_entry_failed
                     }
                 }
             },
             onDismiss = { confirmEntryDelete = false },
-        ) { Text(stringResource(R.string.detail_delete_entry_body)) }
+        ) { Text(stringResource(R.string.detail_delete_entry_body_cloud)) }
+    }
+}
+
+/** Cost labeled as an estimate (22.7), latency report and trace events (23.6). */
+@Composable
+private fun CostLatencyTrace(e: CallLogEntry) {
+    Section(stringResource(R.string.cost_detail_title))
+    Text(
+        e.costEstimatePaise?.let { stringResource(R.string.cost_detail_value, CallDetailFormat.inr(it)) }
+            ?: stringResource(R.string.cost_detail_none),
+    )
+    Section(stringResource(R.string.latency_title))
+    val l = e.latency
+    if (l == null || (l.ttfaMs == null && l.medianReplyMs == null && l.maxReplyMs == null)) {
+        Text(stringResource(R.string.latency_none))
+    } else {
+        l.ttfaMs?.let { Text(stringResource(R.string.latency_ttfa, CallDetailFormat.seconds(it))) }
+        l.medianReplyMs?.let { Text(stringResource(R.string.latency_median, CallDetailFormat.seconds(it))) }
+        l.maxReplyMs?.let { Text(stringResource(R.string.latency_max, CallDetailFormat.seconds(it))) }
+    }
+    Section(stringResource(R.string.trace_title))
+    CallDetailFormat.timeline(e).forEach { ev ->
+        val name = stringResource(
+            when (ev.kind) {
+                TimelineEvent.Kind.SONIC_START -> R.string.trace_sonic_start
+                TimelineEvent.Kind.SONIC_END -> R.string.trace_sonic_end
+                TimelineEvent.Kind.FALLBACK -> R.string.trace_fallback
+                TimelineEvent.Kind.TAKEOVER -> R.string.trace_takeover
+                TimelineEvent.Kind.INTERRUPTION -> R.string.trace_interruption
+                TimelineEvent.Kind.CALL_END -> R.string.trace_call_end
+            },
+        )
+        val text = ev.detail?.let { stringResource(R.string.trace_detail, name, it) } ?: name
+        Text(stringResource(R.string.trace_line, CallDetailFormat.seconds(ev.tMs), text))
     }
 }
 

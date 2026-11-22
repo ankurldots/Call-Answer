@@ -59,6 +59,9 @@ class SettingsRepository(
         JsonObject(LinkedHashMap(doc).apply { putAll(edits) })
     }
 
+    /** Drops the pending edit (for example after the server rejected a field). The cache is not changed. */
+    suspend fun discardPending() = lock.withLock { outbox.deleteKind(OutboxKinds.SETTINGS_EDIT); Unit }
+
     /**
      * Records [changed] fields as the pending edit. A later edit joins the pending one; the first base version and the
      * first base values stay, so the merge still compares with the document the User started from.

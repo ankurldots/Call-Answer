@@ -35,6 +35,11 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.callanswer.app.CallAnswerApp
 import com.callanswer.app.R
+import com.callanswer.app.api.ApiException
+import com.callanswer.app.api.MonthUsage
+import com.callanswer.app.ui.components.BannerSeverity
+import com.callanswer.app.ui.components.StatusBanner
+import kotlinx.coroutines.delay
 import com.callanswer.app.report.ReportSpamActivity
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppCard
@@ -72,10 +77,28 @@ fun CallLogScreen(resumeTick: Int, onOpenEntry: (String) -> Unit, onBack: () -> 
     val context = LocalContext.current
     val dao = remember { context.callAnswerApp().database.callLogDao() }
     var entries by remember { mutableStateOf<List<CallLogEntry>?>(null) }
-    LaunchedEffect(resumeTick) { entries = CallLogFormat.newestFirst(dao.list()) }
+    var usage by remember { mutableStateOf<MonthUsage?>(null) }
+    var refreshFailed by remember { mutableStateOf(false) }
+    // Show the cache at once, then read the server every POLL_MS so a finished call is listed within 10 seconds (Requirement 19 criterion 10).
+    LaunchedEffect(resumeTick) {
+        entries = CallLogFormat.newestFirst(dao.list())
+        val app = context.callAnswerApp()
+        while (true) {
+            try {
+                entries = CallLogFormat.newestFirst(app.callLogRepository.refresh())
+                refreshFailed = false
+            } catch (e: ApiException) {
+                refreshFailed = true
+            }
+            try { usage = app.companionApi.usageMonth() } catch (e: ApiException) { /* keep the last total */ }
+            delay(POLL_MS)
+        }
+    }
 
     Column(Modifier.fillMaxSize().padding(AppDimens.spaceMd), verticalArrangement = Arrangement.spacedBy(AppDimens.spaceMd)) {
         ScreenHeader(stringResource(R.string.calllog_title), onBack)
+        MonthCostCard(usage)
+        if (refreshFailed) StatusBanner(stringResource(R.string.calllog_refresh_failed), BannerSeverity.WARNING)
         val list = entries
         when {
             list == null -> {
@@ -106,6 +129,30 @@ fun CallLogScreen(resumeTick: Int, onOpenEntry: (String) -> Unit, onBack: () -> 
         }
     }
 }
+private const val POLL_MS = 5_000L
+
+/** Month total in INR, labeled as an estimate (22.2, 22.7). */
+@Composable
+private fun MonthCostCard(usage: MonthUsage?) {
+    AppCard(contentDescription = stringResource(R.string.cost_month_title)) {
+        Text(stringResource(R.string.cost_month_title), style = MaterialTheme.typography.titleSmall)
+        if (usage == null) {
+            Text(stringResource(R.string.cost_month_unavailable))
+        } else {
+            Text(
+                stringResource(R.string.cost_month_total, usage.month, CallDetailFormat.inr(usage.totalPaise)),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            usage.monthlyLimitInr?.let { Text(stringResource(R.string.cost_month_limit, it)) }
+        }
+        Text(
+            stringResource(R.string.cost_disclaimer),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 private fun CallLogRow(entry: CallLogEntry, onOpen: () -> Unit, onReport: () -> Unit) {
     val number = entry.callerNumber ?: stringResource(R.string.calllog_unknown_number)
@@ -127,6 +174,9 @@ private fun CallLogRow(entry: CallLogEntry, onOpen: () -> Unit, onReport: () -> 
         ) {
             AssistChip(onClick = {}, label = { Text(CallLogFormat.label(entry.outcome)) })
             AssistChip(onClick = {}, label = { Text(stringResource(R.string.calllog_report_chip, status)) })
+            entry.costEstimatePaise?.let {
+                AssistChip(onClick = {}, label = { Text(stringResource(R.string.cost_row_estimate, CallDetailFormat.inr(it))) })
+            }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
             AppButton(stringResource(R.string.calllog_details), onClick = onOpen, primary = false)

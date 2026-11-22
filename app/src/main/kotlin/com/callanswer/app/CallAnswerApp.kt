@@ -50,6 +50,8 @@ class CallAnswerApp : Application() {
         super.onCreate()
         com.callanswer.app.service.NotificationCenter(this).createChannels()
         spamReporter.register()
+        // Accessibility must be on only during a call: switch it off if a crash or reboot left it on.
+        com.callanswer.app.a11y.A11yToggle.startupCheck(this, "app start")
         Log.i("CallAnswer", "Auth configured=${authConfig.isConfigured}")
         if (authConfig.isConfigured) {
             appScope.launch { authRepository.state.collect { Log.i("CallAnswer", "Auth state: ${if (it is AuthState.SignedIn) "SignedIn" else "SignedOut"}") } }

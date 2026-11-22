@@ -88,6 +88,41 @@ This run tests it on the M34 anyway.
 6. Pass: any source with rms clearly above 0 and `isClientSilenced=false` during the call.
 7. Restore afterwards: Settings > Apps > Default apps > Digital assistant app, choose Google (or Gemini).
 
+## S2c: accessibility only during the call
+Question: if the app turns its own accessibility service on at answer and off at call end, does the service-owned
+`AudioRecord` capture the Caller (speakerphone on)? UPI apps refuse to run while any accessibility service is on, so
+the service must be off outside calls. Earlier: plain FGS and assistant-role capture were silenced in-call.
+
+1. Grant once, phone connected over USB:
+   `adb shell pm grant com.callanswer.spike android.permission.WRITE_SECURE_SETTINGS`
+   (the S2c screen has a **Copy adb grant command** button). Undo with `pm revoke` on the same permission.
+2. Main menu: set the S1 mode to `AUTO_ANSWER_ONLY` and make sure the spike holds the call screening role
+   (`OK call screening role`). Grant runtime permissions (RECORD_AUDIO, READ_PHONE_STATE).
+3. Before the call: open the UPI app and confirm it works (accessibility service is off). Open **S2c** and check
+   `our accessibility service enabled now: NO`.
+4. On S2c choose the source (default VOICE_RECOGNITION; ALL runs VOICE_RECOGNITION, MIC, UNPROCESSED,
+   VOICE_COMMUNICATION, 10 s each) and tap **Arm S2c**.
+5. Call the M34 from the second phone, keep the **loudspeaker** on that phone, and speak for 40 s. The app answers,
+   enables accessibility on OFFHOOK, waits for onServiceConnected, turns the M34 speakerphone on and captures.
+   The first source may start about 2 to 3 s into the call.
+6. End the call. Tap **Export log**. Look for the lines tagged `S2c`: `accessibility ENABLED reason=...`,
+   `enable-to-onServiceConnected latency=... ms`, `accessibility DISABLED reason="call IDLE"`,
+   `accessibility disabled after call`. Capture lines are tagged `A11Y/<source>` (`isClientSilenced`, `rmsFirst2s`,
+   `perSecondRms`, `audioMode`, `speakerphone`). WAVs are in the `s2` folder.
+7. After the call: S2c must show `our accessibility service enabled now: NO`, and the UPI app must open.
+   Safety nets: the service is also switched off on app start, on boot, when the call goes IDLE, and after 10 minutes.
+   Use **Disarm and force accessibility OFF** if anything looks stuck.
+8. If the log says `service NOT bound within 5 s` (Samsung restricted settings for sideloaded apps): tap
+   **Open App info**, menu (three dots) > **Allow restricted settings**, then arm and repeat.
+9. Pass: a source with rms clearly above 0 and `isClientSilenced=false` during the call, and accessibility OFF
+   afterwards (UPI app opens). Report the enable-to-connected latency as well.
+
+> **Result: S2c passed** on the Galaxy M34 5G (Wi-Fi calling, `MODE_IN_COMMUNICATION`). Accessibility enabled via
+> `Settings.Secure` at OFFHOOK, `onServiceConnected` after 409 ms, `VOICE_RECOGNITION` owned by the accessibility
+> service captured the Caller (rms 1512, -26.7 dBFS, peak 15880); every non-accessibility path returned rms 0.
+> Accessibility was off again after the call. The approach is ported to `:app` (task 25.1, design.md
+> "Decision: accessibility only during calls").
+
 ## S3: Agent speech audible to the Caller, and speaker route
 1. Set the S1 mode to `AUTO_ANSWER_ONLY` (or `OFF`). Open **S3**; the banner should be green.
 2. Call the M34 from the second phone and answer it (on loudspeaker) so a call is active.

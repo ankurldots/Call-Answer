@@ -6,6 +6,7 @@ import android.util.Log
 import com.callanswer.app.asr.SpeechRecognizerPort
 import com.callanswer.app.asr.createSpeechRecognizer
 import com.callanswer.app.CallLog
+import com.callanswer.app.a11y.A11yToggle
 import com.callanswer.app.audio.AndroidAudioRouteController
 import com.callanswer.app.audio.AudioRecordCallAudioCapture
 import com.callanswer.app.audio.AudioRouteController
@@ -136,6 +137,10 @@ class CallPipeline(
         // The route set before the answer can be reset by the telephony stack: apply it again now.
         if (active) routeAudio()
         waitUntil(ROUTE_WAIT_MS) { routeApplied }
+        if (A11yToggle.enabledByApp) {
+            val bound = A11yToggle.awaitConnected(A11yToggle.CONNECT_WAIT_MS)
+            CallLog.i("capture gate: accessibility service connected=$bound")
+        }
         val micType = waitUntil(MIC_TYPE_WAIT_MS) { CallForegroundService.micTypeActive }
         CallLog.i("capture gate: micTypeActive=$micType, starting capture")
         val capture = runCatching {

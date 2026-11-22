@@ -16,6 +16,15 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.withContext
 
+/** Decides whether a freshly created track must be rejected because it disturbed the audio mode. */
+object AudioModeGuard {
+    /**
+     * True only when the mode actually changed as a result of creating the track. A mode that was already
+     * IN_COMMUNICATION (or anything else) before is never wrong by itself. Unknown modes (null) never reject.
+     */
+    fun rejects(before: Int?, after: Int?): Boolean = before != null && after != null && before != after
+}
+
 /** Plays Agent PCM. `stop()` must take effect within 500 ms. */
 interface AgentAudioPlayer {
     suspend fun play(pcm: ShortArray, rate: Int, id: String)
@@ -35,8 +44,10 @@ class AgentAudioPlayerImpl(
         AudioAttributes.USAGE_ASSISTANT,
         AudioAttributes.USAGE_MEDIA,
     ),
-    /** When set, USAGE_VOICE_COMMUNICATION is kept only if the audio mode is MODE_IN_CALL after the track exists. */
+    /** When set, a usage is rejected only if creating its track changed the audio mode (see [AudioModeGuard]). */
     private val audioManager: AudioManager? = null,
+    /** When set, overrides [usages] on every track creation (debug A/B setting). */
+    private val usagesProvider: (() -> List<Int>)? = null,
 ) : AgentAudioPlayer {
     private val _windows = MutableSharedFlow<AgentWindow>(extraBufferCapacity = 64)
     val windows: SharedFlow<AgentWindow> = _windows
@@ -122,7 +133,9 @@ class AgentAudioPlayerImpl(
             .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
             .build()
         val minBuf = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        for (usage in usages) {
+        val candidates = usagesProvider?.invoke() ?: usages
+        for (usage in candidates) {
+            val modeBefore = audioManager?.mode
             logMode("before AudioTrack usage=$usage")
             val t = runCatching {
                 AudioTrack.Builder()
@@ -140,20 +153,19 @@ class AgentAudioPlayerImpl(
             }.onFailure { Log.w("CallAnswer", "AudioTrack build failed usage=$usage rate=$rate", it) }.getOrNull()
             // MODE_STREAM tracks report STATE_INITIALIZED right after construction.
             if (t != null) logMode("after AudioTrack created usage=$usage")
-            val modeOk = usage != AudioAttributes.USAGE_VOICE_COMMUNICATION || audioManager == null ||
-                audioManager.mode == AudioManager.MODE_IN_CALL
+            val modeOk = !AudioModeGuard.rejects(modeBefore, audioManager?.mode)
             if (t != null && t.state == AudioTrack.STATE_INITIALIZED && modeOk) {
-                CallLog.i("AudioTrack created usage=$usage rate=$rate")
+                CallLog.i("AudioTrack created usage=${usageName(usage)}($usage) rate=$rate")
                 return t
             }
-            if (t != null && !modeOk) CallLog.w("usage=$usage changed audio mode to ${modeName()}; rejected, trying next usage")
+            if (t != null && !modeOk) CallLog.w("usage=$usage changed audio mode from ${modeName(modeBefore)} to ${modeName()}; rejected, trying next usage")
             if (t != null) Log.w("CallAnswer", "AudioTrack state=${t.state} usage=$usage rate=$rate")
             t?.release()
         }
         return null
     }
 
-    private fun modeName(): String = when (val m = audioManager?.mode) {
+    private fun modeName(mode: Int? = audioManager?.mode): String = when (val m = mode) {
         null -> "n/a"
         AudioManager.MODE_NORMAL -> "NORMAL"
         AudioManager.MODE_RINGTONE -> "RINGTONE"
@@ -177,6 +189,12 @@ class AgentAudioPlayerImpl(
     }
 
     companion object {
+        fun usageName(usage: Int) = when (usage) {
+            AudioAttributes.USAGE_VOICE_COMMUNICATION -> "VOICE_COMMUNICATION"
+            AudioAttributes.USAGE_ASSISTANT -> "ASSISTANT"
+            AudioAttributes.USAGE_MEDIA -> "MEDIA"
+            else -> "usage"
+        }
         const val MAX_CHUNK_MS = 8_000
         const val LISTEN_GAP_MS = 400L
         private const val POLL_MS = 10L

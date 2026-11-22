@@ -40,6 +40,10 @@ class CheckActivity : Activity() {
             startActivity(android.content.Intent(this, S2bActivity::class.java))
             finish()
             return
+        } else if (check == SpikeCheck.S2C) {
+            startActivity(android.content.Intent(this, S2cActivity::class.java))
+            finish()
+            return
         } else if (check == SpikeCheck.S3) {
             startActivity(android.content.Intent(this, S3Activity::class.java))
             finish()

@@ -6,7 +6,7 @@ package com.callanswer.app.telecom
  * [onNotStarted] runs and the call keeps ringing, so the caller never hears silence from an unanswered Agent.
  */
 class StartThenAnswer(
-    private val start: () -> Boolean,
+    private val start: suspend () -> Boolean,
     private val awaitRunning: suspend () -> Boolean,
     private val answer: suspend () -> Boolean,
     private val onNotStarted: () -> Unit,

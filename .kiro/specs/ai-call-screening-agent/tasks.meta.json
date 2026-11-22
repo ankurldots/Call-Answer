@@ -753,6 +753,16 @@
         "executionId": "56bacb49-bedf-4e5f-af2b-87ff0dfd596b",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795338923808
+      },
+      {
+        "executionId": "68d178a3-9ccf-4ac7-9954-5ab1c7c38b02",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795364690625
+      },
+      {
+        "executionId": "4b8352a3-c902-4222-aa1a-b5ec83fa365c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795365416878
       }
     ],
     "25.1 Implement `CallAudioAccessibilityService`, `CallAudioCapture` and `InCallUiAutomator`": [
@@ -1555,6 +1565,11 @@
         "executionId": "33c8b41a-e446-4175-90ef-395478920f6b",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795331504960
+      },
+      {
+        "executionId": "c3bd495d-0550-4aab-951c-68102ebc06f1",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795363733036
       }
     ],
     "1.3 Implement spike S2: microphone capture (plain foreground service owner)": [
@@ -1567,6 +1582,23 @@
         "executionId": "56bacb49-bedf-4e5f-af2b-87ff0dfd596b",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795338924262
+      },
+      {
+        "executionId": "834a7cc5-3dfb-4e5f-868a-e7da8b1290bb",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795339978691
+      },
+      {
+        "executionId": "834a7cc5-3dfb-4e5f-868a-e7da8b1290bb",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795340186266
+      }
+    ],
+    "25.1 Implement `CallAudioCapture` and `CallAudioCaptureOwner` (owner: accessibility service that is on only during calls; foreground service fallback)": [
+      {
+        "executionId": "c3bd495d-0550-4aab-951c-68102ebc06f1",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795364174554
       }
     ]
   }

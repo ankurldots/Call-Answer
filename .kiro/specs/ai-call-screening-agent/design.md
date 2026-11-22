@@ -10,16 +10,16 @@ All recognition, language detection, classification, gate selection and speech s
 
 | # | Decision | Choice | Validated by |
 |---|---|---|---|
-| D1 | Audio path | Speakerphone + microphone. Agent TTS plays on the loudspeaker; the Caller's voice is captured from the loudspeaker by the microphone. Capture is a plain `AudioRecord` owned by a foreground service (types `mediaPlayback` and `microphone`). The App uses no accessibility service (see "Decision: no accessibility service"). Whether the Caller is audible to that `AudioRecord` in-call is decided by spike S2. | Spike S1 to S4 |
+| D1 | Audio path | Speakerphone + microphone. Agent TTS plays on the loudspeaker; the Caller's voice is captured from the loudspeaker by the microphone. Capture is a plain `AudioRecord` owned by a foreground service (types `mediaPlayback` and `microphone`). The `AudioRecord` is owned by the App's own accessibility service while a call is handled, and that service is on only during calls (see "Decision: accessibility only during calls"). Spike S2c proved this on the phone; the plain foreground service alone returned silence. | Spike S1 to S4 |
 | D2 | Answering | `CallScreeningService` (role) supplies the number. `TelecomManager.acceptRingingCall()` (`ANSWER_PHONE_CALLS`) answers. | S1 |
-| D3 | Transfer | Takeover_Alert only (accepted by the User as a valid transfer): a full-screen high-importance alert with sound, vibration and an App-played tone on the speaker, with a "Take over" action. There is no second-call and merge path, because it needs UI automation through an accessibility service. | S6 |
+| D3 | Transfer | Takeover_Alert only (accepted by the User as a valid transfer): a full-screen high-importance alert with sound, vibration and an App-played tone on the speaker, with a "Take over" action. There is no second-call and merge path: it needs UI automation, and the accessibility service reads no screen content. | S6 |
 | D4 | Recording | Samsung Phone app auto-record. The App only links files from a SAF folder and plays them with Media3. | S5 |
 | D5 | On-device AI | Silero VAD; ASR chosen on the device: Whisper base int8 (2 threads) if it meets the latency budget at p90 in S7, otherwise Vosk small `hi`/`en-in` streaming as primary; text-based language detector, rule-based intent classifier, templates for responses, bundled Piper voices via sherpa-onnx for TTS. | S7 |
 | D6 | Spam reporting (Requirement 14) | Pure `SpamReportBuilder` in `:core` builds "<Brief_Description>, <Sender_Number>, <DD/MM/YY>". Default path: `ACTION_SENDTO` `sms:1909` with `sms_body`, sent by the User from the messaging app. Direct `SmsManager` send only when Silent_Send_Setting is on and `SEND_SMS` is granted. | S8 |
 
 ### Assumptions
 
-- The App is installed for personal use (sideloaded or internal testing), not distributed on Google Play. UPI and banking apps refuse to work while any accessibility service is enabled on the phone, so the App does not use one.
+- The App is installed for personal use (sideloaded or internal testing), not distributed on Google Play. UPI and banking apps refuse to work while any accessibility service is enabled on the phone, so the App's accessibility service is on only while a call is handled.
 - The target device is a Samsung Galaxy M34 5G, India model: Exynos 1280 (2x Cortex-A78 and 6x Cortex-A55 CPU cores, Mali-G68 GPU), 6 GB or 8 GB RAM. It launched in July 2023 with Android 13 / One UI 5.1 and has a promise of 4 OS upgrades. The Android and One UI version currently installed is not assumed; spike S0 reads it from the phone, together with the RAM variant and the security patch level. Platform rules that differ between Android versions (for example the Android 14 foreground-service and full-screen-intent rules) are designed for the strictest case and checked against the version found in S0.
 - The Samsung Phone app's call-recording option is expected on the India model. Spike S0 confirms that it is present on the User's phone.
 - The User accepts that a call to the Transfer_Target is not placed by the App; the Takeover_Alert is the transfer.
@@ -31,20 +31,30 @@ All recognition, language detection, classification, gate selection and speech s
 
 ### 1. Platform decisions
 
-#### Decision: no accessibility service
-The App does not declare, request or read any accessibility service. UPI and banking apps refuse to work while any accessibility service is enabled on the phone, and the User needs both. This removes the capture exemption that the earlier design relied on, and the Samsung in-call UI automation (Speaker, Merge, Swap/Resume buttons), so Path A (second call and merge) is gone and the Takeover_Alert is the only transfer.
+#### Decision: accessibility only during calls
+**Evidence (spike S2c, Galaxy M34 5G, Wi-Fi calling, audio mode `MODE_IN_COMMUNICATION`).** The App enabled its accessibility service through `Settings.Secure` at OFFHOOK. `onServiceConnected` followed 409 ms later. With speakerphone on, an `AudioRecord` (`VOICE_RECOGNITION`) owned by the accessibility service captured the Caller: rms 1512 (-26.7 dBFS), rmsFirst2s 2272, peak 15880. Every earlier path without an accessibility service (plain foreground service, default assistant role) returned rms 0. At call IDLE the App disabled the service; `enabled_accessibility_services` was empty and `accessibility_enabled` was 0 afterwards. The per-second rms fell to about 0 after 6 s (the Caller may have stopped talking, or the platform silenced the record late), so late silencing is handled (rule 6).
 
-Capture now depends on the S2 result with the plain foreground-service owner (`CallForegroundService`, types `mediaPlayback|microphone`, speakerphone on, sources `VOICE_RECOGNITION`, `MIC`, `UNPROCESSED`, `VOICE_COMMUNICATION` in that order). If S2 fails (every source silenced in-call), the fallbacks are, in order: (1) the default digital assistant role (`VoiceInteractionService`), which Android lists among the exemptions for capture and for starting a microphone service from the background, at the cost of replacing the User's assistant; (2) no Caller speech recognition, that is assisted mode F1 (the Agent speaks and alerts the User; Requirement 13.17). Fallback F2 (VoIP number) stays the last resort. Nothing in this paragraph has been verified on the phone.
+**Decision.** The App declares a minimal `CallAudioA11yService` and uses it only as the owner of the call's `AudioRecord`. UPI and banking apps refuse to run while any accessibility service is enabled, and the User needs both, so the service is enabled only while the App handles a call. The App toggles its own service with `WRITE_SECURE_SETTINGS`, granted once over adb (`adb shell pm grant com.callanswer.app android.permission.WRITE_SECURE_SETTINGS`). The User is never asked to enable accessibility in system settings.
 
+**Safety rules.**
+1. The service config has `canRetrieveWindowContent=false`, one event type, `packageNames` limited to the App, and a large `notificationTimeout`. It reads no screen content and its description says it runs only during calls.
+2. Enable when the call becomes active (`CallActiveGate`); wait up to 3 s for `onServiceConnected`; then apply the speaker route and start capture inside the service. The greeting is not delayed. If the service is not bound within 5 s, the App logs it, switches to assisted mode and shows the "Allow restricted settings" hint on Home.
+3. Disable at call end (`finishSession`, `CallEnded`, IDLE), on any exception path, in `onDestroy`, after a 15-minute hard timeout, at app start (`CallAnswerApp.onCreate`, unless a call is active) and on `BOOT_COMPLETED`. An unreadable call state counts as "no call" (fail safe).
+4. Only the App's entry in `ENABLED_ACCESSIBILITY_SERVICES` is added or removed; other enabled services are preserved. `ACCESSIBILITY_ENABLED` is set to 0 only when no service remains.
+5. Without the grant, capture stays in the foreground service, the App is in assisted mode (F1), and Home shows the setup item "Let the Agent hear callers" with the copyable adb command and a live status ("granted", "accessibility currently off").
+6. Late silencing: if the accessibility-owned `AudioRecord` returns zeros or is silenced after at least 2 s of audio while the call is active, it is recreated once (logged). If it stays silent for 10 s, the App switches to assisted mode (no hang-up).
+7. The foreground service types stay `mediaPlayback|microphone`. The capture source order starts with `VOICE_RECOGNITION`.
+
+Remaining fallbacks if the accessibility path stops working: assisted mode F1, then F2 (VoIP number). The default assistant role was tried in S2b and did not deliver audio.
 #### D1. How the Agent hears the Caller and speaks into the call
 
-**What Android allows.** Android does not give a third-party app the call's uplink or downlink (`VOICE_UPLINK`, `VOICE_DOWNLINK` and `AudioDeviceInfo.TYPE_TELEPHONY` need the privileged `CAPTURE_AUDIO_OUTPUT`). The Android 10+ input-sharing rules say: while the audio mode is `MODE_IN_CALL` or `MODE_IN_COMMUNICATION`, the call always receives audio, and an ordinary app's `AudioRecord` can be silenced, unless the app is an accessibility service, a privileged app with `CAPTURE_AUDIO_OUTPUT`, or holds the default assistant or dialer role. Source: [Sharing audio input](https://developer.android.com/media/platform/sharing-audio-input). Earlier spike runs on the M34 5G saw `MIC` and `UNPROCESSED` silenced in-call and `VOICE_RECOGNITION` not silenced, but that run used an accessibility service as the owner, so it must be repeated with the plain foreground service.
+**What Android allows.** Android does not give a third-party app the call's uplink or downlink (`VOICE_UPLINK`, `VOICE_DOWNLINK` and `AudioDeviceInfo.TYPE_TELEPHONY` need the privileged `CAPTURE_AUDIO_OUTPUT`). The Android 10+ input-sharing rules say: while the audio mode is `MODE_IN_CALL` or `MODE_IN_COMMUNICATION`, the call always receives audio, and an ordinary app's `AudioRecord` can be silenced, unless the app is an accessibility service, a privileged app with `CAPTURE_AUDIO_OUTPUT`, or holds the default assistant or dialer role. Source: [Sharing audio input](https://developer.android.com/media/platform/sharing-audio-input). Earlier spike runs on the M34 5G saw `MIC` and `UNPROCESSED` silenced in-call and `VOICE_RECOGNITION` not silenced, but that run used an accessibility service as the owner. The plain foreground service alone returned silence (S2), so the accessibility service is the owner during calls.
 
-This changes the plan. A plain `AudioRecord` in a foreground service may be silenced during the call. The primary approach captures with that plain foreground service and spike S2 proves or disproves it on the actual phone (speakerphone on, each source). The fallbacks are in "Decision: no accessibility service".
+This changed the plan. A plain `AudioRecord` in a foreground service is silenced during the call (S2). Spike S2c proved capture owned by an accessibility service that is on only during the call. See "Decision: accessibility only during calls".
 
 **Primary approach (P-AUDIO).**
 
-1. `CallForegroundService` is the capture owner (`CallAudioCaptureOwner` holds the `AudioRecord`). It is declared with `foregroundServiceType="mediaPlayback|microphone"` and the `FOREGROUND_SERVICE_MICROPHONE` permission, and requests the `microphone` type only when `RECORD_AUDIO` is granted. No accessibility service is declared or read.
+1. `CallAudioCaptureOwner` holds the `AudioRecord`, created with the context of `CallAudioA11yService` while it is connected, otherwise with the `CallForegroundService` context. `CallForegroundService` is declared with `foregroundServiceType="mediaPlayback|microphone"` and the `FOREGROUND_SERVICE_MICROPHONE` permission, and requests the `microphone` type only when `RECORD_AUDIO` is granted. The accessibility service reads no screen content and is on only during calls.
 2. Capture: `AudioRecord`, 16 kHz, mono, PCM16. Source order tried at runtime and fixed by spike S2: `VOICE_RECOGNITION`, then `MIC`, then `UNPROCESSED`, then `VOICE_COMMUNICATION`. Notes:
    - `VOICE_COMMUNICATION` is privacy-sensitive, so it has priority over ordinary capture, but it also applies the platform's call processing (AEC and noise suppression) tuned for a headset use case, which can degrade a voice coming from the loudspeaker. It is tried last.
    - `UNPROCESSED` has no AEC or noise suppression, which suits our own echo handling, but gain is low on some Samsung devices. Our AGC compensates.
@@ -104,7 +114,7 @@ Android has no call-transfer API for a third-party app. Candidate options:
 | T4. Call the Transfer_Target and bridge audio through the phone | Phone holds two calls. | Android cannot mix two calls' audio without a merge. | Not possible. | Rejected. |
 | T5. Explicit call transfer (carrier MMI "4") | Join two calls and drop out. | Carrier-dependent MMI | True transfer. | Not in scope. Possible follow-up experiment in S6. |
 
-**Chosen:** the Takeover_Alert (T2) for every transfer. The earlier Path A (T1, second call and merge by accessibility click) was removed together with the accessibility service. This meets Requirement 4.2 as now written.
+**Chosen:** the Takeover_Alert (T2) for every transfer. The earlier Path A (T1, second call and merge by accessibility click) was removed: the accessibility service only owns the audio capture. This meets Requirement 4.2 as now written.
 
 **The Takeover_Alert.**
 
@@ -1559,7 +1569,7 @@ Build a throwaway "spike" app variant (`:spike`) with the minimal screening serv
 | S7 | On-device AI benchmark on the M34 5G with captured call audio: Whisper base int8 (2 threads, big-core affinity) vs Vosk small `hi`/`en-in` streaming (WER and intent accuracy on 30 Hindi, English, Hinglish utterances, latency); Piper voice first-audio latency; end-to-end response latency, cold and at the end of a 10-minute sustained call; peak resident memory (PSS) during the call | End-to-end at most 2.5 s at p90 in Offline_Mode and intent accuracy at least 90%. Whisper is primary only if it passes; otherwise Vosk streaming is primary (D5 decision rule). Resident model memory well below the RAM (target a few hundred MB on the 6 GB variant); no low-memory kill. Bundle only the smallest models that pass |
 | S8 | 1909 hand-off and send (see [Spike S8](#spike-s8-1909-hand-off-and-send)) | Steps 1 to 5 recorded; silent path build flag decided |
 
-Go/no-go: S1, S2 and S3 must pass for the primary approach. S6 must pass. If S2 or S3 fails, the team stops and decides with the User between fallback F1 (assisted mode), the default assistant role (see "Decision: no accessibility service") and pivot F2 (VoIP number).
+Go/no-go: S1, S2 and S3 must pass for the primary approach. S6 must pass. If S2 or S3 fails, the team stops and decides with the User between fallback F1 (assisted mode), the default assistant role (see "Decision: accessibility only during calls") and pivot F2 (VoIP number).
 
 ### Manual test matrix (patchy network)
 
@@ -1622,7 +1632,7 @@ Each run covers the four intents in Hindi, English and Hinglish, Take over, Mute
 
 | ID | Risk | Impact | Mitigation | Spike |
 |---|---|---|---|---|
-| R1 | Microphone capture is silenced during calls on Android 10+ for ordinary apps, and the accessibility-service exemption is not used | Agent cannot hear the Caller; core feature fails | Test all sources with the plain foreground service (S2); fallback F1 assisted mode; default assistant role; pivot F2 VoIP | S2 |
+| R1 | Microphone capture is silenced during calls on Android 10+ for ordinary apps, unless the accessibility-service exemption is used (only during calls, S2c) | Agent cannot hear the Caller; core feature fails | Test all sources with the plain foreground service (S2); fallback F1 assisted mode; default assistant role; pivot F2 VoIP | S2 |
 | R2 | Caller cannot hear TTS clearly (uplink noise suppression and call AEC remove loudspeaker audio) | Agent speaks but Caller does not understand | Volume, short sentences, usage choice, Samsung noise reduction setting | S3 |
 | R3 | Echo of Agent TTS in the Caller transcript, or Caller speech lost during Agent speech | Wrong intents, self-conversation | Three-layer echo handling; short speech chunks with gaps | S4 |
 | R4 | The User does not notice the Takeover_Alert (phone in another room) | The Caller waits and then hears "nobody is available". | Full-screen intent, sound, vibration and the App's alert tone; "nobody available" after 30 s | S6 |
@@ -1634,7 +1644,7 @@ Each run covers the four intents in Hindi, English and Hinglish, Take over, Mute
 
 Open questions for the User:
 
-1. Answered: the App does not use an accessibility service (UPI and banking apps refuse to work while one is enabled). Capture depends on S2.
+1. Answered: the App's accessibility service is enabled only while a call is handled (UPI and banking apps refuse to work while one is enabled). Spike S2c passed on the M34 5G.
 2. Answered: the User accepted the Takeover_Alert as the only transfer. Requirement 4, 8.10 and 13.20 to 13.21 were updated, and D3 no longer has a Path A.
 3. Should the PII guard protect extra values such as the User's name and street address? The App can only protect what the User enters in `protectedTerms`.
 4. Which cloud LLM provider, if any, should be used for stalling? The design works without one.

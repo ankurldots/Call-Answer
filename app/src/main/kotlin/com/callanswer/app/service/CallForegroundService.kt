@@ -15,6 +15,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.callanswer.app.R
+import com.callanswer.app.a11y.A11yToggle
 import com.callanswer.app.data.SettingsStore
 import com.callanswer.core.engine.BaseConversationEngine
 import com.callanswer.core.engine.CallSession
@@ -125,6 +126,7 @@ class CallForegroundService : Service() {
             enterForeground(buildNotification(number, _uiState.value.copy(active = true, callerNumber = number)))
         } catch (e: Exception) {
             com.callanswer.app.CallLog.w("FGS start denied inside service", e)
+            disableAccessibility("FGS start failed")
             CallOverlay.hide(applicationContext)
             stopSelf()
             return
@@ -141,7 +143,10 @@ class CallForegroundService : Service() {
         traceSessionId = id
         val startedAt = Instant.now()
         _uiState.value = LiveCallUiState(active = true, callerNumber = number)
-        scope.launch {
+        scope.launch(kotlinx.coroutines.CoroutineExceptionHandler { _, e ->
+            com.callanswer.app.CallLog.w("call coroutine failed", e)
+            disableAccessibility("exception")
+        }) {
             val frozen = json?.let { runCatching { CoreJson.decodeFromString<FrozenSettings>(it) }.getOrNull() }
                 ?: runCatching { SettingsStore.create(applicationContext).snapshot() }
                     .getOrDefault(FrozenSettings())
@@ -174,6 +179,9 @@ class CallForegroundService : Service() {
                 is CallGateResult.Active -> {
                     com.callanswer.app.CallLog.i("call active after ${gate.afterMs} ms " +
                         "(state=${gate.sample.state}, mode=${gate.sample.mode})")
+                    // Accessibility is on only while the call is handled; the capture waits for it to bind.
+                    if (A11yToggle.hasPermission(applicationContext)) A11yToggle.enable(applicationContext, "call active")
+                    else com.callanswer.app.CallLog.i("a11y: WRITE_SECURE_SETTINGS not granted, capture stays in the foreground service")
                     p.routeAudio()
                     delay(AUDIO_SETTLE_MS)
                     if (finishing) return@launch
@@ -283,7 +291,10 @@ class CallForegroundService : Service() {
         }
         // Debug builds write the trace of every call so it can be pulled with adb after the call.
         if (isDebuggable()) exportTrace()
-        scope.launch {
+        scope.launch(kotlinx.coroutines.CoroutineExceptionHandler { _, e ->
+            com.callanswer.app.CallLog.w("call coroutine failed", e)
+            disableAccessibility("exception")
+        }) {
             val ex = executor
             if (ex != null && drainSpeech) runCatching { ex.drain(DRAIN_MS) }
             // Clears the Takeover_Alert, stops the speech and releases the synthesizer.
@@ -292,6 +303,7 @@ class CallForegroundService : Service() {
             // Releases the ASR/VAD models and restores the call volume.
             pipeline?.stop()
             pipeline = null
+            disableAccessibility("call end")
             currentPipeline = null
             synchronized(lock) { session = null }
             // Saved after the call has ended and the audio is released; the save retries inside the DAO (10.3).
@@ -309,6 +321,11 @@ class CallForegroundService : Service() {
             ServiceCompat.stopForeground(this@CallForegroundService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
+    }
+
+    /** Always switches our accessibility service off; never throws. */
+    private fun disableAccessibility(reason: String) {
+        runCatching { A11yToggle.disable(applicationContext, reason) }
     }
 
     private fun isDebuggable() =
@@ -426,6 +443,7 @@ class CallForegroundService : Service() {
         executor = null
         pipeline?.stop()
         com.callanswer.app.audio.CallAudioCaptureOwner.stop()
+        disableAccessibility("service destroyed")
         currentPipeline = null
         scope.cancel()
         super.onDestroy()
@@ -523,6 +541,24 @@ class CallForegroundService : Service() {
                 false
             }
         }
+
+        /**
+         * [start] with retries: a background start can be refused until WindowManager has the overlay window
+         * drawn (the overlay exemption). While the overlay is visible, retries up to [START_RETRIES] times every
+         * [START_RETRY_MS] ms, logging each attempt. Returns false only when every attempt was refused.
+         */
+        suspend fun startWithRetry(context: Context, number: String?, frozen: FrozenSettings?): Boolean {
+            for (attempt in 1..START_RETRIES) {
+                val ok = start(context, number, frozen)
+                com.callanswer.app.CallLog.i("FGS start attempt $attempt/$START_RETRIES ok=$ok overlayVisible=${CallOverlay.isShowing}")
+                if (ok) return true
+                if (!CallOverlay.isShowing || attempt == START_RETRIES) break
+                kotlinx.coroutines.delay(START_RETRY_MS)
+            }
+            return false
+        }
+        const val START_RETRIES = 5
+        const val START_RETRY_MS = 200L
 
         /** Intent for the Live_Call_Screen that starts the service from the visible activity, then answers. */
         fun fallbackActivityIntent(context: Context, number: String?): Intent =

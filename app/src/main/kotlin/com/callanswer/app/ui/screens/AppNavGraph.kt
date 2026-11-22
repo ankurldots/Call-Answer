@@ -22,6 +22,7 @@ object Routes {
     const val SETTINGS_SPAM = "settings/spam"
     const val SETTINGS_STEPS = "settings/steps"
     const val SETTINGS_ACCOUNT = "settings/account"
+    const val SETTINGS_ADVANCED = "settings/advanced"
     const val CALL_LOG = "calllog"
     const val CALL_DETAIL = "calllog/{entryId}"
     fun callDetail(id: String) = "calllog/" + android.net.Uri.encode(id)
@@ -75,6 +76,7 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
             val id = entry.arguments?.getString("entryId").orEmpty()
             CallDetailScreen(id, resumeTick, back)
         }
+        composable(Routes.SETTINGS_ADVANCED) { AdvancedSettingsScreen(back) }
         composable(Routes.SETTINGS_SPAM) { SpamSettingsScreen(model, actions, store, back) }
     }
 }

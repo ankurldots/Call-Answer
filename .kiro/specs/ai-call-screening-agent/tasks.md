@@ -515,8 +515,8 @@ Build flags decided by the spike: `ASR_ENGINE` (S7: `WHISPER_BASE_INT8` or `VOSK
     - _Requirements: 1.2, 1.3, 1.5, 1.6, 1.9_
 
 - [x] 25. Implement the audio path
-  - [x] 25.1 Implement `CallAudioCapture` and `CallAudioCaptureOwner` (plain foreground service owner, no accessibility service)
-    - `CallForegroundService` with `foregroundServiceType="mediaPlayback|microphone"` and `FOREGROUND_SERVICE_MICROPHONE` (microphone type only when `RECORD_AUDIO` is granted; added once the Live_Call_Screen is visible if the system refuses a background start); `AudioRecord` 16 kHz mono PCM16 with the source chosen in S2; `frames: Flow<PcmFrame>` and `silenced: StateFlow<Boolean>` from `AudioRecordingCallback`; silenced capture switches to assisted mode F1 and alerts the User
+  - [x] 25.1 Implement `CallAudioCapture` and `CallAudioCaptureOwner` (owner: accessibility service that is on only during calls; foreground service fallback)
+    - `CallForegroundService` with `foregroundServiceType="mediaPlayback|microphone"` and `FOREGROUND_SERVICE_MICROPHONE` (microphone type only when `RECORD_AUDIO` is granted; added once the Live_Call_Screen is visible if the system refuses a background start); `AudioRecord` 16 kHz mono PCM16 with the source chosen in S2; `frames: Flow<PcmFrame>` and `silenced: StateFlow<Boolean>` from `AudioRecordingCallback`; silenced capture switches to assisted mode F1 and alerts the User; `CallAudioA11yService` (minimal, `canRetrieveWindowContent=false`) owns the `AudioRecord` during the call and `A11yToggle` enables it at call active and disables it at call end, on errors, in `onDestroy`, after 15 minutes, at app start and on boot (`WRITE_SECURE_SETTINGS` granted once over adb); late silencing recreates the record once, then assisted mode after 10 s; Home shows "Let the Agent hear callers"
     - _Requirements: 13.8, 13.15, 13.17, D1_
 
   - [x] 25.2 Implement `AgentAudioPlayer` and `EchoGate`

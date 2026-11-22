@@ -75,7 +75,7 @@ class CallScreenerService : CallScreeningService() {
             // Visible overlay first: with SYSTEM_ALERT_WINDOW it is what allows a background FGS start (Android 15+).
             val overlay = CallOverlay.show(ctx)
             val outcome = StartThenAnswer(
-                start = { CallForegroundService.start(ctx, number, frozen) },
+                start = { CallForegroundService.startWithRetry(ctx, number, frozen) },
                 awaitRunning = {
                     CallForegroundService.awaitRunning(START_CONFIRM_TIMEOUT_MS).also {
                         Log.i(TAG, "service foreground confirmed=$it")

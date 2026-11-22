@@ -44,6 +44,8 @@ interface CallAudioCapture {
 class AudioRecordCallAudioCapture(
     private val audioManager: AudioManager,
     private val sources: List<Int> = DEFAULT_SOURCES,
+    /** Runs the blocking read loop. The accessibility service passes a dispatcher backed by its own thread. */
+    dispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO,
 ) : CallAudioCapture {
     private val _frames = MutableSharedFlow<PcmFrame>(extraBufferCapacity = 128, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val _silenced = MutableStateFlow(false)
@@ -54,7 +56,7 @@ class AudioRecordCallAudioCapture(
     /** True when no audio source could be opened or started (the `AudioRecord` failed). */
     val failed: StateFlow<Boolean> = _failed.asStateFlow()
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var job: Job? = null
     @Volatile private var activeSource: Int = -1
 
@@ -67,7 +69,7 @@ class AudioRecordCallAudioCapture(
      * one is tried (cycling), until one delivers non-zero audio. Frames of every source are emitted.
      */
     @Synchronized
-    fun start(): Boolean {
+    fun start(initialDelayMs: Long = 0L): Boolean {
         if (job?.isActive == true) return true
         if (AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT) <= 0) {
             CallLog.w("capture: getMinBufferSize invalid")
@@ -77,6 +79,7 @@ class AudioRecordCallAudioCapture(
         _failed.value = false
         job = scope.launch {
             try {
+                if (initialDelayMs > 0) kotlinx.coroutines.delay(initialDelayMs)
                 var idx = 0
                 var failedInARow = 0
                 while (isActive) {
@@ -135,21 +138,41 @@ class AudioRecordCallAudioCapture(
             var sumSq = 0.0
             var count = 0L
             var anyNonZero = false
+            var peak = 0
+            var wSumSq = 0.0
+            var wCount = 0L
+            var wPeak = 0
+            var wStart = probeStart
             while (currentCoroutineContext().isActive) {
                 val n = rec.read(buf, 0, buf.size)
                 if (n < 0) { CallLog.w("capture $name: read error $n"); return SourceResult.ROTATE }
                 if (n == 0) continue
                 _frames.tryEmit(PcmFrame(buf.copyOf(n), SystemClock.elapsedRealtime()))
+                val now = SystemClock.elapsedRealtime()
+                for (i in 0 until n) {
+                    val a = Math.abs(buf[i].toInt())
+                    wSumSq += a.toDouble() * a; if (a > wPeak) wPeak = a
+                }
+                wCount += n
+                if (now - wStart >= LOG_MS) {
+                    CallLog.i("capture $name: rms=${"%.1f".format(Math.sqrt(wSumSq / wCount))} peak=$wPeak " +
+                        "silenced=${_silenced.value}")
+                    wSumSq = 0.0; wCount = 0; wPeak = 0; wStart = now
+                }
                 if (probing) {
-                    for (i in 0 until n) { val v = buf[i].toDouble(); sumSq += v * v; if (buf[i].toInt() != 0) anyNonZero = true }
+                    for (i in 0 until n) {
+                        val v = buf[i].toDouble(); sumSq += v * v; if (buf[i].toInt() != 0) anyNonZero = true
+                        val a = Math.abs(buf[i].toInt()); if (a > peak) peak = a
+                    }
                     count += n
                     if (SystemClock.elapsedRealtime() - probeStart >= PROBE_MS) {
                         probing = false
                         val rms = if (count > 0) Math.sqrt(sumSq / count) else 0.0
                         val silencedNow = rec.activeRecordingConfiguration?.isClientSilenced ?: _silenced.value
-                        CallLog.i("capture $name: first ${PROBE_MS}ms rms=${"%.1f".format(rms)} nonZero=$anyNonZero " +
+                        val usable = AudioActivity.isUsable(rms, peak)
+                        CallLog.i("capture $name: first ${PROBE_MS}ms rms=${"%.1f".format(rms)} peak=$peak nonZero=$anyNonZero usable=$usable " +
                             "silenced=$silencedNow audioMode=${modeName(audioManager.mode)} speaker=${speakerOn()}")
-                        if (!anyNonZero || silencedNow) {
+                        if (!usable || silencedNow) {
                             CallLog.i("capture $name: no usable audio, rotating to next source")
                             return SourceResult.ROTATE
                         }
@@ -216,6 +239,8 @@ class AudioRecordCallAudioCapture(
         const val FRAME_SAMPLES = 512
         /** Time one source gets to deliver non-zero, non-silenced audio before the next one is tried. */
         const val PROBE_MS = 2_000L
+        /** Interval of the RMS log line for the whole call. */
+        const val LOG_MS = 2_000L
         fun modeName(mode: Int) = when (mode) {
             AudioManager.MODE_NORMAL -> "NORMAL"
             AudioManager.MODE_RINGTONE -> "RINGTONE"
@@ -239,4 +264,13 @@ class AudioRecordCallAudioCapture(
             MediaRecorder.AudioSource.CAMCORDER,
         )
     }
+}
+
+/** Decides whether a source delivers real audio rather than near-silence (dither, comfort noise). */
+object AudioActivity {
+    const val MIN_RMS = 30.0
+    const val MIN_PEAK = 300
+
+    /** True when the 2 s window has RMS >= [MIN_RMS] or a peak >= [MIN_PEAK]. */
+    fun isUsable(rms: Double, peak: Int): Boolean = rms >= MIN_RMS || peak >= MIN_PEAK
 }

@@ -135,7 +135,7 @@ The Agent also tells callers which colony gate to use. From 22:30 to 05:30 only 
 #### Acceptance Criteria
 
 1. WHEN the Intent_Category is DOOR_NOT_OPENED, THE Agent SHALL tell the Caller, in the Caller's language, that the Agent is transferring the call to a person.
-2. WHEN the Agent has finished telling the Caller about the transfer, THE App SHALL raise the Takeover_Alert within 2 seconds. THE App SHALL NOT connect the Transfer_Target to the call itself, because that needs an accessibility service, which the App does not use.
+2. WHEN the Agent has finished telling the Caller about the transfer, THE App SHALL raise the Takeover_Alert within 2 seconds. THE App SHALL NOT connect the Transfer_Target to the call itself, because that needs UI automation through an accessibility service, and the App's accessibility service is on only during calls and does not read the screen.
 3. IF the User does not take over within 30 seconds of the Takeover_Alert, THEN THE Agent SHALL tell the Caller, in the Caller's language, that nobody is available and ask the Caller to call again shortly, and THE App SHALL keep the Caller connected to the Agent.
 4. THE App SHALL keep the Takeover_Alert as the only transfer mechanism, with the request to call again made only under criterion 9.
 5. IF the Transfer_Target is not configured, THEN THE App SHALL still raise the Takeover_Alert within 2 seconds of the Agent finishing telling the Caller about the transfer, and THE Agent SHALL ask the Caller, in the Caller's language, to call again shortly only if the User does not take over within 30 seconds of the Takeover_Alert, as specified in criterion 9.

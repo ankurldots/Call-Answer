@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_section_advanced">Advanced (debug)</string>
+    <string name="settings_agent_voice_usage">Agent voice audio type</string>
+    <string name="settings_agent_voice_usage_hint">Debug builds only. Audio usage tried first for the Agent\'s voice in a call. Applies to the next call.</string>
+</resources>

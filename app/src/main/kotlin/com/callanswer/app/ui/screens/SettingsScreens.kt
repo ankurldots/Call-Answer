@@ -121,7 +121,9 @@ fun SettingsHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             Triple(Routes.SETTINGS_RECORDING, R.string.settings_section_recording, Icons.Filled.Home),
             Triple(Routes.SETTINGS_SPAM, R.string.settings_section_spam, Icons.Filled.Warning),
             Triple(Routes.SETTINGS_ACCOUNT, R.string.settings_section_account, Icons.Filled.Person),
-        ).forEach { (route, label, icon) ->
+        ).let {
+            if (com.callanswer.app.BuildConfig.DEBUG) it + Triple(Routes.SETTINGS_ADVANCED, R.string.settings_section_advanced, Icons.Filled.Settings) else it
+        }.forEach { (route, label, icon) ->
             val text = stringResource(label)
             AppCard(contentDescription = text, onClick = { onOpen(route) }) {
                 Row(
@@ -443,5 +445,24 @@ fun SpamSettingsScreen(model: SetupModel, actions: SetupActions, store: Settings
         }
         SaveStatus(null, failed)
         Text(stringResource(R.string.settings_spam_destination), style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+/** Debug-only settings. The section is not listed in release builds. */
+@Composable
+fun AdvancedSettingsScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    var chosen by remember { mutableStateOf(com.callanswer.app.audio.AgentVoiceUsage.get(context)) }
+    SettingsPage(stringResource(R.string.settings_section_advanced), onBack) {
+        Text(stringResource(R.string.settings_agent_voice_usage), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.settings_agent_voice_usage_hint), style = MaterialTheme.typography.bodySmall)
+        ChipRow(
+            labels = com.callanswer.app.audio.AgentVoiceUsage.entries.map { it.name },
+            selected = setOf(chosen.name),
+            onChipClick = { label ->
+                chosen = com.callanswer.app.audio.AgentVoiceUsage.entries.first { it.name == label }
+                com.callanswer.app.audio.AgentVoiceUsage.set(context, chosen)
+            },
+        )
     }
 }

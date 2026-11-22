@@ -6,6 +6,7 @@ enum class SpikeCheck(val id: String, val title: String, val task: String) {
     S1("S1", "Screen, answer, foreground service, end call", "1.2"),
     S2("S2", "Microphone capture (foreground service)", "1.3"),
     S2B("S2b", "Assistant-role capture", "1.3"),
+    S2C("S2c", "Accessibility only during the call", "1.3"),
     S3("S3", "Agent speech audible to Caller, speaker route", "1.4"),
     S4("S4", "Echo handling prototype", "1.5"),
     S5("S5", "Samsung recording folder probe", "1.6"),

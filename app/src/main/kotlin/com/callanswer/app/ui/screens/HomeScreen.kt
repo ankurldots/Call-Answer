@@ -85,6 +85,7 @@ fun HomeScreen(model: SetupModel, actions: SetupActions, onOpenSettings: () -> U
         SectionHeader(stringResource(R.string.home_quick_links))
         QuickLink(Icons.Filled.Call, stringResource(R.string.calllog_open), stringResource(R.string.calllog_open_hint), onOpenCallLog)
         QuickLink(Icons.Filled.Settings, stringResource(R.string.settings_open), stringResource(R.string.settings_open_hint), onOpenSettings)
+        HearCallersCard(model.hearCallers)
         AnimatedVisibility(!status.isGranted(SetupItem.RECORDING_FOLDER)) {
             StatusBanner(stringResource(R.string.home_no_folder_warning), BannerSeverity.WARNING)
         }
@@ -182,5 +183,36 @@ private fun DeniedItem(item: SetupItem, actions: SetupActions, onOpenAccount: ()
                 AppButton(stringResource(R.string.action_open_settings), onClick = { actions.openSettings(item) }, primary = false)
             }
         }
+    }
+}
+
+/** Setup item "Let the Agent hear callers": the exact adb command to copy and a live status. */
+@Composable
+private fun HearCallersCard(status: HearCallersStatus) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val command = com.callanswer.app.a11y.A11yToggle.GRANT_COMMAND
+    val title = stringResource(R.string.a11y_setup_title)
+    AppCard(contentDescription = title) {
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+        Text(stringResource(R.string.a11y_setup_explain), style = MaterialTheme.typography.bodyMedium)
+        androidx.compose.foundation.text.selection.SelectionContainer {
+            Text(command, style = MaterialTheme.typography.bodyMedium, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+        }
+        AppButton(stringResource(R.string.a11y_setup_copy), primary = false, onClick = {
+            val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("adb command", command))
+            android.widget.Toast.makeText(context, R.string.a11y_setup_copied, android.widget.Toast.LENGTH_SHORT).show()
+        })
+        StatusBanner(
+            stringResource(if (status.granted) R.string.a11y_status_granted else R.string.a11y_status_not_granted),
+            if (status.granted) BannerSeverity.INFO else BannerSeverity.WARNING,
+        )
+        if (status.granted) {
+            StatusBanner(
+                stringResource(if (status.accessibilityOn) R.string.a11y_status_on else R.string.a11y_status_off),
+                if (status.accessibilityOn) BannerSeverity.WARNING else BannerSeverity.INFO,
+            )
+        }
+        if (status.restrictedHint) StatusBanner(stringResource(R.string.a11y_restricted_hint), BannerSeverity.WARNING)
     }
 }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a11y_service_description">Turned on by Call Answer only while it handles a call, so it can hear the caller. Turned off again when the call ends. It reads nothing on the screen.</string>
+    <string name="a11y_setup_title">Let the Agent hear callers</string>
+    <string name="a11y_setup_explain">Android only gives call audio to an app with accessibility on. Call Answer turns it on only during calls and off again at call end, so UPI apps work normally otherwise. Run this once on a computer with the phone connected:</string>
+    <string name="a11y_setup_copy">Copy command</string>
+    <string name="a11y_setup_copied">Command copied</string>
+    <string name="a11y_status_granted">Permission: granted</string>
+    <string name="a11y_status_not_granted">Permission: not granted. The Agent will only speak, it cannot hear callers.</string>
+    <string name="a11y_status_off">Accessibility currently off</string>
+    <string name="a11y_status_on">Accessibility currently on (it should be off outside calls)</string>
+    <string name="a11y_restricted_hint">Accessibility did not start during the last call. Open App info, tap the three dots and choose Allow restricted settings.</string>
+</resources>

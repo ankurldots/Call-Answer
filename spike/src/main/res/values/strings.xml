@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Call Answer Spike</string>
+    <string name="s2c_a11y_description">Spike only. Turned on during a call to test call audio capture and turned off when the call ends. It reads no screen content.</string>
 </resources>

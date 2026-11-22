@@ -31,6 +31,9 @@ class SetupModel(context: Context) {
 
     var status by mutableStateOf(SetupStatus.read(app, folderGranted = false, autoRecordAcknowledged = false, signedIn = signedIn()))
         private set
+    /** State of "Let the Agent hear callers": the adb grant, whether accessibility is on right now, the bind hint. */
+    var hearCallers by mutableStateOf(HearCallersStatus.read(app))
+        private set
     var screeningEnabled by mutableStateOf(true)
         private set
     var onboardingDone by mutableStateOf(prefs.getBoolean(KEY_ONBOARDING_DONE, false))
@@ -47,6 +50,7 @@ class SetupModel(context: Context) {
             (uri != null && folders.hasAccess(uri)) to s.screeningEnabled
         }
         screeningEnabled = enabled
+        hearCallers = withContext(Dispatchers.IO) { HearCallersStatus.read(app) }
         status = SetupStatus.read(app, folderOk, prefs.getBoolean(KEY_AUTORECORD_ACK, false), signedIn())
         deniedThisSession.removeAll { status.isGranted(it) }
     }
@@ -90,5 +94,16 @@ class SetupModel(context: Context) {
     private companion object {
         const val KEY_ONBOARDING_DONE = "onboarding_done"
         const val KEY_AUTORECORD_ACK = "autorecord_ack"
+    }
+}
+
+/** Live status of the accessibility-during-calls setup (not a runtime permission, so not a [SetupItem]). */
+data class HearCallersStatus(val granted: Boolean, val accessibilityOn: Boolean, val restrictedHint: Boolean) {
+    companion object {
+        fun read(context: Context) = HearCallersStatus(
+            granted = com.callanswer.app.a11y.A11yToggle.hasPermission(context),
+            accessibilityOn = runCatching { com.callanswer.app.a11y.A11yToggle.isEnabled(context) }.getOrDefault(false),
+            restrictedHint = com.callanswer.app.a11y.A11yToggle.restrictedHint(context),
+        )
     }
 }

@@ -32,6 +32,8 @@ object CallOverlay {
 
     /** Longest wait for the overlay's first draw before the service is started anyway. */
     const val DRAW_TIMEOUT_MS = 1_000L
+    /** Extra wait after two frames so WindowManager has finished drawing the overlay window. */
+    const val SETTLE_MS = 150L
 
     private val main = Handler(Looper.getMainLooper())
     private var view: View? = null
@@ -60,11 +62,26 @@ object CallOverlay {
         }
         if (!added) return false
         val drawn = withTimeoutOrNull(DRAW_TIMEOUT_MS) { firstDraw?.await() } != null
+        if (drawn) awaitWindowManagerDrawn()
         val v = view
         isShowing = v != null && v.isAttachedToWindow && v.windowToken != null && v.width > 0 && v.height > 0
         CallLog.i("overlay shown: firstDraw=$drawn attached=${v?.isAttachedToWindow} tokenValid=${v?.windowToken != null} " +
             "size=${v?.width}x${v?.height} visible=$isShowing")
         return isShowing
+    }
+
+    /**
+     * The view's first draw does not mean WindowManager has the window drawn (DRAW_PENDING), which is what the
+     * background-start exemption needs. Waits two frames on the main thread's Choreographer plus [SETTLE_MS].
+     */
+    private suspend fun awaitWindowManagerDrawn() {
+        suspendCancellableCoroutine<Unit> { cont ->
+            main.post {
+                val ch = android.view.Choreographer.getInstance()
+                ch.postFrameCallback { ch.postFrameCallback { if (cont.isActive) cont.resume(Unit) } }
+            }
+        }
+        kotlinx.coroutines.delay(SETTLE_MS)
     }
 
     /** Removes the overlay. Safe to call when it is not showing, from any thread. */

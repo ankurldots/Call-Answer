@@ -85,3 +85,9 @@ See `docs/e2e-scenarios.md` for the full manual test checklist.
 
 ### Optional: regenerate TTS voices
 `tools/generate_polly_voices.sh` and `tools/generate_fallback_phrases.sh` use AWS Polly and need AWS credentials. See `lambda/polly_tts/README.md` for the Lambda.
+
+## License
+
+Copyright (c) 2026 LeadingDots. Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). You can use, modify and share this project for personal, research, educational and other noncommercial purposes. Commercial use needs a separate license.
+
+For commercial licensing or other questions, contact LeadingDots at [leadingdots.com](https://leadingdots.com) or [Ankur Gupta on LinkedIn](https://www.linkedin.com/in/ankurgupta10/).

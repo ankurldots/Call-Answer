@@ -2,14 +2,15 @@
 
 ## Overview
 
-The Cloud Call Agent moves the call screening Agent from the User's phone to a single-household service in AWS Tokyo (ap-northeast-1). The User's carrier forwards unanswered, busy, and unreachable calls to an Exotel Virtual_Number. An Exotel flow streams the call audio over a bidirectional WebSocket to the Agent_Server, a Kotlin/JVM service. The Agent_Server relays the audio to Amazon Nova 2 Sonic through `InvokeModelWithBidirectionalStream`, and relays Sonic's speech back to Exotel. Sonic talks to the Caller. The Agent_Server owns every rule that must be exact: gate selection, delivery directions, personal data protection, limits, timers, takeover, and logging. Sonic reaches those rules only through seven tools implemented in server code.
+The Cloud Call Agent moves the call screening Agent from the User's phone to a multi-user service in AWS Tokyo (ap-northeast-1). Each User's carrier forwards unanswered, busy, and unreachable calls to an Exotel Virtual_Number that the Admin assigned to that User. An Exotel flow streams the call audio over a bidirectional WebSocket to the Agent_Server, a Kotlin/JVM service. The Agent_Server relays the audio to Amazon Nova 2 Sonic through `InvokeModelWithBidirectionalStream`, and relays Sonic's speech back to Exotel. Sonic talks to the Caller. The Agent_Server owns every rule that must be exact: gate selection, delivery directions, personal data protection, limits, timers, takeover, and logging. Sonic reaches those rules only through seven tools implemented in server code.
 
-The design rests on four decisions.
+The design rests on five decisions.
 
 1. **The model converses, the server decides.** Sonic produces speech and calls tools. A pure, testable call policy (a reducer over call events) owns phase, counters, timers, and limits. The system prompt never contains protected data, so a prompt injection by a Caller cannot leak it.
 2. **Reuse `:core`.** Gate selection, gate and delivery rendering, the PII guard, settings validation, the spam report builder, and the call log models run unchanged on the JVM. The on-device conversation engine, intent classifier, ASR, and TTS parts of `:core` are not used in the cloud.
-3. **One long-lived service, one task.** The household has at most 3 concurrent calls. One ECS Fargate task behind an Application Load Balancer keeps all live call state in memory. A restart drops the calls in progress to the Exotel Fallback_Route (Requirement 15 criterion 7). DynamoDB holds everything durable.
-4. **Exotel's flow is the safety net.** Every failure path ends in an Exotel applet that connects the Caller to the User_Mobile or records a voicemail, because that path works even when the Agent_Server is down.
+3. **One long-lived service, one task.** Each User has at most 3 concurrent calls and the service has a Global_Call_Cap (default 10). One ECS Fargate task behind an Application Load Balancer keeps all live call state in memory, with a counter per User and one global counter. A restart drops the calls in progress to the Exotel Fallback_Route (Requirement 15 criterion 7). DynamoDB holds everything durable. Scaling to several tasks would need shared counters and is out of scope.
+4. **Exotel's flow is the safety net.** Every failure path ends in an Exotel applet that connects the Caller to the User_Mobile or records a voicemail, because that path works even when the Agent_Server is down (with the multi-user limits described under "Fallback when the server is down").
+5. **The dialed number is the tenant key.** The `To` number of the call maps to exactly one User through a Number_Assignment record. The Cognito `sub` is the User_Id. Every record is keyed by User_Id, and a data access layer that requires a User_Id builds every query (see "Multi-user design").
 
 ### Spike plan (run first)
 
@@ -22,9 +23,10 @@ The design depends on facts that the documentation does not settle. Each spike h
 | C-1 | What exactly does the Voicebot applet send and accept (start event fields, sample rate, chunk sizes, mark, clear, DTMF, record, applet transitions on failure, Basic auth header, hidden Caller number)? | A minimal echo WebSocket server behind the ALB, logging every frame, tested with `sample-rate=8000`, `16000`, and `24000`. | Start event carries `from`, `to`, `call_sid`, `media_format`; `clear` removes buffered audio within 200 ms; an unreachable URL takes the failure transition. | If `clear` does not work, barge-in uses small chunks and a send-ahead of 100 ms (Requirement 5 criterion 2 is best effort). If the failure transition does not exist, the flow is gated with a Passthru applet (see Exotel flow). |
 | C-5 | How does Sonic behave in Tokyo for session length, renewal with history, tool calls, interruption signal, text-before-audio ordering, injected text during a call, and idle timeout? | A scripted session driven from recorded audio. | 8-minute limit confirmed, replacement with history keeps context, `INTERRUPTED` arrives within 200 ms of Caller speech, speculative text arrives before the matching audio, injected text instructions are followed in at least 9 of 10 trials. | If injected text is unreliable, "please wait", silence prompts, and goodbyes play from the stored Fallback_Message audio. If speculative text arrives after audio, the PII_Guard runs on a 300 ms look-ahead buffer. |
 | C-2 | Is Sonic good enough for Hindi, English, and Hinglish over telephone audio? | The 30-utterance corpus of `spike/` (`src/main/assets/s7/wav`), resampled to 8 kHz and sent as 8 kHz and as upsampled 16 kHz input, with voices `kiara`, `arjun`, `tiffany`, `matthew`. Plus 10 live calls through Exotel. | Intent accuracy at least 90 percent, usable Hindi transcripts, Reply_Latency p90 at most 1.5 s, and the User accepts the voice by listening. | If Hindi quality fails, the Agent speaks English only and Hindi callers are asked to leave a message; Requirement 7 is reduced after User approval. |
+| C-7 | Does Airtel plus Exotel pass any forwarding information (`ForwardedFrom`, a Diversion or History-Info header) for a forwarded call, and does `To` always equal the ExoPhone that the User forwards to? | Forward two test phones to two ExoPhones; log every Passthru and Voicebot start parameter and any SIP header that Exotel exposes, for unanswered, busy, and unreachable forwarding. | `To` equals the ExoPhone in 10 of 10 calls. A hint, if present, equals the forwarding phone's number. | No change to the model: `To` is the only key (Requirement 25 criterion 6). If no hint exists, the mismatch trace of criterion 7 stays empty and the hint is not used. |
 | C-3 | How is the live Caller connected to the User_Mobile, and how does the Caller return to the Agent when the User_Mobile does not answer? | Flow with Voicebot, then Connect applet with a dynamic URL, then a loop back to the Voicebot. Alternative B: the Legs and Bridge APIs (needs account enablement). | Caller hears the User_Mobile within 10 s of the tap, a failed dial returns to the Agent within 5 s, and no forwarding loop occurs. | If the loop back is impossible, a failed Bridge_Call plays the Fallback_Message and applies the Fallback_Route. |
 
-C-1, C-3, and C-6 need the Exotel account. C-4 needs only the phone. C-5 and C-2 need only AWS. The order is C-6 (start), C-4, C-5, C-1, C-2, C-3.
+C-1, C-3, and C-6 need the Exotel account. C-4 needs only the phone. C-5 and C-2 need only AWS. C-7 needs the Exotel account and the phone, and runs together with C-1 and C-4 results. The order is C-6 (start), C-4, C-5, C-1, C-7, C-2, C-3.
 
 ## Architecture
 
@@ -68,7 +70,7 @@ Settings of the chosen hosting:
 
 ### Exotel flow
 
-The Exotel flow is configured once in the Exotel dashboard. Dynamic URLs let the server control routing per call. The flow uses the Voicebot applet with a dynamic URL, which Exotel calls with `CallSid`, `CallFrom`, `CallTo`, `Direction`, and other fields and which must answer `{"url": "wss://..."}` ([Exotel Voicebot applet](https://docs.exotel.com/exotel-agentstream/voicebot-applet)). The stream closes automatically before the next applet runs, and the flow continues with the next applet.
+There is one Exotel flow (App) per assigned ExoPhone, the Number_Flow. All Number_Flows have the same applet structure and the same dynamic URLs. They differ only in the static fallback number of the Fallback branch (see "Fallback when the server is down"). Dynamic URLs let the server control routing per call. The flow uses the Voicebot applet with a dynamic URL, which Exotel calls with `CallSid`, `CallFrom`, `CallTo`, `Direction`, and other fields and which must answer `{"url": "wss://..."}` ([Exotel Voicebot applet](https://docs.exotel.com/exotel-agentstream/voicebot-applet)). The stream closes automatically before the next applet runs, and the flow continues with the next applet.
 
 ```mermaid
 stateDiagram-v2
@@ -84,20 +86,24 @@ stateDiagram-v2
     Next --> UserLeg: server returns User_Mobile (Take_Over)
     UserLeg --> Hangup: User call ended
     UserLeg --> Stream: User_Mobile busy, unreachable, or no answer (loop back, resume=1)
-    Fallback: Connect to User_Mobile or Voicemail applet (Fallback_Route)
-    Fallback --> Hangup
+    Fallback: Connect to the static User_Mobile of this Number_Flow, dial timeout 15 s
+    Fallback --> Hangup: User_Mobile answered and call ended
+    Fallback --> Voicemail: no answer within 15 s
+    Voicemail: Voicemail applet
+    Voicemail --> Hangup
     Hangup --> [*]
 ```
 
 Flow details and the facts they depend on:
 
-- **Route (gate).** A Passthru applet calls `/exotel/route` before the stream. The server answers 200 when the Agent is on, the Privacy_Consent is accepted, the monthly cost limit is not reached, and fewer than 3 calls are active. Any other answer sends the Caller to the Fallback branch (Requirement 1 criterion 5 and 7, Requirement 17 criterion 4, Requirement 22 criterion 5). Whether a Passthru applet branches on the HTTP status is a spike C-1 item; if it does not, the server returns the Fallback destination through the Connect applet's dynamic URL instead.
-- **Resolve.** `/exotel/resolve` creates the call session, starts the Sonic_Session in parallel, and returns a one-time `wss://<host>/stream/<callToken>` URL. `callToken` is an HMAC-SHA256 of the `CallSid` and an expiry (60 seconds) under a secret from Secrets Manager. This gives the unguessable per-call token of Requirement 16 criterion 11 and rejects a replay.
+- **Route (gate).** A Passthru applet calls `/exotel/route` before the stream. The server first resolves the User from the `To` number (see "Tenant resolution"). For an unassigned or unknown `To`, it answers with a status that sends the call to the Out_Of_Service branch (a Play applet with the Out_Of_Service_Message, then Hangup). Otherwise it answers 200 when the User's Agent is on, the Privacy_Consent is accepted, the User's monthly cost limit is not reached, fewer than 3 calls of that User are active, and the Global_Call_Cap is not reached. Any other answer sends the Caller to the Fallback branch (Requirement 1 criterion 5 and 7, Requirement 17 criterion 4, Requirement 22 criterion 5). Whether a Passthru applet branches on the HTTP status is a spike C-1 item; if it does not, the server returns the Fallback destination through the Connect applet's dynamic URL instead.
+- **Resolve.** `/exotel/resolve` repeats the tenant lookup, reads the Frozen_Settings of the User, creates the call session, starts the Sonic_Session in parallel, and returns a one-time `wss://<host>/stream/<callToken>` URL. `callToken` is an HMAC-SHA256 of the `CallSid`, the User_Id, and an expiry (60 seconds) under a secret from Secrets Manager; the stream handler rejects a token whose User_Id differs from the User_Id assigned to the dialed number (Requirement 16 criterion 3). This gives the unguessable per-call token of Requirement 16 criterion 11 and rejects a replay.
 - **Authentication.** Exotel sends HTTP Basic credentials, taken from the `wss://<key>:<token>@host` form, in the `Authorization` header of the WebSocket handshake. The server checks the header against Secrets Manager and checks `callToken`. The same Basic check protects the `/exotel/*` webhooks. The IP allow list that Exotel offers is added at the ALB security group if Exotel provides stable ranges (spike C-1).
-- **Take_Over.** The server speaks a short "connecting you" phrase, then closes the WebSocket. The flow moves to the Connect applet with the dynamic URL `/exotel/next`, which answers with the User_Mobile (a Connect applet may take the number to dial from a URL ([Exotel Connect applet, dynamic URL](https://support.exotel.com/en/support/solutions/articles/3000096873))). Exact response format and timeout fields are a spike C-3 item. If the User_Mobile does not answer, the Connect applet's failure branch loops to the Voicebot applet with `resume=1`, the server opens a new Sonic_Session with the stored transcript, and the Agent tells the Caller that the person could not be reached (Requirement 11 criterion 7).
-- **Forwarding loop guard.** The User_Mobile has conditional forwarding to the Virtual_Number. If Exotel rings the User_Mobile and the phone is busy or unanswered, the carrier forwards that leg back to the Virtual_Number and the call loops. Two measures prevent it. The Connect applet's dial timeout is 15 seconds, which is shorter than the 20-second carrier ring time, so Exotel gives up first. The `/exotel/route` handler rejects any call whose `From` is the Virtual_Number or the User_Mobile (Fallback branch). This changes the 30-second wait of Requirement 11 criterion 7 to 15 seconds (open question 4).
+- **Take_Over.** The server speaks a short "connecting you" phrase, then closes the WebSocket. The flow moves to the Connect applet with the dynamic URL `/exotel/next`, which answers with the User_Mobile of the User who owns the call, read from the call state by `CallSid` (a Connect applet may take the number to dial from a URL ([Exotel Connect applet, dynamic URL](https://support.exotel.com/en/support/solutions/articles/3000096873))). Exact response format and timeout fields are a spike C-3 item. If the User_Mobile does not answer, the Connect applet's failure branch loops to the Voicebot applet with `resume=1`, the server opens a new Sonic_Session with the stored transcript, and the Agent tells the Caller that the person could not be reached (Requirement 11 criterion 7).
+- **Forwarding loop guard.** The User_Mobile has conditional forwarding to the Virtual_Number. If Exotel rings the User_Mobile and the phone is busy or unanswered, the carrier forwards that leg back to the Virtual_Number and the call loops. Two measures prevent it. The Connect applet's dial timeout is 15 seconds, which is shorter than the 20-second carrier ring time, so Exotel gives up first. The `/exotel/route` handler rejects any call whose `From` is the User_Mobile of the resolved User or any assigned Virtual_Number (Fallback branch). This changes the 30-second wait of Requirement 11 criterion 7 to 15 seconds (open question 4).
 - **Alternative B for Take_Over.** If C-3 shows that the Connect loop does not work, the server creates a leg to the User_Mobile and a bridge with the Legs and Bridge APIs (`POST /v2/accounts/{sid}/legs`, `POST /v2/accounts/{sid}/bridges`; Basic auth; the docs state that some of these APIs need enablement by Exotel). See [Exotel Bridge APIs](https://docs.exotel.com/voice-apis/bridge-apis-introduction) and [Manage Legs and Bridges](https://developer.exotel.com/docs/legs/api-reference/manage-legs).
-- **Fallback.** A Connect applet with the User_Mobile as a static number (so it works when the server is down) or a Voicemail applet, chosen by the User when the flow is set up. The server's `/exotel/next?mode=fallback` can override the choice when it is up.
+- **Fallback when the server is up.** `/exotel/next?mode=fallback` resolves the User from `To` and answers with that User's Fallback_Route: the User_Mobile from the Frozen_Settings, or the Voicemail applet. This is per User and needs no per-number setup in Exotel.
+- **Fallback when the server is down (decided).** The call is passed to the User. A shared flow cannot know the User_Mobile without the server, so each assigned ExoPhone has its own Number_Flow. The static Fallback branch of the Number_Flow is a Connect applet that dials that User's User_Mobile as a fixed number. It runs when the Passthru URL, the Voicebot resolve URL, or the stream URL fails or times out, so it needs no call to the Agent_Server (Requirement 15 criteria 10 to 12). The Connect applet's dial timeout is 15 seconds, below the 20-second Airtel ring time, so Exotel gives up before the carrier forwards the leg back to the Virtual_Number. If the User_Mobile does not answer, the branch continues to the Voicemail applet. Voicemails are matched to the User by the `To` field in the Exotel call details. The static number is a copy of the `userMobile` setting. The Admin keeps the copy current (checklist below).
 
 ### Call lifecycle
 
@@ -215,13 +221,127 @@ Output handling:
 
 **Server-to-model instructions.** The server needs to tell Sonic to say something (please wait, silence prompt, goodbye, corrective instruction, Quick_Reply, "nobody is available"). It sends cross-modal text with role `USER` that starts with a fixed marker and the exact sentence. The system prompt tells Sonic that such messages come from the system and must be obeyed and never read aloud as instructions.
 
+## Multi-user design
+
+### Key finding: the dialed number is the only reliable tenant key
+
+Exotel's Passthru documentation lists `ForwardedFrom` as deprecated and tells applications not to rely on it. Exotel passes `From` (the original Caller) and `To` (the ExoPhone on which the call landed) ([Exotel Passthru applet](https://docs.exotel.com/voice-apis/working-with-passthru-applet)). With one shared ExoPhone, the server could not tell which subscriber forwarded a call, so the model is one ExoPhone (Virtual_Number) per User. Content was rephrased for compliance with licensing restrictions.
+
+### Tenant resolution
+
+```mermaid
+flowchart TD
+    A[Exotel GET /exotel/route: To, From, CallSid] --> B[Normalize To to E.164]
+    B --> C{GetItem NUMBER#e164 / ASSIGNMENT}
+    C -->|none or invalid| U[Out_Of_Service branch: play message, hang up, log To + reason]
+    C -->|userId| D{User profile active?}
+    D -->|no| U
+    D -->|yes| E[Read Frozen_Settings of userId]
+    E --> F{From is User_Mobile or an assigned number?}
+    F -->|yes| L[Fallback branch, log loop]
+    F -->|no| G[RouteDecider with per-user and global counters]
+    G -->|Agent| H[200, continue to resolve]
+    G -->|other| I[Fallback branch with cause]
+```
+
+- The lookup is a strongly consistent `GetItem` on `NUMBER#<e164>` / `ASSIGNMENT`. A 30-second in-memory cache (positive and negative entries) keeps Admin changes effective within the 60 seconds of Requirement 26 criteria 4 and 5, and the cache is cleared on any Admin write handled by the same task.
+- `PhoneNumbers.normalize` (in `:core`, pure) turns `+91 98xxx-xxxxx`, `098xxxxxxxx`, `9198xxxxxxxx`, and `98xxxxxxxx` (10 digits, India default) into `+9198xxxxxxxx`, and returns null for text that is not a number. Property 27 covers it.
+- `ForwardedFrom` or a diversion header is read when present and compared with the User_Mobile. Only the two booleans (`hintPresent`, `hintMatchesUserMobile`) go to the Call_Trace, because the value is a personal number. It never selects the User. Spike C-7 finds out whether the carrier chain provides it at all.
+- The resolved User_Id, the Frozen_Settings, and the Settings_Version are placed in the call state. The tools, the policy, and the finalizer use only that state, never a lookup by number later in the call.
+
+### Admin and number assignment
+
+- Cognito: a group `admins` in the existing pool (task 0.6). The ID token carries `cognito:groups`. `JwtVerifier` returns `sub` and the group set.
+- `NumberAssignmentService` assigns with one `TransactWriteItems`: put `NUMBER#<e164>` / `ASSIGNMENT` with `attribute_not_exists(pk)` and put `USER#<sub>` / `ASSIGNMENT` with `attribute_not_exists(pk)`. A cancelled transaction maps to HTTP 409. Unassign deletes both items in one transaction. At most one number per User and one User per number follows from the two conditions.
+- Admin interfaces: the Admin_API under `/api/v1/admin` (group check) and the CLI `scripts/admin/callagent-admin` (a small `:agent` main class using the same `NumberAssignmentService` with the `ldots` AWS profile). Both exist for assign, unassign, list users and numbers, and deactivate. No admin screen is built.
+- **Account creation.** Accounts are admin-created only (resolved default of open question 17). The Cognito app client has self sign-up disabled (`AllowAdminCreateUserOnly` on the pool, task 0.6), and the Admin creates each account with `aws cognito-idp admin-create-user`. Self-service account deletion and data export are out of scope for this release (open question 19).
+- **Admin assignment checklist (manual in the Exotel dashboard for now).** Exotel is not known to expose an API for creating or editing flows, so the Admin completes these steps for each assignment and records completion in the Number_Assignment (`flowConfigured`, `flowFallbackMobile`, `flowConfiguredAt`). Automation is added later only if Exotel exposes an API.
+  1. Assign the number with the Admin_API or the CLI (the assignment is rejected if the number equals any `userMobile`).
+  2. In the Exotel dashboard create the Number_Flow for the ExoPhone by cloning the template flow: Passthru `/exotel/route` with the Out_Of_Service branch, Voicebot with the resolve URL at `sample-rate` 8000, Connect with the `/exotel/next` URL, and the Fallback branch.
+  3. Set the Fallback branch to a Connect applet with the User's User_Mobile as a static number in E.164 form, a dial timeout of 15 seconds, and the Voicemail applet on no answer.
+  4. Link the Number_Flow to the ExoPhone.
+  5. Place a test call with the Agent server stopped (or the resolve URL blocked) and confirm that the User_Mobile rings and that the unanswered call reaches voicemail after 15 seconds.
+  6. Record the completion in the Number_Assignment. When the User changes the User_Mobile, repeat step 3 and step 5.
+  When the Admin removes an assignment, the Admin changes the Number_Flow to the Out_Of_Service branch only (the server already plays the Out_Of_Service_Message).
+- A number equal to any User's `userMobile` cannot be assigned, and a `userMobile` equal to an assigned number cannot be saved (loop protection by validation, in addition to the `From` check at routing).
+
+### Settings storage, version, and sync
+
+- One item `USER#<sub>` / `SETTINGS` holds the settings JSON (`CoreJson`) and a numeric attribute `version`. Absent item means version 0 and the defaults of `:core`.
+- Update algorithm (`SettingsStore.update(userId, expectedVersion, candidate)`):
+  1. Validate `candidate` with `SettingsValidator` and the cross-record rule for `userMobile` (not an assigned number). On failure return `Invalid(field)`.
+  2. If `expectedVersion` is 0, `PutItem` with `attribute_not_exists(pk)` and `version = 1`. Otherwise `PutItem` (or `UpdateItem`) with `ConditionExpression: version = :expected` and `version = :expected + 1`.
+  3. On `ConditionalCheckFailedException`, read the item (consistent) and return `Conflict(currentDocument, currentVersion)`.
+  4. On success return `Saved(document, newVersion)`.
+  Concurrent updates with the same expected version therefore produce exactly one `Saved` (Requirement 27 criterion 5).
+- Call start: `GetItem` with `ConsistentRead` of the SETTINGS item once, stored as `FrozenSettings(version, settings)` in the call state. A later `PUT` does not affect a running call (Requirement 20 criterion 5). The Call_Log entry stores `settingsVersion` so that a call can be matched with the settings that it ran under.
+- The Companion_App keeps a Room copy `settings_cache(version, json)` plus an outbox row `pending_edit(baseVersion, changedFields)`. Sync algorithm on reconnect:
+  1. `GET /settings`. If `version == baseVersion`, send `PUT` with the pending fields and `expectedVersion = baseVersion`.
+  2. If `version > baseVersion`, run `SettingsMerge.threeWay(base, server, edits)` (pure, in `:core`): a field edited locally and unchanged on the server takes the local value; a field changed only on the server keeps the server value; a field changed on both with different values goes to a conflict list that the User resolves on screen. Then send `PUT` with `expectedVersion = server.version`.
+  3. On `409` run step 2 again with the returned document (bounded to 3 attempts).
+  4. After `Saved`, replace the cache with the returned document and delete the outbox row.
+  The `base` document for the merge is the cache copy at the time the edit began, which is why the cache holds the full last server document.
+
+### Data isolation
+
+- **Key design.** Every user-owned item has `pk = USER#<sub>`. A `sub` is a UUID, so no `sub` is a prefix of another and `pk` equality cannot cross users.
+- **Data access layer.** `UserScopedRepository(userId: UserId)` is the only class that Companion_API handlers and call code use for user data. Its constructor requires a `UserId`, and every method builds keys through `Keys.user(userId, ...)`. No method accepts a raw `pk`. Call identifiers from a request are used only as part of `sk` under the caller's own `pk`, so another User's call id returns "not found" (HTTP 404). Cross-user operations live in a separate `DirectoryRepository` (number lookup, user listing for the sweeper, admin) that does not expose call logs, transcripts, or settings content.
+- **Storage keys.** S3 keys are `users/<sub>/recordings/<callId>.wav` and `users/<sub>/transcripts/<callId>.json`. `RecordingStore` takes a `UserId`, builds the key, and refuses to presign a key outside `users/<sub>/`.
+- **IAM.** The single task role cannot be narrowed per User, because the server acts for all Users. Isolation is therefore enforced in code and checked by Property 28, API tests, and a code rule: the AWS SDK clients for DynamoDB and S3 are reachable only from the `store` package (a Gradle dependency rule or an ArchUnit-style test fails the build otherwise).
+- **Live events and push.** The `/live` hub keys subscriptions by User_Id and publishes to the User_Id of the call. FCM tokens are read from `USER#<sub>` / `DEVICE#...` only.
+- **Retention.** The `RetentionSweeper` lists active User_Ids from `DirectoryRepository`, then for each User runs the selection with that User's `retentionDays` over `USER#<sub>` items and the `users/<sub>/` S3 prefix only.
+- **Logs.** Logs and traces carry `userId` (a pseudonymous UUID) and call id, never personal content.
+
+### Concurrency
+
+`CallRegistry` holds `perUser: Map<UserId, Int>` and `global: Int`. `tryAcquire(userId)` succeeds only when `perUser[userId] < userLimit (3)` and `global < globalCap (10)`; `release` runs in the call finalizer and in the stream-closed handler, with a 5-second watchdog. Both limits come from configuration (`limits.perUser`, `limits.global`). A refused call takes the Fallback_Route with the cause `USER_LIMIT` or `GLOBAL_CAP` in the trace, and a metric `CapRefusals` is published.
+
+### Push and Take over
+
+Devices live in `USER#<sub>` / `DEVICE#<deviceId>` (up to 5, oldest replaced). `AlertService` sends to all of the owner's devices. A `404 UNREGISTERED` from FCM removes that device item. The Take over request carries no number; the bridge destination is `frozenSettings.userMobile` of the call's owner, and the `/exotel/next` handler reads it from the call state by `CallSid`, never from a request parameter.
+
+### Onboarding sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User app
+    participant A as Companion_API
+    participant D as DynamoDB
+    participant O as Admin (CLI or API)
+    U->>A: sign in (Cognito), GET /me
+    A->>D: create USER#sub PROFILE if absent
+    A-->>U: profile (no number), settings v0
+    U->>A: POST /consent, PUT /settings (userMobile) expectedVersion 0
+    U->>A: GET /me (poll every 60 s)
+    O->>D: assign +91xxxx to sub (transaction)
+    A-->>U: assignedNumber +91xxxx
+    U->>U: forwarding setup with codes for +91xxxx, test call
+```
+
+### Migration from the single-household design
+
+Nothing from the single-household design has been deployed (tasks 3 to 14 are not started), so no stored data moves. The changes are to the design and to code not yet written:
+
+| Single-household item | Multi-user replacement |
+| --- | --- |
+| Constant partition key `H` | `USER#<sub>` partition and `NUMBER#<e164>` for the lookup |
+| `JwtVerifier` accepts one configured `sub` and the template has a parameter for it | `JwtVerifier` accepts any valid token of the pool; no `ConfiguredSub` parameter; `admins` group for the Admin_API |
+| One Virtual_Number and one User_Mobile in configuration | Number_Assignment items and `userMobile` in each settings document |
+| S3 key `recordings/<callId>.wav` | `users/<sub>/recordings/<callId>.wav` |
+| Retention sweeper over all items | Sweeper per User |
+| Counter of 3 calls | Counter per User (3) and a global cap (10) |
+| Call token over `CallSid` and expiry | Token over `CallSid`, `userId`, and expiry |
+| The owner's household | The first User: the owner signs in, the Admin CLI assigns the first ExoPhone, and the app uploads its cached local settings as version 1 (Requirement 31 criterion 5) |
+
+The earlier on-device Room settings in the app stay as the cache, and the first upload uses `expectedVersion` 0.
+
 ## Components and Interfaces
 
 #### Gradle modules
 
 | Module | Content |
 | --- | --- |
-| `:core` (existing, JVM) | Existing rule code, plus new pure packages `cloud` (call policy, forwarding codes, cost and retention logic, cloud settings fields). |
+| `:core` (existing, JVM) | Existing rule code, plus new pure packages `cloud` (call policy, forwarding codes, cost and retention logic, cloud settings fields) and `tenant` (`UserId`, `E164`, `PhoneNumbers.normalize`, `Keys` for DynamoDB and S3 key construction, `SettingsMerge`, `SettingsUpdate` result types). |
 | `:agent` (new, JVM, Ktor with Netty) | Everything below. Depends on `:core`, `kotlinx-serialization`, `kotlinx-coroutines`, the AWS SDK for Java v2 (`bedrockruntime`, `dynamodb`, `s3`, `secretsmanager`), and `kotest` for tests. The Bedrock bidirectional stream is available in `BedrockRuntimeAsyncClient`; spike C-5 confirms the SDK version and the model identifier `amazon.nova-2-sonic-v1:0` in ap-northeast-1 (an inference profile may be required instead of the plain model ARN). |
 | `:app` (existing) | Companion_App. |
 | `:spike` (existing) | Archived spike code, kept. |
@@ -250,9 +370,10 @@ New code in `:core` has default values for every added field, so existing serial
 | `sonic` | `SonicEvents` (builders and parser for every event above), `SonicClient` (SDK stream wrapper), `SonicSession`, `SessionRenewer`, `SystemPrompt`, `ToolSpecs`, `HistoryBuilder`. |
 | `tools` | `ToolRegistry` and the seven tools below. |
 | `call` | `CallSession` (one coroutine per call that handles events from one channel in order), `CallPolicy` (pure reducer, lives in `:core`), `CallRegistry` (at most 3), `TranscriptBuffer`, `CallFinalizer`. |
-| `api` | `CompanionRoutes`, `LiveStream` (WebSocket), `JwtVerifier` (Cognito JWKS, `iss`, `aud`/`client_id`, `exp`, `token_use`, and the one configured `sub`), `RateLimiter` (60 requests per minute per identity). |
+| `api` | `CompanionRoutes`, `AdminRoutes` (group `admins`), `LiveStream` (WebSocket, subscriptions keyed by User_Id), `JwtVerifier` (Cognito JWKS, `iss`, `aud`/`client_id`, `exp`, `token_use`; returns `sub` and `cognito:groups`), `RateLimiter` (60 requests per minute per `sub`). |
+| `tenant` | `TenantResolver` (normalize `To`, number lookup with a 30-second cache, active-user check), `NumberAssignmentService` (transactional assign and unassign), `UnassignedCallLog`, `AdminCli` (main class). |
 | `notify` | `FcmClient` (HTTP v1, service account in Secrets Manager), `AlertService` (push, acknowledgment wait, SMS fallback). |
-| `store` | `Repository` (DynamoDB), `RecordingStore` (S3, presigned URLs), `Secrets`, `RetentionSweeper`. |
+| `store` | `UserScopedRepository` (requires a `UserId`; call log, traces, devices, cost, consent), `SettingsStore` (versioned settings), `DirectoryRepository` (number lookup, user listing, open-call markers), `RecordingStore` (S3 under `users/<sub>/`, presigned URLs), `Secrets`, `RetentionSweeper`. The only package that touches the DynamoDB and S3 clients. |
 | `obs` | `CallTrace`, `Metrics` (CloudWatch embedded metric format), `StructuredLog` (no personal content). |
 
 #### Agent_Tools
@@ -281,13 +402,18 @@ The system prompt is built by `SystemPrompt.build(voice, defaultLanguage, househ
 
 ### Companion API
 
-Base path `/api/v1`, TLS at the ALB, `Authorization: Bearer <Cognito ID token>`. `JwtVerifier` downloads the JWKS of the existing user pool (ap-south-1) and caches it for one hour. It accepts only the configured `sub` (Requirement 16 criterion 7).
+Base path `/api/v1`, TLS at the ALB, `Authorization: Bearer <Cognito ID token>`. `JwtVerifier` downloads the JWKS of the existing user pool (ap-south-1) and caches it for one hour. It accepts any valid token of the pool, and the handler takes the User_Id only from the verified `sub` (Requirement 16 criterion 7, Requirement 28 criterion 2). A deactivated User gets HTTP 403. Call identifiers in paths are resolved only inside the caller's own partition, so a foreign identifier gives HTTP 404.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET`, `PUT /settings` | Read and replace the settings (validated with `SettingsValidator`, HTTP 400 with the field name on error, answer within 3 seconds). |
+| `GET /me` | Profile: `userId`, status, assigned Virtual_Number or null, consent state, Settings_Version. Creates the profile on first use. |
+| `GET /settings` | Returns `{ "version": n, "settings": {...} }`; version 0 and defaults when none is stored. |
+| `PUT /settings` | Body `{ "expectedVersion": n, "settings": {...} }`. 200 with `{version, settings}` on success; 400 `{field, message}` on validation failure; 409 `{currentVersion, settings}` on a version conflict. Answer within 3 seconds. |
 | `POST /consent`, `DELETE /consent` | Accept (stores version and time) or withdraw the Privacy_Consent. |
-| `PUT /device` | Store the FCM token. |
+| `PUT /devices/{deviceId}`, `DELETE /devices/{deviceId}` | Store or remove an FCM token (up to 5 per User). |
+| `GET /admin/users`, `GET /admin/numbers` | Admin only (group `admins`): list Users and Number_Assignments. |
+| `PUT /admin/numbers/{e164}` | Admin only: body `{ "userId": "<sub>" }`; assigns the number; 409 when the number or the User is already assigned. |
+| `DELETE /admin/numbers/{e164}`, `POST /admin/users/{userId}/deactivate` | Admin only: unassign, or deactivate a User. |
 | `GET /calls`, `GET /calls/{id}`, `DELETE /calls/{id}` | Call_Log list (newest first, cursor), detail with transcript, trace, and latency, delete with recording. |
 | `GET /calls/{id}/recording` | Presigned S3 URL that expires in 10 minutes (within the 15 minutes of Requirement 18 criterion 7). |
 | `POST /calls/{id}/takeover`, `/end`, `/quick-reply`, `/alert-ack` | Live call actions and alert acknowledgment. |
@@ -311,6 +437,7 @@ FCM reports acceptance, not delivery to the device. For the Takeover_Alert the a
 - One customer-managed KMS key encrypts DynamoDB, S3, Secrets Manager entries, and the log group.
 - Logs are JSON with call identifier, event name, duration, and status. The Caller number, transcript, and audio never appear in them (Requirement 16 criterion 8). Stack traces are scrubbed of tool arguments.
 - S3 bucket: block public access, bucket key encryption, versioning off, lifecycle backstop (see Retention).
+- Multi-user: the task role needs `dynamodb:Query` on the `gsi1` index ARN in addition to the table. Admin API access requires the `admins` group claim. The Cognito pool should use admin-created accounts (open question 17). Isolation rules are in "Multi-user design".
 - A Caller cannot reach the model's tools beyond the seven. Tool arguments are validated, and the Caller number and the User_Mobile are never tool inputs.
 
 ### Observability
@@ -322,23 +449,46 @@ FCM reports acceptance, not delivery to the device. For the Takeover_Alert the a
 
 ## Data Models
 
-#### DynamoDB (single table `CallAgent`, partition key `pk`, sort key `sk`, TTL attribute `ttl`)
+#### DynamoDB (single table `CallAgent`, partition key `pk`, sort key `sk`, TTL attribute `ttl`, one global secondary index `gsi1` with `gsi1pk` and `gsi1sk`)
+
+`<sub>` is the Cognito `sub` (User_Id). `<e164>` is the normalized number, for example `+919812345678`.
 
 | `pk` | `sk` | Content |
 | --- | --- | --- |
-| `H` | `SETTINGS` | Settings JSON (`CoreJson`), version counter. |
-| `H` | `CONSENT` | Version of the consent text, accepted time, withdrawn time. |
-| `H` | `DEVICE` | FCM token, update time. |
-| `H` | `CALL#<startEpochMs>#<callId>` | `CallLogEntry` JSON, plus `intent`, `outcome`, `startMs` attributes for filtering, `recordingKey`, `ttl`. |
-| `H` | `TRACE#<callId>` | Trace events, latency report, `ttl` of 30 days. |
-| `H` | `COST#<yyyy-MM>` | Month total in paise (atomic `ADD`), `notified80`, `notified100`. |
-| `H` | `FWDTEST` | Armed time, result call identifier. |
+| `USER#<sub>` | `PROFILE` | `status` (`ACTIVE`, `DEACTIVATED`), `createdAt`. `gsi1pk = USERS`, `gsi1sk = USER#<sub>`. |
+| `USER#<sub>` | `SETTINGS` | Settings JSON (`CoreJson`), numeric `version` (absent item means version 0). |
+| `USER#<sub>` | `ASSIGNMENT` | `e164` of the assigned Virtual_Number (reverse of the number item). |
+| `USER#<sub>` | `CONSENT` | Version of the consent text, accepted time, withdrawn time. |
+| `USER#<sub>` | `DEVICE#<deviceId>` | FCM token, update time (up to 5 items per User). |
+| `USER#<sub>` | `CALL#<startEpochMs>#<callId>` | `CallLogEntry` JSON, plus `intent`, `outcome`, `startMs`, `settingsVersion`, `recordingKey`, `ttl`. |
+| `USER#<sub>` | `TRACE#<callId>` | Trace events, latency report, `ttl` of 30 days. |
+| `USER#<sub>` | `COST#<yyyy-MM>` | Month total in paise (atomic `ADD`), `notified80`, `notified100`. |
+| `USER#<sub>` | `FWDTEST` | Armed time, result call identifier. |
+| `USER#<sub>` | `OPEN#<callId>` | Marker for a call in progress, deleted by the finalizer. `gsi1pk = OPENCALLS`, `gsi1sk = <startEpochMs>#<sub>#<callId>`. |
+| `NUMBER#<e164>` | `ASSIGNMENT` | `userId`, `assignedAt`, `assignedBy`. `gsi1pk = ASSIGNMENTS`, `gsi1sk = NUMBER#<e164>`. |
+| `OPS#UNASSIGNED#<yyyy-MM-dd>` | `<epochMs>#<callSid>` | `to` number, reason (`NO_ASSIGNMENT`, `INVALID_NUMBER`, `USER_DEACTIVATED`), `ttl` of 30 days. No Caller number. |
 
-The sort key puts calls in time order, so the call list is one `Query` with `ScanIndexForward=false`. The household identifier `H` is a constant because the system is single-tenant (Requirement 1 criterion 6). A call entry is stored as one JSON string and is read back through the same serializer. A transcript larger than 300 KB goes to S3 under `transcripts/<callId>.json` with a pointer in the item.
+Access patterns:
+
+| # | Pattern | Operation |
+| --- | --- | --- |
+| 1 | Agent call start: User for a dialed number | `GetItem NUMBER#<e164> / ASSIGNMENT` (consistent), then `GetItem USER#<sub> / PROFILE` and `GetItem USER#<sub> / SETTINGS` (batched, consistent). |
+| 2 | Read settings, `GET /settings` | `GetItem USER#<sub> / SETTINGS`. |
+| 3 | Update settings | Conditional `PutItem` on `version`. |
+| 4 | Assign or unassign a number | `TransactWriteItems` on `NUMBER#<e164>` and `USER#<sub> / ASSIGNMENT` with `attribute_not_exists` conditions. |
+| 5 | Call list for a User, newest first | `Query pk = USER#<sub>, sk begins_with CALL#`, `ScanIndexForward=false`, cursor. |
+| 6 | Call detail, delete | `GetItem` or `DeleteItem` with `pk = USER#<sub>` and the `sk` built from the call identifier. |
+| 7 | Devices of a User for a push | `Query pk = USER#<sub>, sk begins_with DEVICE#`. |
+| 8 | Month cost | `GetItem` and `UpdateItem ADD` on `COST#<yyyy-MM>`. |
+| 9 | Admin list of Users and numbers | `Query gsi1 gsi1pk = USERS`, `Query gsi1 gsi1pk = ASSIGNMENTS`. |
+| 10 | Retention sweeper | `Query gsi1 gsi1pk = USERS` for the User list, then per User `Query pk = USER#<sub>, sk begins_with CALL#` with a key condition on the start time. |
+| 11 | Calls open at server start | `Query gsi1 gsi1pk = OPENCALLS`. |
+
+Design notes. The number lookup uses the base table key and not a GSI, because a conditional write on the base key is the only way to guarantee that a number belongs to at most one User (a GSI key is not unique). `gsi1` serves listings (Users, assignments, open calls); these partitions are small (one item per User or number), so a hot partition is not a concern at the expected scale of tens of Users. The sort key puts calls in time order, so the call list is one `Query`. A call entry is stored as one JSON string and is read back through the same serializer. A transcript larger than 300 KB goes to S3 under `users/<sub>/transcripts/<callId>.json` with a pointer in the item.
 
 #### `:core` model additions (all with defaults)
 
-- `Settings`: `agentEnabled`, `fallbackRoute` (`VOICEMAIL`, `FORWARD_TO_MOBILE`), `retentionDays` (1 to 365, default 30), `recordingEnabled` (default true), `disclosureEnabled` (default true), `greetingName`, `defaultLanguage`, `maxStallingMinutes` (1 to 60, default 5), `silenceTimeoutSec` (default 8), `quickReplies`, `costRates` (Exotel per minute, Sonic input and output per minute, in paise), `monthlyLimitInr`, `consentVersion`.
+- `Settings`: `userMobile` (the Take_Over destination, E.164), `voiceGender`, `voiceId` (optional override), `version` (set by the server, not edited by the client), `agentEnabled`, `fallbackRoute` (`VOICEMAIL`, `FORWARD_TO_MOBILE`), `retentionDays` (1 to 365, default 30), `recordingEnabled` (default true), `disclosureEnabled` (default true), `greetingName`, `defaultLanguage`, `maxStallingMinutes` (1 to 60, default 5), `silenceTimeoutSec` (default 8), `quickReplies`, `costRates` (Exotel per minute, Sonic input and output per minute, in paise), `monthlyLimitInr`, `consentVersion`.
 - `CallLogEntry`: `costEstimatePaise`, `latency` (`ttfaMs`, `medianReplyMs`, `maxReplyMs`), `sonicSessions` (start, end, reason), `fallbackCause`, `recordingKey`, `isTestCall`, `voiceId`, `endReason`.
 - `cloud.ForwardingCodes`: builds the set, clear, ring-time, and unconditional codes for a validated number. `cloud.CostEstimator`, `cloud.RetentionPolicy`, `cloud.CallPolicy`.
 
@@ -346,11 +496,11 @@ Time handling: the server clock is read through a `Clock` interface so tests can
 
 #### S3
 
-Bucket `callagent-recordings-<account>-ap-northeast-1`. Key `recordings/<callId>.wav` (8 kHz mono PCM16 WAV, about 1 MB per minute). Server-side encryption with the KMS key.
+Bucket `callagent-recordings-<account>-ap-northeast-1`. Key `users/<sub>/recordings/<callId>.wav` (8 kHz mono PCM16 WAV, about 1 MB per minute). Server-side encryption with the KMS key.
 
 ### Retention
 
-A `RetentionSweeper` coroutine runs at start and every 6 hours. It deletes call items, trace items, and S3 objects whose `startMs + retentionDays` is not after now, and retries on failure (Requirement 17 criterion 5 asks for at least daily). DynamoDB TTL is a second layer set to the same time. The S3 lifecycle rule is a backstop at 366 days, not 30, because the User may set the retention up to 365 days and a lifecycle rule cannot follow a setting (open question 5). The default of 30 days is enforced by the sweeper. Deleting a call from the app deletes the item and the object at once (Requirement 17 criterion 7).
+A `RetentionSweeper` coroutine runs at start and every 6 hours. For each active User it deletes that User's call items, trace items, and S3 objects (under `users/<sub>/`) whose `startMs + retentionDays` (the User's own setting) is not after now, and retries on failure (Requirement 17 criterion 5 asks for at least daily). DynamoDB TTL is a second layer set to the same time. The S3 lifecycle rule is a backstop at 366 days, not 30, because the User may set the retention up to 365 days and a lifecycle rule cannot follow a setting (open question 5). The default of 30 days is enforced by the sweeper. Deleting a call from the app deletes the item and the object at once (Requirement 17 criterion 7).
 
 ### Companion_App changes
 
@@ -362,7 +512,8 @@ A `RetentionSweeper` coroutine runs at start and every 6 hours. It deletes call 
 | New: forwarding setup | Screen built from `ForwardingCodes`, showing `**61*<number>**20#` (no answer with a 20-second ring), `**67*<number>#`, and `**62*<number>#`, each with a button that opens the dialer (`ACTION_DIAL`, with `#` encoded as `%23`) and never dials by itself. A turn-off screen with `##61#`, `##67#`, `##62#`, and `##002#`. The unconditional option `**21*` with a warning. A "Send test call" button with a 10-minute countdown and a result. Text that Airtel may charge for forwarded calls and that Wi-Fi calling can change the behavior (to be firmed up by spike C-4). |
 | New: live call | A high-priority notification for `TAKEOVER_ALERT` with a "Take over" action that calls `POST /calls/{id}/takeover` from a short-lived worker, and a full-screen live call screen (Caller number, intent, language, elapsed time, live transcript from the `/live` WebSocket, "Take over", "End call", Quick_Replies, bridge status). The screen shows an ended call as ended and disables Take over (Requirement 19 criterion 9). |
 | New: call detail | Latency report, trace events, cost, recording playback through the presigned URL with the system media player. |
-| New: settings | Fields of Requirement 20 criterion 1 and the cost rates and limit, saved with `PUT /settings`. |
+| New: settings | Fields of Requirement 20 criterion 1 and the cost rates and limit, saved with `PUT /settings` and `expectedVersion`. The Room cache holds the last server document and the pending edit; sync and merge follow "Settings storage, version, and sync". |
+| New: onboarding | Guided steps after sign-in: consent, "waiting for your number" screen that polls `GET /me` every 60 seconds and then shows the assigned number, the User_Mobile entry, the forwarding setup with that number, and the settings. The first upload of the cached local settings uses `expectedVersion` 0. |
 | Push | Firebase Messaging service that handles the data message types above. This adds the Firebase configuration file (`google-services.json`) to the app project. |
 
 
@@ -486,15 +637,15 @@ For any call durations and rates, the Cost_Estimate is non-negative, is monotoni
 
 ### Property 20: Route decision
 
-For any combination of Agent on or off, Privacy_Consent accepted or not, month total versus limit, number of active calls, and `From` value, the route decision selects the Agent if and only if the Agent is on, consent is accepted, the month total is below the limit, fewer than 3 calls are active, and `From` is neither the Virtual_Number nor the User_Mobile; otherwise it selects the Fallback_Route.
+For any combination of Agent on or off, Privacy_Consent accepted or not, User active or deactivated, month total versus the User's limit, number of active calls of the User, number of active calls overall, the Global_Call_Cap, and `From` value, the route decision selects the Agent if and only if the Agent is on, consent is accepted, the User is active, the month total is below the limit, fewer than 3 calls of that User are active, fewer than the Global_Call_Cap calls are active overall, and `From` is neither the User_Mobile of the resolved User nor any assigned Virtual_Number; otherwise it selects the Fallback_Route with a recorded cause.
 
-**Validates: Requirements 1.5, 1.7, 17.2, 17.4, 20.7, 22.5**
+**Validates: Requirements 1.5, 1.7, 17.2, 17.4, 20.7, 22.5, 25.8, 29.1, 29.2, 29.3**
 
 ### Property 21: Call token verification
 
-For any `CallSid`, secret, and time, a token generated for that `CallSid` verifies at any time before its 60-second expiry, and fails verification for a different `CallSid`, a different secret, a modified token, or a time at or after expiry.
+For any `CallSid`, User_Id, secret, and time, a token generated for that `CallSid` and User_Id verifies at any time before its 60-second expiry and yields that User_Id, and fails verification for a different `CallSid`, a different User_Id, a different secret, a modified token, or a time at or after expiry.
 
-**Validates: Requirements 16.2, 16.11**
+**Validates: Requirements 16.2, 16.3, 16.11, 25.9**
 
 ### Property 22: Forwarding codes
 
@@ -520,6 +671,24 @@ For any valid Brief_Description, Sender_Number, and Report_Date, the built messa
 
 **Validates: Requirements 21.10**
 
+### Property 26: Settings version conflict handling
+
+For any initial stored document and any sequence of update attempts, each with an expected Settings_Version and a candidate document (valid or invalid), an attempt is accepted if and only if its expected version equals the stored version at that moment and the candidate passes validation; each accepted attempt increases the stored version by exactly 1 and stores the candidate; each rejected attempt leaves the stored document and version unchanged, and a rejection for a version mismatch returns the stored document and version; and for any set of concurrent attempts with the same expected version, exactly one is accepted and the final version equals the starting version plus 1.
+
+**Validates: Requirements 27.3, 27.4, 27.5, 27.6, 27.12**
+
+### Property 27: Tenant resolution
+
+For any set of Number_Assignments (a map from E164_Number to User_Id with each number assigned to at most one User) and any dialed number string, the resolver returns the User_Id of the assignment whose E164_Number equals the normalization of the string when such an assignment exists and the User is active, and returns no User (out of service) for every other string, including unassigned numbers, invalid numbers, and numbers of deactivated Users; each assigned number resolves to exactly one User_Id, resolution is unchanged when the string is written with or without `+`, `91`, a leading `0`, spaces, or hyphens, a Forwarded_From_Hint never changes the result, and normalization applied twice equals normalization applied once.
+
+**Validates: Requirements 25.1, 25.2, 25.3, 25.4, 25.6, 25.10, 25.11**
+
+### Property 28: Data isolation of the query layer
+
+For any set of Users and any set of stored records owned by those Users (call logs, traces, devices, cost totals, settings, and S3 object keys), and any operation of the data access layer executed for a User_Id U (list, get by identifier including identifiers that belong to another User, delete, sweep, and presign), the operation returns, reads, or changes only records owned by U, returns every matching record owned by U, returns "not found" for an identifier owned by another User, and leaves all records of other Users unchanged.
+
+**Validates: Requirements 28.1, 28.2, 28.3, 28.4, 28.5, 28.7, 28.9, 30.2**
+
 ## Error Handling
 
 | Failure | Detection | Response |
@@ -542,6 +711,14 @@ For any valid Brief_Description, Sender_Number, and Report_Date, the built messa
 | Takeover dial fails | Connect applet failure branch with `resume=1` | New Sonic_Session with history; the Agent says the person could not be reached; the failure is recorded. |
 | Forwarding loop (call from the Virtual_Number or User_Mobile) | `From` check in `/exotel/route` | Fallback branch; the call is logged as a loop. |
 | Settings never saved | No `SETTINGS` item | Defaults apply and the route decision selects the Fallback_Route until consent (Requirement 20 criterion 7). |
+| Dialed number not assigned, invalid, or User deactivated | `TenantResolver` returns no User | Out_Of_Service_Message, hang up, operational log with `To` and reason (no Caller number). |
+| Settings version conflict | Conditional write fails | HTTP 409 with the stored document; the app merges (see "Settings storage, version, and sync") and retries up to 3 times, then shows the conflict to the User. |
+| Number already assigned, or User already has a number | Transaction cancelled | HTTP 409, no change. |
+| Per-User limit or Global_Call_Cap reached | `CallRegistry.tryAcquire` fails | Fallback_Route, trace cause `USER_LIMIT` or `GLOBAL_CAP`, metric `CapRefusals`. |
+| Non-admin on the Admin_API | Group claim missing | HTTP 403. |
+| Request names another User's call, recording, or device | Key not found under the caller's partition | HTTP 404, no information about existence. |
+| FCM reports an unregistered token | FCM response | Remove that device item; other devices still receive the alert. |
+| Shared flow when the server is down | Exotel cannot reach the server | Generic "try later" message and voicemail, or the per-number static forward if the Admin set it up. |
 
 ## Testing Strategy
 
@@ -549,9 +726,10 @@ Property-based testing applies to this feature because the deterministic parts (
 
 **Property tests.**
 - Library: `kotest-property` (already used by `:core`), run on the JVM with JUnit 5.
-- Each of the 25 properties is one property test with at least 100 iterations (500 for the policy, pacer, and PII guard properties).
+- Each of the 28 properties is one property test with at least 100 iterations (500 for the policy, pacer, and PII guard properties).
 - Each test carries the tag comment `Feature: cloud-call-agent, Property N: <title>`.
 - Generators: instants across a full year including daylight-free Asia/Kolkata minute boundaries; settings with random Delivery_Steps (English only, Hindi only, both), random gates, and Protected_Terms with digits and mixed case; PCM buffers of random length and content including silence and clipping amplitude; event sequences for the policy built from a weighted event alphabet; arbitrary chunk splits for the guard.
+- Multi-user generators: sets of Users with random UUID `sub` values (including values that share long prefixes), numbers in many textual forms (`+91`, `91`, `0`, spaces, hyphens, garbage), call identifiers that contain `#`, and interleaved update attempts for Property 26. Properties 26 and 28 run against an in-memory `ItemStore` fake that implements the conditional-write and key-condition semantics of DynamoDB, and the same tests run once against DynamoDB Local in the integration suite.
 - Time and I/O are injected (`Clock`, fake Exotel and Sonic ports), so the property tests need no network.
 
 **Unit tests (examples and edge cases).** Each tool's result for fixed inputs (a fixed Gate_1 and Gate_3 text), the clock-failure result, the 22:30 and 05:30 boundaries, the greeting and notice order with the Disclosure_Setting on and off, `end_call` after the last `mark`, JWT verification with expired and wrong-audience tokens, the 429 response, and the Exotel start event with `media_format` from the documented sample.
@@ -565,6 +743,8 @@ Property-based testing applies to this feature because the deterministic parts (
 - A DynamoDB round trip of a call entry and the retention sweeper against a test table.
 
 **Smoke tests.** The SAM template passes `sam validate --lint` and a `cfn-lint` run, and a snapshot test of the synthesized IAM statements asserts that no statement has a wildcard resource beyond the allowed list. The release build of the app contains no `RECORD_AUDIO`, call screening, or accessibility entries, and `:core` tests run in the release build (Requirement 24 criteria 4 and 7).
+
+**Multi-user unit and API tests.** `PUT /settings` returns 200, 400 with the field name, and 409 with the stored document; the Admin_API returns 403 without the group and 409 on a duplicate assignment; a foreign call identifier returns 404 on every call route; a Take over request carries no number; two Users on two numbers get separate Call_Logs; `SettingsMerge` handles unchanged, one-sided, and two-sided field changes; a build rule fails when code outside `store` uses the DynamoDB or S3 clients.
 
 **On-device tests.** Compose UI tests for the forwarding setup screen (codes shown, dialer opened with the code prepared and not dialed), the live call screen (Take over action, ended-call state), and the consent gate.
 
@@ -613,7 +793,8 @@ Open questions:
 4. **DLT.** Does the User have a DLT entity, or will Exotel provide a template under its own entity for the Map_SMS and alert SMS (spike C-6)?
 5. **Default Sonic voice.** `kiara` (female) and `arjun` (male) support Indian English and Hindi; `tiffany` and `matthew` are the polyglot voices. Spike C-2 decides; which does the User prefer if both are acceptable?
 6. **Cognito region.** The existing user pool is in ap-south-1 and stays there; the Agent_Server in Tokyo validates its tokens through the pool's JWKS. Confirm that no new pool is wanted.
-7. **Spikes decide five facts:** Exotel stream details (C-1), Sonic quality (C-2), Take_Over mechanism (C-3), Airtel and Wi-Fi calling forwarding (C-4), and Sonic session behavior (C-5).
+7. **Spikes decide six facts:** Exotel stream details (C-1), Sonic quality (C-2), Take_Over mechanism (C-3), Airtel and Wi-Fi calling forwarding (C-4), Sonic session behavior (C-5), and whether any forwarding hint reaches Exotel (C-7).
+8. **Multi-user questions** (requirements open questions 14 to 20). Resolved: the server-down fallback passes the call to the User through one Number_Flow per ExoPhone with a static User_Mobile (question 16), sign-up is admin-created only (question 17), and account deletion and data export are out of scope (question 19). Still open: ExoPhone price and limits per account, the Global_Call_Cap default, and a shared SMS sender.
 
 ## References
 
@@ -621,6 +802,7 @@ Content was rephrased for compliance with licensing restrictions.
 
 - Exotel Voicebot applet, protocol, media format, and chunk sizes: https://docs.exotel.com/exotel-agentstream/voicebot-applet
 - Exotel Stream and Voicebot applet support article: https://support.exotel.com/support/solutions/articles/3000132302-updated-extension-guide-working-with-the-stream-and-voicebot-applet-beta-
+- Exotel Passthru applet (`From`, `To`, and the deprecated `ForwardedFrom`): https://docs.exotel.com/voice-apis/working-with-passthru-applet
 - Exotel Connect applet with a dynamic URL: https://support.exotel.com/en/support/solutions/articles/3000096873
 - Exotel Legs and Bridge APIs: https://docs.exotel.com/voice-apis/bridge-apis-introduction and https://developer.exotel.com/docs/legs/api-reference/manage-legs
 - Exotel SMS and DLT: https://developer.exotel.com/docs/faqs/sms-faqs and https://docs.exotel.com/messaging-apis/how-to-send-sms-using-exotel-with-dlt-template-scrubbing

@@ -23,24 +23,36 @@ Device tests on a Samsung Galaxy M34 5G (Android 16, One UI, Wi-Fi calling) show
 
 Greeting with an optional AI disclosure. Four intents: delivery, door not opened, solicitation or sales, and unknown. Delivery callers receive the Colony_Gate_Info (Gate 1 by day, Gate 3 during the Night_Window), the Delivery_Steps, and the Map_Location by SMS. Door not opened callers hear "please wait" while the User receives a Takeover_Alert, and the User can take over by bridging the call to the User's mobile, with a nobody-available message after 30 seconds. Solicitation callers are stalled politely with fictitious replies up to a maximum stalling duration, without revealing personal data. Unknown callers are asked for the reason, within clarification limits, and then asked to leave a message. Silence and repetition limits apply. The Agent replies in the Caller's language (Hindi, English, or Hinglish) in a female or male voice. Each call produces a Call_Log entry with transcript, outcome, and recording link, and the User can report spam to 1909.
 
+### Multi-user model
+
+The product serves several Users, each with an own phone number, settings, call history, and Companion_App sign-in. The earlier single-household scope is replaced.
+
+- **Why one Virtual_Number per User.** The Exotel Passthru documentation lists the `ForwardedFrom` parameter as deprecated and tells applications not to rely on it. Exotel passes `From` (the original Caller) and `To` (the Exotel number on which the call landed) ([Exotel Passthru applet](https://docs.exotel.com/voice-apis/working-with-passthru-applet)). One shared Virtual_Number therefore cannot reliably tell which subscriber forwarded a call. The Agent_Server resolves the User from the dialed `To` number, and each User receives an own Virtual_Number.
+- **Identity.** Each User signs in with the existing Amazon Cognito user pool (ap-south-1). The Cognito `sub` claim is the User_Id.
+- **Administration.** An Admin, the owner of the deployment, assigns Virtual_Numbers to Users by hand. No self-service number purchase and no admin screen exist in this release.
+- **Settings.** Each User's settings are stored in the Agent_Server's database as a versioned document. The Companion_App reads and updates the document through the Companion_API, and the server is the source of truth.
+- **Isolation.** Every stored record belongs to one User_Id, and a User can read only the User's own records.
+- **Cost.** The Agent_Server estimates the cost per call and per User. No billing system exists in this release.
+
 ### Scope
 
-- One household User, one Exotel number, one User mobile number. The system is not multi-tenant.
+- Several Users. Each User has one assigned Virtual_Number (set by the Admin), one User_Mobile, one set of settings, and an own Call_Log. A call is attributed to the User to whom the dialed Virtual_Number is assigned.
+- A deployment has one Exotel account, one Agent_Region, one Cognito user pool, and a global call cap.
 - The on-device call audio work (accessibility capture, AudioTrack Agent playback, on-device speech models, call screening role answering) is archived and not shipped.
 - Design is out of scope for this document. The open questions at the end of this document are to be resolved by the User during review or by spikes in the design phase.
 
 ## Glossary
 
 - **Agent**: The automated voice assistant that converses with the Caller, realized by Nova_Sonic under the control of the Agent_Server.
-- **Agent_Server**: The cloud service, in the Agent_Region, that terminates the Exotel WebSocket, runs the Sonic_Session, executes Agent_Tools, applies the deterministic rules, and exposes the Companion_API. It is a single-household deployment.
+- **Agent_Server**: The cloud service, in the Agent_Region, that terminates the Exotel WebSocket, runs the Sonic_Session, executes Agent_Tools, applies the deterministic rules, and exposes the Companion_API. It serves several Users and resolves the User of each call.
 - **Agent_Region**: The AWS region where the Agent_Server and Nova_Sonic run. The default is ap-northeast-1 (Tokyo). Nova_Sonic is not available in Mumbai.
 - **AWS_Profile**: The AWS CLI profile `ldots` used to deploy the Agent_Server.
 - **Nova_Sonic**: Amazon Nova 2 Sonic, the speech-to-speech model reached through Amazon Bedrock bidirectional streaming.
 - **Sonic_Session**: One bidirectional streaming session between the Agent_Server and Nova_Sonic. One call may use several Sonic_Sessions in sequence.
 - **Sonic_Session_Limit**: The maximum duration or other limit that Nova_Sonic enforces on one Sonic_Session, as documented by Amazon.
 - **Exotel**: The Indian telephony provider that supplies the Virtual_Number and the call audio stream.
-- **Virtual_Number**: The Indian number provided by Exotel to which the User's carrier forwards calls.
-- **User_Mobile**: The User's cellular phone number, from which calls are forwarded and to which a Take_Over bridges the call.
+- **Virtual_Number**: An Indian number provided by Exotel (an ExoPhone) to which one User's carrier forwards calls. The Admin assigns each Virtual_Number to at most one User.
+- **User_Mobile**: The cellular phone number of a User, from which calls are forwarded and to which a Take_Over bridges the call. The User enters the number in the settings, and the number is the only Take_Over destination for that User.
 - **Call_Forwarding**: The carrier's conditional call forwarding from the User_Mobile to the Virtual_Number, set with MMI codes.
 - **Forwarding_Codes**: The carrier MMI codes that set or clear Call_Forwarding: `**61*<number>#` (no answer), `**67*<number>#` (busy), `**62*<number>#` (unreachable), and the matching `##61#`, `##67#`, `##62#` or `##004#` codes that clear them.
 - **Voice_Stream**: The bidirectional WebSocket audio stream between Exotel and the Agent_Server, provided by the Exotel AgentStream Voicebot applet.
@@ -48,7 +60,18 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 - **Audio_Bridge**: The Agent_Server component that converts audio between the Stream_Format and the Nova_Sonic formats (16 kHz PCM input, 24 kHz output) and paces the audio to Exotel.
 - **Agent_Tool**: A function that Nova_Sonic can call during a Sonic_Session and that the Agent_Server executes. The tools are `get_gate_info`, `get_delivery_directions`, `send_map_sms`, `request_takeover`, `end_call`, and `log_note`.
 - **Caller**: The person placing the call to the User_Mobile.
-- **User**: The household member who owns the User_Mobile and the Companion_App.
+- **User**: A subscriber who owns a User_Mobile, signs in to the Companion_App, and has an own settings document, Call_Log, and assigned Virtual_Number.
+- **User_Id**: The identifier of a User, equal to the `sub` claim of the User's Amazon Cognito token.
+- **Admin**: A User whose Cognito token carries the group `admins`. The Admin assigns Virtual_Numbers to Users.
+- **Number_Assignment**: The stored record that links one Virtual_Number in E.164 format to one User_Id.
+- **E164_Number**: A phone number in the canonical form `+` followed by country code and digits, with no spaces or punctuation, used as the key for every number lookup.
+- **Tenant_Resolution**: The Agent_Server step that maps the `To` number of an incoming call to the User_Id through the Number_Assignment.
+- **Out_Of_Service_Message**: A short pre-recorded message, in English and Hindi, stating that the dialed number is not in service, played before the call ends.
+- **Settings_Store**: The Agent_Server's database table that holds each User's settings document, Call_Log, and other records.
+- **Settings_Version**: The integer counter stored with each settings document. The value starts at 0 for a User without a stored document and increases by 1 with each accepted update.
+- **Frozen_Settings**: The read-only snapshot of the User's settings document, including its Settings_Version, that the Agent_Server reads once at the start of a call and applies to the whole call.
+- **Global_Call_Cap**: The configurable maximum number of calls that the Agent_Server handles at the same time across all Users, with a default of 10.
+- **Forwarded_From_Hint**: The `ForwardedFrom` or diversion value that Exotel may pass for a call. The Agent_Server treats the value only as a consistency hint.
 - **Companion_App**: The Android app (Kotlin) on the User's phone that works with the Agent_Server.
 - **Companion_API**: The authenticated HTTPS and WebSocket interface of the Agent_Server used by the Companion_App.
 - **Intent_Category**: One of DELIVERY, DOOR_NOT_OPENED, SOLICITATION, or UNKNOWN, assigned to the Caller's current request.
@@ -78,6 +101,7 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 - **Disclosure_Setting**: The User setting that turns the spoken Recording_Notice on or off. The default is on.
 - **Voice_Setting**: The User setting that selects a female or male Agent voice, with female as the default.
 - **Fallback_Message**: A pre-recorded audio message, in English and Hindi, in a female and a male voice, stored on the Agent_Server and played without Nova_Sonic.
+- **Number_Flow**: The Exotel flow (App) that is linked to exactly one assigned Virtual_Number. Its fallback branch is a Connect applet with the User_Mobile of the User who owns the Virtual_Number as a static number.
 - **Fallback_Route**: The Exotel flow behavior that applies when the Voice_Stream cannot be established or drops: take a voicemail message, or forward the call to the User_Mobile, as selected by the User.
 - **Spam_Report**: A complaint about a Caller sent as one SMS to the TRAI_Report_Number.
 - **TRAI_Report_Number**: The SMS complaint number 1909 of the Telecom Regulatory Authority of India. The value is fixed.
@@ -96,13 +120,13 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 
 #### Acceptance Criteria
 
-1. WHEN Exotel receives a call on the Virtual_Number, THE Agent_Server SHALL accept the Voice_Stream connection for that call and start a Sonic_Session.
+1. WHEN Exotel receives a call on a Virtual_Number that has a Number_Assignment, THE Agent_Server SHALL resolve the User under Requirement 25, accept the Voice_Stream connection for that call, and start a Sonic_Session that uses the Frozen_Settings of that User.
 2. WHEN the Voice_Stream start event arrives, THE Agent_Server SHALL record the Caller number from the Exotel call data in the Call_Log entry for that call.
 3. IF the Caller number is hidden or unavailable, THEN THE Agent_Server SHALL record the Caller number as unknown and SHALL still handle the call with the Agent.
 4. WHEN the Voice_Stream ends, THE Agent_Server SHALL close the Sonic_Session and finalize the Call_Log entry within 5 seconds.
-5. WHILE the User has turned the Agent off in the Companion_App, WHEN Exotel receives a call on the Virtual_Number, THE Agent_Server SHALL instruct the Exotel flow to apply the Fallback_Route without starting a Sonic_Session.
-6. THE Agent_Server SHALL support exactly one Virtual_Number and one User_Mobile, and SHALL reject configuration of a second household.
-7. IF a call arrives on the Virtual_Number while another call is in progress, THEN THE Agent_Server SHALL handle the second call in a separate Sonic_Session, up to 3 simultaneous calls, and SHALL apply the Fallback_Route to a call beyond that limit.
+5. WHILE the resolved User has turned the Agent off in the Companion_App, WHEN Exotel receives a call on the Virtual_Number assigned to that User, THE Agent_Server SHALL instruct the Exotel flow to apply the Fallback_Route without starting a Sonic_Session.
+6. THE Agent_Server SHALL support several Users, each with at most one assigned Virtual_Number and one User_Mobile, and SHALL attribute each call, Call_Log entry, and Call_Recording to exactly one User_Id.
+7. IF a call arrives for a User who already has 3 calls in progress, THEN THE Agent_Server SHALL apply the Fallback_Route to the new call, and WHEN the User has fewer than 3 calls in progress, THE Agent_Server SHALL handle each further call in a separate Sonic_Session (Requirement 29 defines the global cap).
 
 ### Requirement 2: Set up and turn off call forwarding
 
@@ -115,7 +139,7 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 3. WHERE the User selects unconditional forwarding, THE Companion_App SHALL show the code `**21*<number>#` together with a warning that every call, including calls the User would answer, goes to the Agent.
 4. THE Companion_App SHALL show a turn-off screen with the codes that clear each forwarding type (`##61#`, `##67#`, `##62#`) and the code that clears all forwarding (`##002#`), each with a control that opens the dialer with the code prepared and not dialed.
 5. THE Companion_App SHALL show the no-answer ring time setting (`**61*<number>**<seconds>#`) with a default of 20 seconds, so that the Agent answers before the carrier voicemail.
-6. WHEN the User activates "Send test call" in the Companion_App, THE Agent_Server SHALL record the next call received on the Virtual_Number within 10 minutes as a test call and THE Companion_App SHALL show the result as received or not received.
+6. WHEN the User activates "Send test call" in the Companion_App, THE Agent_Server SHALL record the next call received on the Virtual_Number assigned to that User within 10 minutes as a test call and THE Companion_App SHALL show the result as received or not received.
 7. IF no test call is received within 10 minutes of the User activating "Send test call", THEN THE Companion_App SHALL show that forwarding is not confirmed and SHALL show the troubleshooting steps for the carrier voicemail and the forwarding codes.
 8. THE Companion_App SHALL state that the carrier may charge for forwarded calls and that the codes can differ between carriers.
 
@@ -324,6 +348,9 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 7. WHEN the Agent_Server process restarts during a call, THE Exotel flow SHALL apply the Fallback_Route to that call.
 8. THE Agent_Server SHALL store the Fallback_Message audio for each combination of language (English, Hindi) and voice gender (female, male), without a call to Nova_Sonic.
 9. WHEN the Fallback_Route is applied, THE Agent_Server SHALL record the cause and the route in the Call_Log.
+10. IF the Agent_Server is unreachable because the stream URL or the Passthru URL fails or times out, THEN THE Number_Flow SHALL connect the Caller to the User_Mobile of the User who owns the dialed Virtual_Number, using the static number of the Number_Flow and without a call to the Agent_Server.
+11. THE Number_Flow SHALL use a dial timeout of 15 seconds for the connection to the User_Mobile, which is below the 20-second ring time of the Airtel forwarding, so that an unanswered call does not return to the User_Mobile voicemail or forward in a loop.
+12. IF the User_Mobile does not answer within the dial timeout of the Number_Flow, THEN THE Number_Flow SHALL record a voicemail message from the Caller.
 
 ### Requirement 16: Secure the connections, credentials, and access
 
@@ -333,11 +360,11 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 
 1. THE Agent_Server SHALL accept the Voice_Stream only over a WSS connection with TLS 1.2 or higher.
 2. WHEN a Voice_Stream connection or an Exotel webhook request arrives, THE Agent_Server SHALL authenticate the request using the method that Exotel supports (a shared secret or token in the URL or header, request signature, or source IP allow list) and SHALL reject the request with HTTP status 401 or 403 if authentication fails.
-3. THE Agent_Server SHALL reject a Voice_Stream connection for a Virtual_Number other than the configured Virtual_Number.
+3. THE Agent_Server SHALL reject a Voice_Stream connection for a Virtual_Number that has no Number_Assignment, and SHALL reject a Voice_Stream whose call token names a User_Id other than the User_Id assigned to the dialed Virtual_Number.
 4. THE Agent_Server SHALL store the Exotel API credentials, the Exotel webhook secret, and any push notification credentials in AWS Secrets Manager, and SHALL NOT store them in source code, in configuration files in the repository, or in logs.
 5. THE Agent_Server SHALL use an IAM role with permissions limited to invoking the configured Nova_Sonic model, reading its own secrets, writing its own Call_Log and Call_Recording storage, and publishing push notifications.
 6. THE Companion_API SHALL authenticate each request with the User's Amazon Cognito token and SHALL reject a request without a valid token with HTTP status 401.
-7. THE Agent_Server SHALL accept Companion_API requests only from the one User identity configured for the household.
+7. THE Agent_Server SHALL authorize each Companion_API request for the User_Id taken from the `sub` claim of the verified Cognito token, and SHALL NOT take the User_Id from the request path, query, or body.
 8. THE Agent_Server SHALL NOT write the Caller number, the transcript text, the Protected_Terms, or audio into application logs, and SHALL write personal content only into the Call_Log storage that is encrypted at rest.
 9. THE Agent_Server SHALL encrypt the Call_Log storage and the Call_Recording storage at rest with an AWS KMS key.
 10. THE Agent_Server SHALL limit the Companion_API rate to 60 requests per minute per User identity and SHALL reject further requests with HTTP status 429.
@@ -353,7 +380,7 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 2. WHILE the User has not accepted the Privacy_Consent, THE Companion_App SHALL NOT enable the Agent and SHALL NOT show the Forwarding_Codes.
 3. WHEN the User accepts the Privacy_Consent, THE Agent_Server SHALL store the acceptance with its date and time and the version of the consent text.
 4. WHEN the User withdraws the Privacy_Consent in the Companion_App, THE Agent_Server SHALL turn the Agent off and SHALL apply the Fallback_Route to calls within 60 seconds.
-5. THE Agent_Server SHALL delete a Call_Log entry, its transcript, and its Call_Recording once the Retention_Period has elapsed since the call start, checking at least once every 24 hours.
+5. THE Agent_Server SHALL delete a Call_Log entry, its transcript, and its Call_Recording once the Retention_Period of the User who owns the entry has elapsed since the call start, checking each User at least once every 24 hours.
 6. THE Companion_App SHALL allow the User to set the Retention_Period from 1 to 365 days, with a default of 30 days.
 7. WHEN the User deletes a Call_Log entry in the Companion_App, THE Agent_Server SHALL delete the entry, its transcript, and its Call_Recording within 60 seconds.
 8. WHERE Call_Recording is enabled, THE Agent_Server SHALL start the Exotel Call_Recording only after the Recording_Notice has been spoken or the Disclosure_Setting is off.
@@ -401,12 +428,12 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 #### Acceptance Criteria
 
 1. THE Companion_App SHALL allow the User to configure the Agent on/off setting, Map_Location, User_Mobile for Take_Over, gate details for Gate_1 and Gate_3, Night_Window start and end, Delivery_Steps, Voice_Setting, Disclosure_Setting, greeting name, default language, maximum stalling duration, Silence_Timeout, Protected_Terms, Fallback_Route, Quick_Replies, Retention_Period, and the Call_Recording setting.
-2. WHEN the User saves valid settings, THE Companion_App SHALL send the settings to the Companion_API and THE Agent_Server SHALL store them and confirm within 3 seconds.
+2. WHEN the User saves valid settings, THE Companion_App SHALL send the settings with the Settings_Version that the edit is based on to the Companion_API, and THE Agent_Server SHALL store them under the User_Id of the User, increase the Settings_Version by 1, and confirm within 3 seconds (Requirement 27).
 3. IF the User enters a value that fails validation, THEN THE Companion_App SHALL reject the entry, show a validation message stating the allowed values, and keep the previously saved value. The validation rules are those of the earlier spec for the corresponding settings: phone numbers with an optional leading "+" and 7 to 15 digits, Night_Window times in 24-hour HH:MM with start different from end, gate fields of 1 to 100 characters, 1 to 10 Delivery_Steps of 1 to 200 characters each.
 4. THE Agent_Server SHALL validate every settings update with the same rules as the Companion_App and SHALL reject an invalid update with HTTP status 400 and the field name.
-5. WHEN a call starts, THE Agent_Server SHALL read the settings once and SHALL apply those values for the whole call, and a settings change during a call SHALL apply starting with the next call.
-6. IF the settings cannot be sent because the Companion_API is not reachable, THEN THE Companion_App SHALL keep the changes on the device, show that the changes are not yet applied, and retry when connectivity returns.
-7. IF the Agent_Server has no stored settings, THEN THE Agent_Server SHALL use the default values of the Glossary and SHALL apply the Fallback_Route to calls until the User accepts the Privacy_Consent.
+5. WHEN a call starts, THE Agent_Server SHALL read the settings of the resolved User once as Frozen_Settings and SHALL apply those values for the whole call, and a settings change during a call SHALL apply starting with the next call.
+6. IF the settings cannot be sent because the Companion_API is not reachable, THEN THE Companion_App SHALL keep the changes in a cached copy on the device, show that the changes are not yet applied, and send them when connectivity returns, as defined in Requirement 27.
+7. IF the Agent_Server has no stored settings for the resolved User, THEN THE Agent_Server SHALL use the default values of the Glossary and SHALL apply the Fallback_Route to calls until the User accepts the Privacy_Consent.
 8. FOR ALL valid settings, sending the settings to the Agent_Server and reading them back SHALL produce equivalent settings (round-trip property).
 9. THE Agent_Server SHALL NOT include the User_Mobile, the Map_Location, or the Protected_Terms in the Nova_Sonic system prompt, and SHALL provide only the Map_Location through the `get_delivery_directions` and `send_map_sms` results.
 
@@ -436,10 +463,11 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 1. WHEN a call ends, THE Agent_Server SHALL compute the Cost_Estimate for the call from the Exotel call minutes, the Nova_Sonic audio input and output minutes, and the configured rates, and SHALL store the Cost_Estimate in the Call_Log entry within 10 seconds of call end.
 2. THE Companion_App SHALL show the Cost_Estimate on each Call_Log entry and the total Cost_Estimate for the current calendar month in INR.
 3. THE Companion_App SHALL allow the User to set the rates used for the Cost_Estimate and a monthly cost limit in INR.
-4. WHEN the total Cost_Estimate of the current calendar month reaches 80 percent of the monthly cost limit, THE Agent_Server SHALL send a push notification to the Companion_App.
-5. IF the total Cost_Estimate of the current calendar month reaches 100 percent of the monthly cost limit, THEN THE Agent_Server SHALL apply the Fallback_Route to new calls and SHALL send a push notification to the Companion_App stating that the Agent is paused until the User raises the limit or the month ends.
+4. WHEN the total Cost_Estimate of the current calendar month of one User reaches 80 percent of the monthly cost limit of that User, THE Agent_Server SHALL send a push notification to the Companion_App.
+5. IF the total Cost_Estimate of the current calendar month of one User reaches 100 percent of the monthly cost limit of that User, THEN THE Agent_Server SHALL apply the Fallback_Route to new calls of that User and SHALL send a push notification to the Companion_App stating that the Agent is paused until the User raises the limit or the month ends.
 6. THE Agent_Server SHALL cap the duration of a single call at 60 minutes, and SHALL end a call that reaches the cap after a polite closing statement.
 7. THE Companion_App SHALL label the Cost_Estimate as an estimate and SHALL NOT present it as a bill.
+8. THE Agent_Server SHALL keep the Cost_Estimate of each call and the month total separately for each User_Id, and SHALL NOT issue invoices or charge Users in this release.
 
 ### Requirement 23: Trace each call
 
@@ -469,6 +497,115 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 6. THE Companion_App SHALL NOT call Amazon Polly for the Agent voice.
 7. WHEN `:core` code that the Agent_Server and the Companion_App share is changed, THE build SHALL run the existing `:core` JVM unit tests and property tests for that code before producing a release.
 
+### Requirement 25: Resolve the User from the dialed number
+
+**User Story:** As an Admin, I want each incoming call attributed to the one User who owns the dialed number, so that each call is answered with that User's settings and recorded in that User's log.
+
+#### Acceptance Criteria
+
+1. WHEN Exotel requests routing for an incoming call, THE Agent_Server SHALL normalize the `To` number to an E164_Number and SHALL look up the Number_Assignment for that E164_Number.
+2. WHEN the Number_Assignment exists and the User is active, THE Agent_Server SHALL resolve the call to the User_Id of that Number_Assignment and SHALL read the Frozen_Settings of that User within 300 ms for the 90th percentile of calls.
+3. THE Agent_Server SHALL resolve each E164_Number that has a Number_Assignment to exactly one User_Id.
+4. IF the `To` number has no Number_Assignment, is not a valid number, or is assigned to a deactivated User, THEN THE Agent_Server SHALL play the Out_Of_Service_Message in English and Hindi, SHALL end the call, and SHALL record the `To` number, the time, and the reason in the operational log without the Caller number.
+5. WHERE Exotel provides a Forwarded_From_Hint, THE Agent_Server SHALL record in the Call_Trace only whether the hint was present and whether the hint equals the User_Mobile of the resolved User.
+6. THE Agent_Server SHALL NOT select the User from the Forwarded_From_Hint, from the `From` number, or from any value other than the `To` number.
+7. WHEN the Forwarded_From_Hint is present and differs from the User_Mobile of the resolved User, THE Agent_Server SHALL continue the call with the User resolved from the `To` number and SHALL record the mismatch in the Call_Trace.
+8. IF the `From` number equals the User_Mobile of the resolved User or equals any assigned Virtual_Number, THEN THE Agent_Server SHALL apply the Fallback_Route to the call and SHALL record the call as a loop.
+9. THE Agent_Server SHALL bind the call token of the Voice_Stream to the call identifier and to the resolved User_Id.
+10. FOR ALL phone number strings that denote the same number (with or without `+`, the country code `91`, a leading `0`, spaces, or hyphens), normalization SHALL produce the same E164_Number, and normalization applied twice SHALL equal normalization applied once (idempotence property).
+11. FOR ALL sets of Number_Assignments, each assigned E164_Number SHALL resolve to exactly one User_Id and each E164_Number outside the set SHALL resolve to no User_Id (tenant resolution property).
+
+### Requirement 26: Manage Users and number assignment
+
+**User Story:** As an Admin, I want to assign Virtual_Numbers to Users by hand, so that I control which User receives the calls of each number without building a self-service purchase flow.
+
+#### Acceptance Criteria
+
+1. WHEN a signed-in User calls the Companion_API for the first time, THE Agent_Server SHALL create a profile for the User_Id with default settings, the Agent off, and no Number_Assignment.
+2. WHEN the Admin assigns a Virtual_Number to a User_Id, THE Agent_Server SHALL store the Number_Assignment only if the E164_Number has no Number_Assignment and the User_Id has no other Number_Assignment.
+3. IF the Admin assigns a Virtual_Number that is already assigned, or assigns a Virtual_Number to a User who already has one, THEN THE Agent_Server SHALL reject the request with HTTP status 409 and SHALL keep the existing Number_Assignments unchanged.
+4. WHEN the Admin removes a Number_Assignment, THE Agent_Server SHALL apply the Out_Of_Service_Message to calls on that number within 60 seconds.
+5. WHEN the Admin deactivates a User, THE Agent_Server SHALL apply the Out_Of_Service_Message to calls on the number of that User within 60 seconds and SHALL reject Companion_API requests of that User with HTTP status 403.
+6. THE Agent_Server SHALL provide the Admin operations (assign, remove, list, and deactivate) through an Admin_API that accepts only tokens whose `cognito:groups` claim contains `admins`, and through a command-line script that uses the AWS_Profile.
+7. IF a token without the group `admins` is used on the Admin_API, THEN THE Agent_Server SHALL reject the request with HTTP status 403.
+8. WHEN a User requests the User's profile, THE Companion_API SHALL return the assigned Virtual_Number, or an indication that no Virtual_Number is assigned yet.
+9. THE Agent_Server SHALL reject an assignment of a Virtual_Number that equals the User_Mobile of any User.
+10. WHEN the Admin assigns a Virtual_Number to a User, THE Admin SHALL create or configure the Number_Flow of that Virtual_Number in the Exotel dashboard with the User_Mobile as the static fallback number, following the documented admin checklist, and SHALL record the completion of the checklist in the Number_Assignment.
+11. WHEN the User_Mobile of a User changes, THE Admin SHALL update the static fallback number in the Number_Flow of the Virtual_Number of that User, following the documented admin checklist.
+
+### Requirement 27: Store settings per User with versions and sync
+
+**User Story:** As a User, I want my settings stored in the cloud and kept in step with my phone, so that the Agent follows my settings even when I change phones or edit offline.
+
+#### Acceptance Criteria
+
+1. THE Settings_Store SHALL hold exactly one settings document per User_Id, containing the fields of Requirement 20 criterion 1 and the Settings_Version.
+2. WHEN the Companion_App requests the settings, THE Companion_API SHALL return the settings document of the User and its Settings_Version, and SHALL return default settings with Settings_Version 0 when the User has no stored document.
+3. WHEN the Companion_App sends an update with an expected Settings_Version equal to the stored Settings_Version and the settings are valid, THE Agent_Server SHALL store the new document with the Settings_Version increased by 1 and SHALL return the stored document.
+4. IF the expected Settings_Version of an update differs from the stored Settings_Version, THEN THE Agent_Server SHALL reject the update with HTTP status 409, SHALL return the stored document and its Settings_Version, and SHALL keep the stored document unchanged.
+5. IF two updates with the same expected Settings_Version arrive at the same time, THEN THE Agent_Server SHALL accept exactly one of them.
+6. IF an update fails the validation of Requirement 20 criteria 3 and 4, THEN THE Agent_Server SHALL reject the update with HTTP status 400 and the field name, and SHALL keep the stored document and its Settings_Version unchanged.
+7. IF the User_Mobile of an update equals an assigned Virtual_Number, THEN THE Agent_Server SHALL reject the update with HTTP status 400 and the field name `userMobile`.
+8. WHILE the Companion_API is not reachable, THE Companion_App SHALL keep a cached copy of the last server document and the pending edits on the device.
+9. WHEN connectivity returns and the stored Settings_Version equals the Settings_Version on which the pending edits are based, THE Companion_App SHALL send the pending edits.
+10. WHEN connectivity returns and the stored Settings_Version is higher than the base version of the pending edits, THE Companion_App SHALL apply each edited field to the stored document if the stored value of that field is unchanged since the base version, SHALL ask the User to choose between the stored value and the edited value for each field that changed on both sides, and SHALL then send the merged document with the stored Settings_Version.
+11. WHEN the Companion_App receives a settings document from the server, THE Companion_App SHALL replace the cached copy with that document.
+12. FOR ALL sequences of updates, THE Settings_Version SHALL increase by exactly 1 for each accepted update and SHALL stay unchanged for each rejected update (version conflict property).
+
+### Requirement 28: Isolate each User's data
+
+**User Story:** As a User, I want my calls, transcripts, recordings, and settings to be visible only to me, so that other subscribers cannot read them.
+
+#### Acceptance Criteria
+
+1. THE Agent_Server SHALL store each call log entry, transcript, recording, trace, settings document, device token, alert, and cost total under the User_Id of the User who owns the record.
+2. WHEN the Companion_API handles a request, THE Agent_Server SHALL read and write only records of the User_Id taken from the verified token.
+3. IF a request names a call identifier, recording, or device of another User, THEN THE Companion_API SHALL respond with HTTP status 404 and SHALL NOT reveal whether the record exists.
+4. THE Agent_Server SHALL store each Call_Recording and each transcript object in storage under a key prefix that contains the User_Id of the owner, and SHALL create presigned URLs only for keys under the prefix of the requesting User.
+5. THE Agent_Server SHALL read records of a User only through a data access layer that requires a User_Id for every query and builds every key condition from that User_Id.
+6. WHILE the Companion_App holds a `/live` connection, THE Companion_API SHALL send only events of calls of the authenticated User.
+7. WHEN the Agent_Server removes data after a Retention_Period or on request, THE Agent_Server SHALL apply the Retention_Period of the owning User to the records of that User only.
+8. THE Agent_Server SHALL include the User_Id in logs and traces and SHALL NOT include the Caller number, transcript text, or audio in them.
+9. FOR ALL Users and all stored records, a query of the data access layer for one User_Id SHALL return only records owned by that User_Id and SHALL return every such record that matches the query (isolation property).
+
+### Requirement 29: Limit concurrent calls per User and globally
+
+**User Story:** As an Admin, I want limits on concurrent calls, so that one User cannot use up the capacity of the service.
+
+#### Acceptance Criteria
+
+1. THE Agent_Server SHALL handle at most 3 calls at the same time for one User_Id, a limit that the Admin can change by configuration.
+2. THE Agent_Server SHALL handle at most the Global_Call_Cap calls at the same time across all Users.
+3. IF a call arrives while the Global_Call_Cap is reached, THEN THE Agent_Server SHALL apply the Fallback_Route to the call, SHALL record the cause as the global cap in the Call_Trace, and SHALL publish a metric.
+4. WHEN a call ends or its Voice_Stream drops, THE Agent_Server SHALL release the slot of that call for the User and for the global count within 5 seconds.
+5. THE Agent_Server SHALL count the active calls of each User separately, so that the calls of one User do not reduce the per-User limit of another User.
+
+### Requirement 30: Register devices and alert the right User
+
+**User Story:** As a User, I want alerts and Take over to reach only my own phones and my own mobile number, so that no other subscriber's call or number is mixed with mine.
+
+#### Acceptance Criteria
+
+1. WHEN the Companion_App registers a push token, THE Agent_Server SHALL store the token under the User_Id of the User, together with a device identifier, and SHALL keep up to 5 devices per User.
+2. WHEN the Agent_Server sends a notification for a call, THE Agent_Server SHALL send it to every stored device of the User who owns the call and to no device of another User.
+3. IF Firebase Cloud Messaging reports that a device token is no longer valid, THEN THE Agent_Server SHALL remove that token.
+4. WHEN the User activates "Take over", THE Agent_Server SHALL bridge the Caller only to the User_Mobile stored in the Frozen_Settings of the User who owns the call.
+5. IF the Companion_API receives a request to take over, end, or send a Quick_Reply for a call of another User, THEN THE Companion_API SHALL respond with HTTP status 404 and SHALL NOT change the call.
+6. THE Companion_API SHALL accept no destination number from a Take_Over request.
+
+### Requirement 31: Onboard a new User in the Companion_App
+
+**User Story:** As a new User, I want a guided start that shows my assigned number and the forwarding codes, so that I can begin using the Agent without help.
+
+#### Acceptance Criteria
+
+1. WHEN a User signs in for the first time, THE Companion_App SHALL guide the User through these steps in order: sign-in, Privacy_Consent, number assignment status, forwarding setup, and settings.
+2. WHILE the User has no assigned Virtual_Number, THE Companion_App SHALL show that the number is awaiting assignment by the Admin, SHALL poll the profile at intervals of at most 60 seconds while the screen is open, and SHALL NOT show the Forwarding_Codes.
+3. WHEN the Companion_API reports an assigned Virtual_Number, THE Companion_App SHALL show the number and SHALL continue with the forwarding setup using that number and the User_Mobile that the User entered in the settings.
+4. IF the User has not entered a valid User_Mobile, THEN THE Companion_App SHALL ask for the User_Mobile before the Forwarding_Codes are shown.
+5. WHEN the Companion_App starts and the server holds no settings document for the User, THE Companion_App SHALL offer to upload the settings cached on the device as the first document with the expected Settings_Version 0.
+6. THE Companion_App SHALL keep the Agent off until the User has accepted the Privacy_Consent, the Virtual_Number is assigned, and the User_Mobile is saved.
+
 ## Open Questions
 
 1. **Exotel Stream_Format.** Does the Voicebot applet stream 8 kHz or 16 kHz, linear PCM or mu-law, and what frame size does Exotel require? Requirement 3 reads the format from the start event, but the resampling cost and the audio quality for Hindi recognition depend on the answer (8 kHz telephone audio may reduce Sonic accuracy).
@@ -483,3 +620,11 @@ Greeting with an optional AI disclosure. Four intents: delivery, door not opened
 10. **Push channel.** OPEN: the Takeover_Alert uses Firebase Cloud Messaging or Amazon SNS (SNS mobile push uses FCM underneath). The design proposes a choice for the User to confirm.
 11. **Defaults to confirm.** RESOLVED (User, approved): all listed defaults are confirmed: forward on no answer after 20 seconds, busy, and unreachable; Call_Recording and Disclosure_Setting on; Retention_Period 30 days; maximum stalling duration 5 minutes; maximum call duration 15 minutes for a call that is not in Stalling_Mode or Take_Over and an absolute cap of 60 minutes; up to 3 concurrent calls; Take_Over bridges the Caller to the User_Mobile and a failed Bridge_Call returns the Caller to the Agent; an SMS fallback alert when the push notification cannot be delivered; monthly cost limit configurable.
 12. **Gate rules and Night_Window time zone.** RESOLVED (User, approved): Household_Time is Asia/Kolkata.
+13. **Multi-user decisions (User request).** DECIDED: one Virtual_Number per User as the primary model; the dialed `To` number identifies the User; the Cognito `sub` is the User_Id; the Admin (owner) assigns numbers by hand through an `admins` group API or a CLI script; settings are versioned in DynamoDB; up to 3 concurrent calls per User plus a Global_Call_Cap; no billing system.
+14. **ForwardedFrom or diversion hint.** OPEN: does Airtel plus Exotel pass any forwarding information (`ForwardedFrom`, a SIP Diversion or History-Info header)? The design adds spike C-7. The value is a hint only (Requirement 25 criteria 5 to 7), so the answer does not change the primary model.
+15. **Exotel cost and limits per number.** OPEN: price per ExoPhone per month, KYC effort per number, and any Exotel limit on the number of ExoPhones and on concurrent streams per account. These decide how many Users the product can support.
+16. **Fallback when the server is down.** RESOLVED (User): the call is passed to the User. Exotel connects the Caller to the User_Mobile of the owner of the dialed number. A shared flow cannot know the User_Mobile without the server, so each assigned Virtual_Number has its own Number_Flow with the User_Mobile as a static number, set up when the Admin assigns the number (Requirement 15 criteria 10 to 12, Requirement 26 criteria 10 and 11). The dial timeout is 15 seconds, below the 20-second Airtel ring time, and an unanswered call goes to voicemail. The setup is manual in the Exotel dashboard; automation is considered only if Exotel exposes an API.
+17. **Sign-up policy.** RESOLVED (default): accounts are created by the Admin only, with no public self sign-up. Self sign-up is disabled for the app client if the user pool allows it.
+18. **Global_Call_Cap default and fairness.** OPEN: the default of 10 depends on the task size from the C-1 load test. When the cap is reached, new calls of every User fall back; a per-User reserved share is not planned.
+19. **Account deletion and data export.** RESOLVED (default): self-service account deletion and data export are out of scope for this release. A User can delete single calls and set the Retention_Period.
+20. **Shared SMS sender.** OPEN: all Users share one Exotel account and one DLT sender and template for the Map_SMS. Confirm that a shared sender is acceptable.

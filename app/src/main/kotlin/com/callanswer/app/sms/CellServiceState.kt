@@ -1,6 +1,7 @@
 package com.callanswer.app.sms
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.telephony.ServiceState
@@ -13,6 +14,10 @@ interface CellServiceState {
 }
 
 class AndroidCellServiceState(private val context: Context) : CellServiceState {
+    // READ_PHONE_STATE is checked above. Lint also asks for ACCESS_COARSE_LOCATION because ServiceState
+    // carries cell identity, but we read only the coarse registration state, which does not need location;
+    // location-bearing fields come back redacted. Declaring location would be an unwanted privacy cost.
+    @SuppressLint("MissingPermission")
     override fun inService(): Boolean? {
         if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) return null
         return try {

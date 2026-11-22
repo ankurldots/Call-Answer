@@ -6,9 +6,9 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.ContextCompat
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.os.Build
 import android.telephony.SmsManager
 import android.util.Log
 import com.callanswer.app.service.NotificationCenter
@@ -116,8 +116,7 @@ class MapSmsSender(
         }
         val filter = IntentFilter(ACTION_RESULT)
         val app = context!!.applicationContext
-        if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(r, filter, Context.RECEIVER_NOT_EXPORTED)
-        else app.registerReceiver(r, filter)
+        ContextCompat.registerReceiver(app, r, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         receiver = r
         }
     }

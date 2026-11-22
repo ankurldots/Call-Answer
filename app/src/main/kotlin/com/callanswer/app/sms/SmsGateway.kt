@@ -2,6 +2,7 @@ package com.callanswer.app.sms
 
 import android.app.PendingIntent
 import android.content.Context
+import android.os.Build
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
 import com.callanswer.app.BuildConfig
@@ -35,8 +36,13 @@ class AndroidSmsGateway(
     }
 
     private fun smsManager(): SmsManager {
-        val base = context.getSystemService(SmsManager::class.java)
         val subId = SubscriptionManager.getDefaultSmsSubscriptionId()
-        return if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) base.createForSubscriptionId(subId) else base
+        val valid = subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val base = context.getSystemService(SmsManager::class.java)
+            return if (valid) base.createForSubscriptionId(subId) else base
+        }
+        @Suppress("DEPRECATION") // SmsManager.getDefault/getSmsManagerForSubscriptionId are the only options below API 31
+        return if (valid) SmsManager.getSmsManagerForSubscriptionId(subId) else SmsManager.getDefault()
     }
 }

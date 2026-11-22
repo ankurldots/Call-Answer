@@ -2,9 +2,11 @@ package com.callanswer.app.recording
 
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.ContentDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -21,6 +23,7 @@ enum class PlaybackState { IDLE, PLAYING, PAUSED, ENDED, ERROR }
  * Only [ContentDataSource] is registered, so no network access is possible. An unreadable
  * or removed file ends in [PlaybackState.ERROR] (12.13). Call from the main thread.
  */
+@OptIn(UnstableApi::class)
 class PlaybackController(context: Context) {
     private val appContext = context.applicationContext
     private var player: ExoPlayer? = null

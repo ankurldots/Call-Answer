@@ -1,39 +1,41 @@
 # Call-Answer
-An Android app (Kotlin) that answers incoming calls from unknown numbers with an AI voice agent, so the phone owner doesn't have to pick up spam and delivery calls.
+A call-answering AI agent for one household in India. Calls from unknown numbers that you don't answer are forwarded to a cloud Agent that talks to the caller in Hindi or English, gives delivery directions, keeps sales callers busy, and lets you take over from an Android companion app.
 
 ## What it does
-When a number that is not in your contacts calls, the Agent answers on speakerphone, says "Hello", listens, and classifies what the caller wants:
+When you don't pick up (or are busy or unreachable), your carrier forwards the call to an Exotel number. The Agent answers, greets the caller, and works out what they want:
 
 | Caller intent | What the Agent does |
 |---|---|
-| **Delivery** | Gives directions to the house, starting with which colony gate to use. |
-| **Door not answered** | Transfers the call to a real person (a number you configure). |
-| **Solicitation** (loan, property, other sales pitches) | Keeps the caller busy with fictitious, plausible-sounding information until they hang up. No real personal, financial or location data is used. |
-| **Unknown** | Re-prompts after a silence timeout (default 8 s). |
+| **Delivery** | Gives directions to the house, starting with which colony gate to use, and can send the map by SMS. |
+| **Door not answered** | Says "please wait" and alerts you in the app; **Take over** connects the caller to your mobile. |
+| **Solicitation** (loan, property, other sales pitches) | Keeps the caller busy with fictitious, plausible-sounding replies. No real personal, financial or location data is used. |
+| **Unknown** | Asks the reason, then takes a message. |
 
-- **Languages:** Hindi and English. The Agent matches the caller's language.
-- **Gate info:** The Agent tells callers which colony gate to use. By default, only Gate 3 is open from 22:30 to 05:30, and Gate 1 is used at other times. Gates, times and delivery steps are configurable.
-- **Works on bad networks:** Speech recognition (Vosk, Silero VAD via sherpa-onnx), language detection and speech synthesis run on the device. Cloud text-to-speech (Amazon Polly through a small AWS Lambda API) is an optional enhancement.
-- **Live call screen:** A notification and screen show the live transcript, detected intent and language, and controls to take over, mute, resume or end the call.
-- **Call log:** Each screened call is stored with its transcript, intent, language and outcome. The app links it to the recording made by the phone's own call recorder. The app doesn't record calls itself.
+- **Languages:** Hindi and English (Indian), replying in the caller's language, with a female or male voice.
+- **Gate info:** By default only Gate 3 is open from 22:30 to 05:30, and Gate 1 at other times. Gates, times and delivery steps are configurable. Gate info and directions come from server code, not from the AI model.
+- **Companion app:** live alert with Take over, live transcript, call log, settings, and spam reports to 1909 (TRAI).
 
 ## Status and scope
-This is a personal project. The target device is a Samsung Galaxy M34 5G (One UI, India) with the Samsung Phone app as the default dialer. Android gives apps no direct access to cellular call audio, so the Agent speaks over the speakerphone and listens through the microphone, with echo handling to avoid treating its own voice as the caller's. Timing limits and on-device models are validated on that device only.
+This is a personal project, being re-architected.
 
-The requirements, design and task list are in `.kiro/specs/ai-call-screening-agent/`.
+- **Current direction (cloud Agent):** carrier call forwarding (Airtel) to an [Exotel](https://exotel.com) number, Exotel AgentStream streaming the call audio over a WebSocket to an Agent service in AWS Tokyo (`ap-northeast-1`), and [Amazon Nova 2 Sonic](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-conversational-speech.html) as the speech-to-speech model. Call audio is processed in Tokyo, outside India. The spec is in `.kiro/specs/cloud-call-agent/`. Spikes are tracked in `docs/cloud-spikes.md`.
+- **Why the pivot:** on the target phone (Samsung Galaxy M34 5G) an on-device Agent can't work. Android silences call-time microphone capture for normal apps (only an accessibility service could capture, and UPI apps refuse to run while one is on), and the phone's echo cancellation removes the Agent's loudspeaker audio, so the caller never hears it. The original on-device spec is kept as history in `.kiro/specs/ai-call-screening-agent/`.
 
-> Consider local laws on call recording and on automated call answering, and whether callers should be told they are speaking to an AI (the app has an optional spoken disclosure setting, off by default).
+> Consider local laws on call recording and on automated call answering. The cloud Agent plays a spoken recording notice and can disclose that it is an AI.
 
 ## Project layout
 
 | Module / folder | Purpose |
 |---|---|
-| `app` | Android app (`com.callanswer.app`, minSdk 29, targetSdk 36) |
-| `core` | Shared call-handling logic (JVM tests run without a device) |
-| `spike` | Benchmark and feasibility spikes (see `spike/S7-README.md`) |
+| `app` | Android app (`com.callanswer.app`, minSdk 29, targetSdk 36). Becoming the companion app; the on-device call audio path is being archived. |
+| `core` | Shared call-handling rules (gates, directions, PII guard, spam report, call log). JVM tests run without a device. To be reused by the cloud Agent service. |
+| `spike-cloud` | JVM harness for the cloud spikes (results in `spike-cloud/results/`, git-ignored) |
+| `spike` | On-device feasibility spikes (history; see `docs/spike-s1-s3-runbook.md`) |
 | `lambda/polly_tts` | AWS Lambda for Polly text-to-speech (see its README) |
 | `tools` | Scripts for models, voices, traces and test suites |
-| `docs` | E2E scenarios, network test matrix, spike runbooks |
+| `docs` | Spike runbooks and results, E2E scenarios, network test matrix |
+
+The cloud Agent service (`agent` module) and its infrastructure are planned in `.kiro/specs/cloud-call-agent/tasks.md`.
 
 ## Running locally
 
@@ -68,12 +70,12 @@ tools/fetch_models.sh
 ```
 Or open the project in Android Studio and run the `app` configuration.
 
-### 4. Grant permissions and set up call handling
-On the device, open the app, grant the requested permissions, and set Call-Answer as the call screening app / default call handler when prompted (Settings > Apps > Default apps). Then call the phone from a number that is not in the contacts.
+### 4. Grant permissions
+On the device, open the app and follow onboarding (sign-in first, then permissions). The on-device call screening path still exists in this build but is being archived; see Status above.
 
 ### Tests
 ```
-./gradlew :core:test :app:testDebugUnitTest
+./gradlew :core:test :app:testDebugUnitTest :spike-cloud:test
 ```
 
 ### Debugging a call

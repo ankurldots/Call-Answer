@@ -44,6 +44,12 @@ class SetupModel(context: Context) {
         deniedThisSession.removeAll { status.isGranted(it) }
     }
 
+    /** Persists the screening on/off setting (same store as the settings screen) and re-reads state. */
+    suspend fun setScreeningEnabled(enabled: Boolean) {
+        withContext(Dispatchers.IO) { settings.update(settings.current().copy(screeningEnabled = enabled)) }
+        refresh()
+    }
+
     fun recordDenied(item: SetupItem) {
         if (item !in deniedThisSession) deniedThisSession += item
     }

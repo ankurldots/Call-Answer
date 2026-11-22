@@ -1,11 +1,14 @@
 package com.callanswer.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,14 +16,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.callanswer.app.R
 import com.callanswer.app.ui.components.AppButton
 import com.callanswer.app.ui.components.AppCard
 import com.callanswer.app.ui.components.BannerSeverity
+import com.callanswer.app.ui.components.IconBadge
 import com.callanswer.app.ui.components.StatusBanner
 import com.callanswer.app.ui.theme.AppDimens
 
@@ -52,10 +58,15 @@ fun OnboardingScreen(model: SetupModel, actions: SetupActions, onFinished: () ->
             .padding(AppDimens.spaceMd),
         verticalArrangement = Arrangement.spacedBy(AppDimens.spaceMd),
     ) {
-        Text(
-            stringResource(R.string.onboarding_progress, index + 1, steps.size),
-            style = MaterialTheme.typography.labelLarge,
+        val progressText = stringResource(R.string.onboarding_progress, index + 1, steps.size)
+        Text(progressText, style = MaterialTheme.typography.labelLarge)
+        LinearProgressIndicator(
+            progress = { (index + 1).toFloat() / steps.size },
+            modifier = Modifier.fillMaxWidth().semantics {
+                contentDescription = progressText
+            },
         )
+        IconBadge(item.icon(), modifier = Modifier.align(Alignment.CenterHorizontally))
         Text(
             stringResource(item.title),
             style = MaterialTheme.typography.headlineSmall,
@@ -69,7 +80,7 @@ fun OnboardingScreen(model: SetupModel, actions: SetupActions, onFinished: () ->
         if (item in model.deniedThisSession && !granted) {
             StatusBanner(deniedMessage(item), BannerSeverity.WARNING)
         }
-        if (granted && item != SetupItem.AUTO_RECORD) {
+        AnimatedVisibility(granted && item != SetupItem.AUTO_RECORD) {
             StatusBanner(stringResource(R.string.onboarding_granted), BannerSeverity.INFO)
         }
 

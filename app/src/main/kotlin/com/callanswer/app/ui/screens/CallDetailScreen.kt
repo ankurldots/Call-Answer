@@ -2,7 +2,21 @@ package com.callanswer.app.ui.screens
 
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.Alignment
+import com.callanswer.app.ui.components.AppCard
+import com.callanswer.app.ui.components.ScreenHeader
+import com.callanswer.app.ui.components.SectionHeader
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -93,18 +107,19 @@ fun CallDetailScreen(entryId: String, resumeTick: Int, onBack: () -> Unit) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(AppDimens.spaceMd),
         verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm),
     ) {
-        AppButton(stringResource(R.string.settings_back), onClick = onBack, primary = false)
-        Text(
-            stringResource(R.string.detail_title),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() },
-        )
+        ScreenHeader(stringResource(R.string.detail_title), onBack)
         val e = entry
         if (e == null) {
+            if (!loaded) {
+                Box(Modifier.fillMaxWidth().padding(AppDimens.spaceLg), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
             if (loaded && askAlsoDelete == null) StatusBanner(stringResource(R.string.detail_not_found), BannerSeverity.WARNING)
         } else {
-            EntryFields(e)
+            HeaderCard(e)
             Section(stringResource(R.string.detail_recording))
+            AppCard(contentDescription = stringResource(R.string.detail_recording)) {
             RecordingSection(
                 e, fileState, playbackState,
                 onPlay = { e.recording.uri?.let { player.play(Uri.parse(it)) } },
@@ -117,6 +132,7 @@ fun CallDetailScreen(entryId: String, resumeTick: Int, onBack: () -> Unit) {
                 onRefresh = { reload++ },
                 onDeleteRecording = { confirmRecordingDelete = true },
             )
+            }
             error?.let { StatusBanner(stringResource(it), BannerSeverity.ERROR) }
             Section(stringResource(R.string.detail_gates))
             if (e.gateStatements.isEmpty()) Text(stringResource(R.string.detail_none))
@@ -144,8 +160,12 @@ fun CallDetailScreen(entryId: String, resumeTick: Int, onBack: () -> Unit) {
             Section(stringResource(R.string.detail_transcript))
             if (e.transcript.isEmpty()) Text(stringResource(R.string.detail_transcript_empty))
             e.transcript.forEach { u -> TranscriptBubble(u.speaker.bubble(), u.text) }
-            AppButton(stringResource(R.string.calllog_report_spam), onClick = { startReportSpam(context, e.id) })
-            AppButton(stringResource(R.string.detail_delete_entry), onClick = { confirmEntryDelete = true }, primary = false)
+            AppButton(stringResource(R.string.calllog_report_spam), onClick = { startReportSpam(context, e.id) }, modifier = Modifier.fillMaxWidth())
+            OutlinedButton(
+                onClick = { confirmEntryDelete = true },
+                modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = AppDimens.minTouchTarget),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) { Text(stringResource(R.string.detail_delete_entry)) }
         }
     }
 
@@ -212,12 +232,28 @@ fun CallDetailScreen(entryId: String, resumeTick: Int, onBack: () -> Unit) {
 }
 
 @Composable
-private fun Section(title: String) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(top = AppDimens.spaceSm).semantics { heading() },
-    )
+private fun Section(title: String) = SectionHeader(title)
+
+/** Prominent caller number, time and outcome chips, then the remaining fields in one card. */
+@Composable
+private fun HeaderCard(e: CallLogEntry) {
+    val number = e.callerNumber ?: stringResource(R.string.calllog_unknown_number)
+    val whenText = CallLogFormat.dateTime(e.startedAtEpochMs, e.zoneId)
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        shape = MaterialTheme.shapes.extraLarge,
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
+    ) {
+        Column(Modifier.padding(AppDimens.spaceLg), verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
+            Text(number, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(whenText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
+                AssistChip(onClick = {}, label = { Text(CallLogFormat.label(e.outcome)) })
+                AssistChip(onClick = {}, label = { Text(stringResource(R.string.calllog_report_chip, reportStatusLabel(e.report.status))) })
+            }
+        }
+    }
+    AppCard(contentDescription = stringResource(R.string.detail_title)) { EntryFields(e) }
 }
 
 @Composable

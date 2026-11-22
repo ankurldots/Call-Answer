@@ -286,7 +286,7 @@ class CallForegroundService : Service() {
         val label = number ?: getString(R.string.call_notif_unknown_number)
         val muted = ui.mode != Mode.AGENT_ACTIVE
         val builder = NotificationCompat.Builder(this, NotificationChannels.LIVE_CALL)
-            .setSmallIcon(android.R.drawable.sym_action_call)
+            .setSmallIcon(com.callanswer.app.R.drawable.ic_stat_call)
             .setContentTitle(getString(R.string.call_notif_title, label))
             .setContentText(getString(R.string.call_notif_text, ui.intent.name, ui.language?.name ?: "-"))
             .setCategory(NotificationCompat.CATEGORY_CALL)
@@ -395,7 +395,7 @@ class CallForegroundService : Service() {
             val startPi = PendingIntent.getForegroundService(context, 20, startIntent, flags)
             val label = number ?: context.getString(R.string.call_notif_unknown_number)
             val n = NotificationCompat.Builder(context, NotificationChannels.TAKEOVER_ALERT)
-                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setSmallIcon(com.callanswer.app.R.drawable.ic_stat_call)
                 .setContentTitle(context.getString(R.string.call_fallback_title))
                 .setContentText(context.getString(R.string.call_fallback_text, label))
                 .setCategory(NotificationCompat.CATEGORY_CALL)

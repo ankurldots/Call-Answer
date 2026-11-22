@@ -97,7 +97,7 @@ class NotificationCenter(private val context: Context) {
 
     private fun alertBuilder(text: String): NotificationCompat.Builder =
         NotificationCompat.Builder(context, NotificationChannels.ALERTS)
-            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setSmallIcon(com.callanswer.app.R.drawable.ic_stat_call)
             .setContentTitle(context.getString(R.string.notif_title_attention))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -166,7 +166,7 @@ class NotificationCenter(private val context: Context) {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val n = NotificationCompat.Builder(context, NotificationChannels.POST_CALL)
-            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setSmallIcon(com.callanswer.app.R.drawable.ic_stat_call)
             .setContentTitle(context.getString(R.string.notif_title_spam_screened))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -190,7 +190,7 @@ class NotificationCenter(private val context: Context) {
 
     private fun postSpamReportNote(entryId: String, text: String) {
         val n = NotificationCompat.Builder(context, NotificationChannels.POST_CALL)
-            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setSmallIcon(com.callanswer.app.R.drawable.ic_stat_call)
             .setContentTitle(context.getString(R.string.notif_title_spam_report_sent))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))

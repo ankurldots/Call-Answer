@@ -5,7 +5,17 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,6 +61,7 @@ import com.callanswer.core.model.Speaker
  */
 class LiveCallActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)
         setTurnScreenOn(true)
@@ -135,25 +146,38 @@ fun LiveCallScreen(
 
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(AppDimens.spaceMd),
+            modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(AppDimens.spaceMd).animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm),
         ) {
-            Text(
-                stringResource(R.string.live_title, state.callerNumber ?: unknownNumber),
-                style = MaterialTheme.typography.titleLarge,
-            )
+            val stateText = when {
+                !state.active -> stringResource(R.string.live_call_ended)
+                takeOver -> stringResource(R.string.live_banner_take_over)
+                state.mode == Mode.AGENT_MUTED -> stringResource(R.string.live_banner_muted)
+                else -> null
+            }
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (state.active) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
+                shape = MaterialTheme.shapes.extraLarge,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(AppDimens.spaceMd), verticalArrangement = Arrangement.spacedBy(AppDimens.spaceXs)) {
+                    Text(
+                        stringResource(R.string.live_title, state.callerNumber ?: unknownNumber),
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                    stateText?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
+                }
+            }
             ChipRow(
                 labels = listOf(intentLabel, languageLabel),
                 selected = setOf(intentLabel, languageLabel),
                 onChipClick = {},
             )
             DebugNetworkOverlay()
-            if (takeOver) StatusBanner(stringResource(R.string.live_banner_take_over), BannerSeverity.INFO)
-            if (state.mode == Mode.AGENT_MUTED) {
-                StatusBanner(stringResource(R.string.live_banner_muted), BannerSeverity.INFO)
-            }
             if (assistedMode) StatusBanner(stringResource(R.string.live_banner_assisted), BannerSeverity.WARNING)
-            if (!state.active) StatusBanner(stringResource(R.string.live_call_ended), BannerSeverity.INFO)
 
             LazyColumn(
                 state = listState,
@@ -201,29 +225,34 @@ fun LiveCallScreen(
                     text = stringResource(R.string.call_action_take_over),
                     onClick = onTakeOver,
                     enabled = state.active && !takeOver,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).defaultMinSize(minHeight = AppDimens.largeControl),
                 )
                 AppButton(
                     text = stringResource(R.string.call_action_mute),
                     onClick = onMute,
                     enabled = state.active && agentActive,
                     primary = false,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).defaultMinSize(minHeight = AppDimens.largeControl),
                 )
                 AppButton(
                     text = stringResource(R.string.call_action_resume),
                     onClick = onResume,
                     enabled = state.active && !agentActive,
                     primary = false,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).defaultMinSize(minHeight = AppDimens.largeControl),
                 )
             }
-            AppButton(
-                text = stringResource(R.string.call_action_end),
+            val endLabel = stringResource(R.string.call_action_end)
+            Button(
                 onClick = onEnd,
                 enabled = state.active,
-                modifier = Modifier.fillMaxWidth(),
-            )
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+                modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = AppDimens.largeControl)
+                    .semantics { contentDescription = endLabel },
+            ) { Text(endLabel, style = MaterialTheme.typography.titleMedium) }
         }
     }
 }

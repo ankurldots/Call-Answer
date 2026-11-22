@@ -1,6 +1,19 @@
 package com.callanswer.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import com.callanswer.app.ui.components.IconBadge
+import com.callanswer.app.ui.components.ScreenHeader
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -72,12 +85,7 @@ internal fun SettingsPage(title: String, onBack: () -> Unit, content: @Composabl
             .padding(AppDimens.spaceMd),
         verticalArrangement = Arrangement.spacedBy(AppDimens.spaceMd),
     ) {
-        AppButton(stringResource(R.string.settings_back), onClick = onBack, primary = false)
-        Text(
-            title,
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() },
-        )
+        ScreenHeader(title, onBack)
         content()
     }
 }
@@ -101,17 +109,24 @@ internal fun rememberInitialSettings(store: SettingsStore): Settings? =
 fun SettingsHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
     SettingsPage(stringResource(R.string.settings_title), onBack) {
         listOf(
-            Routes.SETTINGS_GENERAL to R.string.settings_section_general,
-            Routes.SETTINGS_GATES to R.string.settings_section_gates,
-            Routes.SETTINGS_CALL to R.string.settings_section_call,
-            Routes.SETTINGS_STEPS to R.string.settings_section_steps,
-            Routes.SETTINGS_RECORDING to R.string.settings_section_recording,
-            Routes.SETTINGS_SPAM to R.string.settings_section_spam,
-            Routes.SETTINGS_ACCOUNT to R.string.settings_section_account,
-        ).forEach { (route, label) ->
+            Triple(Routes.SETTINGS_GENERAL, R.string.settings_section_general, Icons.Filled.Settings),
+            Triple(Routes.SETTINGS_GATES, R.string.settings_section_gates, Icons.Filled.Lock),
+            Triple(Routes.SETTINGS_CALL, R.string.settings_section_call, Icons.Filled.Call),
+            Triple(Routes.SETTINGS_STEPS, R.string.settings_section_steps, Icons.Filled.Send),
+            Triple(Routes.SETTINGS_RECORDING, R.string.settings_section_recording, Icons.Filled.Home),
+            Triple(Routes.SETTINGS_SPAM, R.string.settings_section_spam, Icons.Filled.Warning),
+            Triple(Routes.SETTINGS_ACCOUNT, R.string.settings_section_account, Icons.Filled.Person),
+        ).forEach { (route, label, icon) ->
             val text = stringResource(label)
             AppCard(contentDescription = text, onClick = { onOpen(route) }) {
-                Text(text, style = MaterialTheme.typography.titleMedium)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceMd),
+                ) {
+                    IconBadge(icon, size = AppDimens.iconLg + AppDimens.spaceSm)
+                    Text(text, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                }
             }
         }
     }

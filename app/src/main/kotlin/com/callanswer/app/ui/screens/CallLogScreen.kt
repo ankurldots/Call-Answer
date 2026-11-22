@@ -3,7 +3,17 @@ package com.callanswer.app.ui.screens
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.style.TextAlign
+import com.callanswer.app.ui.components.IconBadge
+import com.callanswer.app.ui.components.ScreenHeader
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -66,22 +76,37 @@ fun CallLogScreen(resumeTick: Int, onOpenEntry: (String) -> Unit, onBack: () -> 
     LaunchedEffect(resumeTick) { entries = CallLogFormat.newestFirst(dao.list()) }
 
     Column(Modifier.fillMaxSize().padding(AppDimens.spaceMd), verticalArrangement = Arrangement.spacedBy(AppDimens.spaceMd)) {
-        AppButton(stringResource(R.string.settings_back), onClick = onBack, primary = false)
-        Text(
-            stringResource(R.string.calllog_title),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() },
-        )
+        ScreenHeader(stringResource(R.string.calllog_title), onBack)
         val list = entries
-        if (list != null && list.isEmpty()) Text(stringResource(R.string.calllog_empty))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
-            items(list.orEmpty(), key = { it.id }) { entry ->
-                CallLogRow(entry, onOpen = { onOpenEntry(entry.id) }, onReport = { startReportSpam(context, entry.id) })
+        when {
+            list == null -> {
+                val loading = stringResource(R.string.calllog_loading)
+                Box(Modifier.fillMaxSize().semantics { contentDescription = loading }, contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            list.isEmpty() -> Column(
+                Modifier.fillMaxSize().padding(AppDimens.spaceLg),
+                verticalArrangement = Arrangement.spacedBy(AppDimens.spaceMd, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                IconBadge(Icons.Filled.Call)
+                Text(stringResource(R.string.calllog_empty), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                Text(
+                    stringResource(R.string.calllog_empty_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
+                items(list, key = { it.id }) { entry ->
+                    CallLogRow(entry, onOpen = { onOpenEntry(entry.id) }, onReport = { startReportSpam(context, entry.id) })
+                }
             }
         }
     }
 }
-
 @Composable
 private fun CallLogRow(entry: CallLogEntry, onOpen: () -> Unit, onReport: () -> Unit) {
     val number = entry.callerNumber ?: stringResource(R.string.calllog_unknown_number)
@@ -90,10 +115,20 @@ private fun CallLogRow(entry: CallLogEntry, onOpen: () -> Unit, onReport: () -> 
     AppCard(
         contentDescription = stringResource(R.string.calllog_row_description, number, whenText, CallLogFormat.label(entry.outcome)),
     ) {
-        Text(number, style = MaterialTheme.typography.titleMedium)
-        Text(whenText, style = MaterialTheme.typography.bodyMedium)
-        Text(CallLogFormat.label(entry.outcome), style = MaterialTheme.typography.bodyMedium)
-        AssistChip(onClick = {}, label = { Text(stringResource(R.string.calllog_report_chip, status)) })
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceMd)) {
+            IconBadge(Icons.Filled.Call, size = AppDimens.iconLg + AppDimens.spaceSm)
+            Column(Modifier.weight(1f)) {
+                Text(number, style = MaterialTheme.typography.titleMedium)
+                Text(whenText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm),
+            modifier = Modifier.padding(top = AppDimens.spaceSm),
+        ) {
+            AssistChip(onClick = {}, label = { Text(CallLogFormat.label(entry.outcome)) })
+            AssistChip(onClick = {}, label = { Text(stringResource(R.string.calllog_report_chip, status)) })
+        }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(AppDimens.spaceSm)) {
             AppButton(stringResource(R.string.calllog_details), onClick = onOpen, primary = false)
             AppButton(stringResource(R.string.calllog_report_spam), onClick = onReport)

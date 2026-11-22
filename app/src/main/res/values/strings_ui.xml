@@ -1,0 +1,15 @@
+<resources>
+    <string name="home_hero_on_title">Screening is on</string>
+    <string name="home_hero_off_title">Screening is off</string>
+    <string name="home_toggle_description">Call screening</string>
+    <string name="home_setup_progress">%1$d of %2$d setup items ready</string>
+    <string name="home_setup_complete">Everything is set up</string>
+    <string name="home_quick_links">Shortcuts</string>
+    <string name="calllog_open_hint">Review screened calls and transcripts</string>
+    <string name="settings_open_hint">Voice, rules, recording and account</string>
+    <string name="cd_navigate_back">Navigate back</string>
+    <string name="cd_step_icon">Illustration for %1$s</string>
+    <string name="cd_setup_progress">Setup progress, step %1$d of %2$d</string>
+    <string name="calllog_loading">Loading calls</string>
+    <string name="calllog_empty_hint">Screened calls will appear here with their transcripts.</string>
+</resources>

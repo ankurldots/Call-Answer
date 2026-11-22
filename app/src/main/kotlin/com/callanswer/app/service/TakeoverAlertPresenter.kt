@@ -82,7 +82,7 @@ class TakeoverAlertPresenterImpl(
         )
         val live = NotificationCenter(context).liveCallPendingIntent()
         val builder = NotificationCompat.Builder(context, NotificationChannels.TAKEOVER_ALERT)
-            .setSmallIcon(android.R.drawable.sym_action_call)
+            .setSmallIcon(com.callanswer.app.R.drawable.ic_stat_call)
             .setContentTitle(context.getString(R.string.takeover_alert_title))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))

@@ -330,7 +330,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement the call policy, takeover, and fallbacks
-  - [~] 8.1 Implement `CallPolicy` in `:core`
+  - [x] 8.1 Implement `CallPolicy` in `:core`
     - Pure `step(state, event, now) -> (state, effects)` with the phases, events, and effects of the design; counters for greeting repeat, directions repetitions, silence prompts, clarification prompts, and garbled repetitions; the 15-minute, 60-minute, and maximum-stalling limits; Gate_Query without clarification count
     - _Requirements: 6.5, 6.6, 12.3, 12.4, 12.5, 12.10, 13.2, 13.4, 13.5, 13.6, 13.7_
 
@@ -338,7 +338,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 10: Call policy enforces limits and counters**
     - **Validates: Requirements 6.5, 6.6, 12.3, 12.4, 12.5, 12.10, 13.2, 13.4, 13.5, 13.6, 13.7, 22.6**
 
-  - [~] 8.3 Implement `RouteDecider` in `:core`
+  - [x] 8.3 Implement `RouteDecider` in `:core`
     - Select the Agent only when the Agent is on, consent is accepted, the User is active, the User's month total is below the limit, fewer than 3 calls of the User are active, fewer than the Global_Call_Cap calls are active, and `From` is neither the User_Mobile of the resolved User nor any assigned Virtual_Number; otherwise select the Fallback_Route and record the cause (`USER_LIMIT`, `GLOBAL_CAP`, and the others)
     - _Requirements: 1.5, 1.7, 17.2, 17.4, 20.7, 22.5, 25.8, 29.1, 29.2, 29.3_
 
@@ -376,7 +376,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - _Requirements: 6.1, 6.2, 6.3, 11.7, 15.9_
 
 - [ ] 9. Implement persistence, recordings, traces, and cost
-  - [~] 9.1 Implement the data access layer for DynamoDB
+  - [x] 9.1 Implement the data access layer for DynamoDB
     - Define an `ItemStore` port (get, put with condition, update, delete, query by key condition, transact) with a DynamoDB implementation and an in-memory fake that has the same conditional-write and key-condition semantics
     - `UserScopedRepository(userId)` for the items `PROFILE`, `CONSENT`, `DEVICE#...`, `CALL#...`, `TRACE#...`, `COST#...`, `FWDTEST`, and `OPEN#...` with `CoreJson`, every key built through `Keys`; no method accepts a raw partition key; time-ordered `Query` for the call list; transcript over 300 KB to S3 under `users/<sub>/`; 3 retries at 1-second intervals, then a `NOT_LOGGED` alert and a redacted log line
     - `DirectoryRepository` for the number lookup, user listing (`gsi1`), and open-call markers; no access to call content
@@ -407,7 +407,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 18: Retention selection is exact and idempotent**
     - **Validates: Requirements 17.5, 17.6, 17.7**
 
-  - [~] 9.8 Implement `CallTrace`, `Metrics`, and `StructuredLog`
+  - [x] 9.8 Implement `CallTrace`, `Metrics`, and `StructuredLog`
     - Trace events with the listed event names, CloudWatch embedded metric lines (`CallCount`, `TimeToFirstAudioMs`, `ReplyLatencyMs`, `FallbackCount`, `SonicErrorCount`, `ActiveCalls`), and JSON logs with no Caller number, transcript, or Protected_Term; 30-day trace TTL
     - _Requirements: 16.8, 23.2, 23.3, 23.7_
 
@@ -455,7 +455,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - _Requirements: 26.2, 26.4, 26.5, 26.6_
 
 - [ ] 10. Implement the Companion_API, push notifications, and the SMS fallback
-  - [~] 10.1 Implement `JwtVerifier`, `RateLimiter`, and the route scaffold
+  - [x] 10.1 Implement `JwtVerifier`, `RateLimiter`, and the route scaffold
     - Verify the Cognito token against the JWKS of the existing ap-south-1 pool (cache 1 hour; check `iss`, audience or client id, `exp`, and `token_use`), return the `sub` and the `cognito:groups` claim, 401 for an invalid token, and 429 above 60 requests per minute per `sub`
     - Make the verified `sub` the only source of the User_Id for every handler (never the path, query, or body) and answer 403 for a deactivated User
     - Serve the Companion_API on `api.leadingdots.com` with the base path `/api/v1`
@@ -519,7 +519,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Adapt the `ui/` screens that referenced the on-device pipeline
     - _Requirements: 24.3, 24.4_
 
-  - [~] 12.2 Clean the manifest and keep the 16 KB page-size compatibility
+  - [x] 12.2 Clean the manifest and keep the 16 KB page-size compatibility
     - Remove `RECORD_AUDIO`, `ANSWER_PHONE_CALLS`, `SEND_SMS`, `SYSTEM_ALERT_WINDOW`, the microphone foreground-service entries, the accessibility service, and the call screening service from the manifest
     - Remove the `sherpa-onnx` AAR and any native libraries that only the archived code used; keep `:app` free of 4 KB-aligned native libraries and add the 16 KB check script `scripts/check-16kb.sh` (zipalign and ELF `LOAD` segment alignment of the release APK)
     - _Requirements: 24.3, 24.4_

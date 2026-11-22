@@ -480,6 +480,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695097
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376389076
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376674291
       }
     ],
     "8.3 Implement `RouteDecider` in `:core`": [
@@ -487,6 +497,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695127
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376389589
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376671741
       }
     ],
     "8.5 Add the takeover state machine and the `request_takeover` and `end_call` tools": [
@@ -522,6 +542,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695319
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376391113
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376672614
       }
     ],
     "9.3 Implement `RecordingStore`": [
@@ -550,6 +580,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695440
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376392080
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376670705
       }
     ],
     "9.10 Implement `CallFinalizer`": [
@@ -585,6 +625,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695599
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376392480
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376673612
       }
     ],
     "10.2 Implement the settings, consent, and device routes": [
@@ -672,6 +722,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695969
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376679981
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795376777440
       }
     ],
     "12.3 Add the API client, authentication, and the data layer changes": [

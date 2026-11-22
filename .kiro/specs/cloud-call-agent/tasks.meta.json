@@ -24,6 +24,655 @@
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795369987981
       }
+    ],
+    "0.1 **USER** Complete the Exotel account setup: KYC, Virtual_Number, and plan": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372693778
+      }
+    ],
+    "0.2 **USER** Confirm Exotel feature enablement with Exotel support": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372693812
+      }
+    ],
+    "0.3 **USER** Create the Firebase project for push notifications": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372693913
+      }
+    ],
+    "0.4 **USER** Check where the DNS of `leadingdots.com` is hosted": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372693944
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795373768524
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795375095342
+      }
+    ],
+    "0.6 **USER** Create the Cognito group `admins` (sign-up policy is resolved: admin-created accounts only)": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372693969
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795373769985
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795375096319
+      }
+    ],
+    "0.7 **USER** Disable self sign-up for the Cognito app client": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372693998
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795373770485
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795375097317
+      }
+    ],
+    "1.2 Run spike C-6: Exotel SMS and the DLT template": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694027
+      }
+    ],
+    "1.3 Run spike C-4: Airtel forwarding behavior (manual, on the User's phone)": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694083
+      }
+    ],
+    "1.4 Run spike C-5: Nova 2 Sonic session behavior in ap-northeast-1": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694116
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795373771314
+      },
+      {
+        "executionId": "2243acd0-ab0e-443b-a95b-9b92ad6b2e53",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795375098014
+      }
+    ],
+    "1.5 Run spike C-1: Exotel stream protocol with an echo server behind the ALB": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694138
+      }
+    ],
+    "1.6 Run spike C-2: Sonic quality for Hindi, English, and Hinglish": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694162
+      }
+    ],
+    "1.7 Run spike C-3: takeover mechanism": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694188
+      }
+    ],
+    "1.8 Run spike C-7: forwarding hint and `To` behavior with two numbers": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694213
+      }
+    ],
+    "2. Checkpoint - Spike go/no-go": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694238
+      }
+    ],
+    "3.1 Create the `:agent` Gradle module": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694269
+      }
+    ],
+    "3.2 Add the cloud fields and the `cloud` package to `:core`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694299
+      }
+    ],
+    "3.3 Write the SAM template: network, load balancer, certificate, and service": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694330
+      }
+    ],
+    "3.4 Write the SAM template: data, secrets, IAM, and alarms": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694357
+      }
+    ],
+    "3.5 Add the container build and push scripts": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694390
+      }
+    ],
+    "3.7 Add the `tenant` package to `:core`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694420
+      }
+    ],
+    "4.1 Implement `ExotelMessages` and `PcmCodec`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694444
+      }
+    ],
+    "4.3 Implement `Resampler`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694471
+      }
+    ],
+    "4.5 Implement `OutboundPacer` with chunking and `clear`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694505
+      }
+    ],
+    "4.7 Implement `SilenceDetector`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694532
+      }
+    ],
+    "4.8 Implement `ExotelAuth` and the call token": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694578
+      }
+    ],
+    "4.10 Implement `ExotelRoutes` and `ExotelStreamHandler`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694611
+      }
+    ],
+    "4.11 Implement `CallRecorder`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694644
+      }
+    ],
+    "5.1 Implement `SonicEvents`, `ToolSpecs`, `SystemPrompt`, and `HistoryBuilder`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694677
+      }
+    ],
+    "5.3 Implement voice selection for the Sonic session": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694706
+      }
+    ],
+    "5.5 Implement `SonicClient` and `SonicSession`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694740
+      }
+    ],
+    "5.6 Implement `SessionRenewer`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694774
+      }
+    ],
+    "5.8 Wire the Audio_Bridge between Exotel and Sonic": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694805
+      }
+    ],
+    "6.1 Implement `AgentTool`, argument validation, and the tool context": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694838
+      }
+    ],
+    "6.2 Implement `get_gate_info`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694877
+      }
+    ],
+    "6.5 Implement `get_delivery_directions`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694907
+      }
+    ],
+    "6.8 Implement `ExotelClient` SMS and `send_map_sms`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694936
+      }
+    ],
+    "6.10 Implement `log_note`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694968
+      }
+    ],
+    "6.12 Implement the streaming PII_Guard in `:core`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372694996
+      }
+    ],
+    "6.14 Implement `get_stalling_persona` and the Stalling_Mode results": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695033
+      }
+    ],
+    "7. Checkpoint - Core and tools": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695065
+      }
+    ],
+    "8.1 Implement `CallPolicy` in `:core`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695097
+      }
+    ],
+    "8.3 Implement `RouteDecider` in `:core`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695127
+      }
+    ],
+    "8.5 Add the takeover state machine and the `request_takeover` and `end_call` tools": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695157
+      }
+    ],
+    "8.7 Implement `CallSession`, `CallRegistry`, and `ToolRegistry`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695188
+      }
+    ],
+    "8.8 Implement the Fallback_Message and the failure paths": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695259
+      }
+    ],
+    "8.9 Implement the takeover integration with Exotel": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695294
+      }
+    ],
+    "9.1 Implement the data access layer for DynamoDB": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695319
+      }
+    ],
+    "9.3 Implement `RecordingStore`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695345
+      }
+    ],
+    "9.4 Implement `CostEstimator` and the monthly counter in `:core` and `:agent`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695371
+      }
+    ],
+    "9.6 Implement `RetentionPolicy` and `RetentionSweeper`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695406
+      }
+    ],
+    "9.8 Implement `CallTrace`, `Metrics`, and `StructuredLog`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695440
+      }
+    ],
+    "9.10 Implement `CallFinalizer`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695471
+      }
+    ],
+    "9.12 Implement `SettingsStore` with optimistic concurrency": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695504
+      }
+    ],
+    "9.14 Implement `TenantResolver`, `NumberAssignmentService`, and the unassigned-call log": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695533
+      }
+    ],
+    "9.17 Implement the admin command-line script": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695565
+      }
+    ],
+    "10.1 Implement `JwtVerifier`, `RateLimiter`, and the route scaffold": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695599
+      }
+    ],
+    "10.2 Implement the settings, consent, and device routes": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695630
+      }
+    ],
+    "10.3 Implement the call log routes": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695662
+      }
+    ],
+    "10.4 Implement the `/live` WebSocket": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695698
+      }
+    ],
+    "10.5 Implement the live call actions": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695730
+      }
+    ],
+    "10.6 Implement the forwarding test endpoints": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695764
+      }
+    ],
+    "10.8 Implement `FcmClient` and `AlertService`": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695794
+      }
+    ],
+    "10.9 Wire the notification types into the call flow": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695822
+      }
+    ],
+    "10.11 Implement the Admin_API routes": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695858
+      }
+    ],
+    "11. Checkpoint - Server complete": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695894
+      }
+    ],
+    "12.1 Archive the on-device audio path": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695930
+      }
+    ],
+    "12.2 Clean the manifest and keep the 16 KB page-size compatibility": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372695969
+      }
+    ],
+    "12.3 Add the API client, authentication, and the data layer changes": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696004
+      }
+    ],
+    "12.4 Add the Privacy_Consent screen": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696043
+      }
+    ],
+    "12.5 Add `ForwardingCodes` and the forwarding setup, turn-off, and test call screens": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696083
+      }
+    ],
+    "12.7 Add push handling and the Takeover_Alert": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696112
+      }
+    ],
+    "12.8 Add the live call screen": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696148
+      }
+    ],
+    "12.9 Add the settings sync": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696182
+      }
+    ],
+    "12.10 Add the call detail and cost screens": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696220
+      }
+    ],
+    "12.11 Keep the spam report flow": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696252
+      }
+    ],
+    "12.14 Verify the release build": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696291
+      }
+    ],
+    "12.15 Add the onboarding flow": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696331
+      }
+    ],
+    "13. Checkpoint - App complete": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696370
+      }
+    ],
+    "14.1 Deploy the certificate, DNS records, and network": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696397
+      }
+    ],
+    "14.2 Push the image and deploy the full stack": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696458
+      }
+    ],
+    "14.3 **USER** Set the secrets and the Exotel flow": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696505
+      }
+    ],
+    "14.4 Add the end-to-end verification script": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696531
+      }
+    ],
+    "14.5 **USER** Run the end-to-end scenarios with real calls": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696561
+      }
+    ],
+    "14.6 **USER** Validate the Companion_App on the phone": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696587
+      }
+    ],
+    "14.7 **USER** Create the first two Users and assign their numbers": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696620
+      }
+    ],
+    "14.8 Document the admin assignment checklist and the static fallback Number_Flow": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696652
+      }
+    ],
+    "15. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795372696678
+      }
     ]
   }
 }

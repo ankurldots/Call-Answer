@@ -54,6 +54,29 @@ Parameters:
   LogRetentionDays:
     Type: Number
     Default: 30
+  LimitsPerUser:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    Description: limits.perUser, maximum simultaneous calls of one User
+  LimitsGlobal:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    Description: limits.global, Global_Call_Cap (maximum simultaneous calls of the whole service)
+  SonicModelId:
+    Type: String
+    Default: amazon.nova-2-sonic-v1:0
+  SonicMaxSessionSeconds:
+    Type: Number
+    Default: 480
+  SonicIdleSeconds:
+    Type: Number
+    Default: 60
+  AlarmEmail:
+    Type: String
+    Description: E-mail address subscribed to the FallbackCount alarm (the subscription must be confirmed from the mailbox)
+    AllowedPattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
 
 Conditions:
   CreateCertificate: !Equals [!Ref CertificateArn, ""]
@@ -264,6 +287,159 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
 
+  # ---------- Data: KMS key, table, bucket, secrets (task 3.4) ----------
+  DataKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: Encrypts the CallAgent table, the recordings bucket, the secrets, and the log group
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Sid: CloudWatchLogsUse
+            Effect: Allow
+            Principal:
+              Service: !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - kms:Encrypt*
+              - kms:Decrypt*
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+            Resource: "*"
+            Condition:
+              ArnLike:
+                kms:EncryptionContext:aws:logs:arn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*
+  DataKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/callagent
+      TargetKeyId: !Ref DataKey
+  AgentTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: CallAgent
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+        - AttributeName: gsi1pk
+          AttributeType: S
+        - AttributeName: gsi1sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: gsi1
+          KeySchema:
+            - AttributeName: gsi1pk
+              KeyType: HASH
+            - AttributeName: gsi1sk
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL   # listings read status and other attributes without a second fetch; items are small
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !GetAtt DataKey.Arn
+  RecordingsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub callagent-recordings-${AWS::AccountId}-ap-northeast-1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt DataKey.Arn
+      LifecycleConfiguration:
+        Rules:
+          # Backstop only: the retention sweeper deletes objects under users/<sub>/ at the User's retention.
+          - Id: expire-after-366-days
+            Status: Enabled
+            Prefix: users/
+            ExpirationInDays: 366
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+  RecordingsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RecordingsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt RecordingsBucket.Arn
+              - !Sub ${RecordingsBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+  # Values the template cannot generate are placeholders: set them once with
+  # `aws secretsmanager put-secret-value` (never in this file).
+  ExotelAccountSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: callagent/exotel-account
+      Description: Exotel account SID, API key, and API token as JSON (set by hand after deploy)
+      KmsKeyId: !GetAtt DataKey.Arn
+      SecretString: '{"accountSid":"CHANGE_ME","apiKey":"CHANGE_ME","apiToken":"CHANGE_ME"}'
+  ExotelStreamSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: callagent/exotel
+      Description: Basic credentials Exotel presents to the stream and webhooks, as user:password (set by hand after deploy)
+      KmsKeyId: !GetAtt DataKey.Arn
+      SecretString: CHANGE_ME_USER:CHANGE_ME_PASSWORD
+  CallTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: callagent/call-token
+      Description: HMAC-SHA256 key of the 60-second call token
+      KmsKeyId: !GetAtt DataKey.Arn
+      GenerateSecretString:
+        PasswordLength: 64
+        ExcludePunctuation: true
+  FcmSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: callagent/fcm
+      Description: Firebase service account key JSON for FCM HTTP v1 (set by hand after deploy)
+      KmsKeyId: !GetAtt DataKey.Arn
+      SecretString: '{"CHANGE_ME":"paste the service account JSON with put-secret-value"}'
   # ---------- Container registry, cluster, logs ----------
   Repository:
     Type: AWS::ECR::Repository
@@ -289,8 +465,9 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: !Ref LogRetentionDays
+      KmsKeyId: !GetAtt DataKey.Arn
 
-  # ---------- Roles (policies for the task role are added by task 3.4) ----------
+  # ---------- Roles ----------
   ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -303,6 +480,21 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: read-secrets
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref ExotelAccountSecret
+                  - !Ref ExotelStreamSecret
+                  - !Ref CallTokenSecret
+                  - !Ref FcmSecret
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: !GetAtt DataKey.Arn
 
   TaskRole:
     Type: AWS::IAM::Role
@@ -349,7 +541,28 @@ Resources:
               Value: !Ref AgentDomainName
             - Name: API_DOMAIN_NAME
               Value: !Ref ApiDomainName
-            # Task 3.4 adds AGENT_TABLE, RECORDINGS_BUCKET, the secret names, and the limits here.
+            - Name: AGENT_TABLE
+              Value: !Ref AgentTable
+            - Name: RECORDINGS_BUCKET
+              Value: !Ref RecordingsBucket
+            - Name: EXOTEL_SECRET_NAME
+              Value: callagent/exotel
+            - Name: CALL_TOKEN_SECRET_NAME
+              Value: callagent/call-token
+            - Name: FCM_SECRET_NAME
+              Value: callagent/fcm
+            - Name: EXOTEL_ACCOUNT_SECRET_NAME
+              Value: callagent/exotel-account
+            - Name: SONIC_MODEL_ID
+              Value: !Ref SonicModelId
+            - Name: SONIC_MAX_SESSION_SECONDS
+              Value: !Ref SonicMaxSessionSeconds
+            - Name: SONIC_IDLE_SECONDS
+              Value: !Ref SonicIdleSeconds
+            - Name: LIMITS_PER_USER
+              Value: !Ref LimitsPerUser
+            - Name: LIMITS_GLOBAL
+              Value: !Ref LimitsGlobal
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -388,6 +601,33 @@ Resources:
           ContainerPort: !Ref ContainerPort
           TargetGroupArn: !Ref TargetGroup
 
+  # ---------- Alarms ----------
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: alias/aws/sns
+  AlarmEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlarmTopic
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+  # The agent writes FallbackCount and CapRefusals as embedded metric format lines
+  # (namespace CallAnswer/Agent, no dimensions), so no metric filter is needed.
+  FallbackCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: More than 3 calls took the Fallback_Route in 1 hour
+      Namespace: CallAnswer/Agent
+      MetricName: FallbackCount
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
 Outputs:
   LoadBalancerDnsName:
     Description: Target of the agent and api CNAME records in Cloudflare (DNS only)
@@ -412,3 +652,11 @@ Outputs:
     Value: !Ref ExecutionRole
   LogGroupName:
     Value: !Ref LogGroup
+  AgentTableName:
+    Value: !Ref AgentTable
+  RecordingsBucketName:
+    Value: !Ref RecordingsBucket
+  DataKeyArn:
+    Value: !GetAtt DataKey.Arn
+  AlarmTopicArn:
+    Value: !Ref AlarmTopic

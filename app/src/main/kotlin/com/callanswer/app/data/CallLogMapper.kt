@@ -19,9 +19,25 @@ import com.callanswer.core.model.TransferRecord
 import com.callanswer.core.model.Utterance
 import com.callanswer.core.model.VoiceGender
 import com.callanswer.core.model.VoiceSubstitution
+import com.callanswer.core.model.LatencyReport
+import com.callanswer.core.model.SonicSessionRecord
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.serializer
 import kotlinx.serialization.encodeToString
+
+/** Cloud-only fields of a [CallLogEntry], kept in one JSON column of the Room cache. */
+@Serializable
+internal data class CloudExtras(
+    val costEstimatePaise: Long? = null,
+    val latency: LatencyReport? = null,
+    val sonicSessions: List<SonicSessionRecord> = emptyList(),
+    val fallbackCause: String? = null,
+    val recordingKey: String? = null,
+    val isTestCall: Boolean = false,
+    val voiceId: String? = null,
+    val settingsVersion: Long? = null,
+)
 
 object CallLogMapper {
     fun toEntity(e: CallLogEntry): CallLogEntity = CallLogEntity(
@@ -53,9 +69,25 @@ object CallLogMapper {
         reportAttemptId = e.report.attemptId,
         reportDispatched = e.report.dispatched,
         reportPendingRestore = e.report.pendingRestore?.let { CoreJson.encodeToString(ReportStamp.serializer(), it) },
+        cloudExtras = CoreJson.encodeToString(
+            CloudExtras.serializer(),
+            CloudExtras(
+                e.costEstimatePaise, e.latency, e.sonicSessions, e.fallbackCause,
+                e.recordingKey, e.isTestCall, e.voiceId, e.settingsVersion,
+            ),
+        ),
     )
 
-    fun toEntry(r: CallLogEntity): CallLogEntry = CallLogEntry(
+    fun toEntry(r: CallLogEntity): CallLogEntry {
+        val x = r.cloudExtras?.let { CoreJson.decodeFromString(CloudExtras.serializer(), it) } ?: CloudExtras()
+        return base(r).copy(
+            costEstimatePaise = x.costEstimatePaise, latency = x.latency, sonicSessions = x.sonicSessions,
+            fallbackCause = x.fallbackCause, recordingKey = x.recordingKey, isTestCall = x.isTestCall,
+            voiceId = x.voiceId, settingsVersion = x.settingsVersion,
+        )
+    }
+
+    private fun base(r: CallLogEntity): CallLogEntry = CallLogEntry(
         id = r.id,
         callerNumber = r.callerNumber,
         startedAtEpochMs = r.startedAtEpochMs,

@@ -173,6 +173,15 @@ class UserScopedRepository(
         CostRecord(it.num("totalPaise") ?: 0L, (it.num("notified80") ?: 0L) != 0L, (it.num("notified100") ?: 0L) != 0L)
     }
 
+    /**
+     * Atomically claims a one-time notification flag (`notified80` or `notified100`) of the month. Returns true for
+     * exactly one caller, the one whose `ADD` produced 1.
+     */
+    suspend fun claimCostNotification(yearMonth: String, flag: String): Boolean {
+        require(flag == "notified80" || flag == "notified100") { "Invalid flag" }
+        return store.update(key(TableKeys.costSk(yearMonth)), ItemUpdate(add = mapOf(flag to 1L))).num(flag) == 1L
+    }
+
     // FWDTEST
 
     suspend fun putForwardTest(r: ForwardTestRecord) =

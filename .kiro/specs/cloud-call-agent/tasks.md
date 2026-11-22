@@ -130,7 +130,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - If a no-go changes a requirement, ask the User to approve the change before task 3 starts
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 3. Set up the `:agent` module, the infrastructure, and secrets
+- [x] 3. Set up the `:agent` module, the infrastructure, and secrets
   - [x] 3.1 Create the `:agent` Gradle module
     - JVM module with Ktor (Netty), kotlinx-serialization, kotlinx-coroutines, AWS SDK for Java v2 (`bedrockruntime`, `dynamodb`, `s3`, `secretsmanager`, `cloudwatch`), Kotest, and a dependency on `:core`; register it in `settings.gradle.kts`
     - Add a `Clock` interface, a `Config` loader that reads environment variables (region, table, bucket, secret names, `sonic.maxSessionSeconds`, `sonic.idleSeconds`, model identifier), and a `/health` route
@@ -149,7 +149,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Define the ECR repository, the ECS cluster and service (`desiredCount` 1, 100 and 200 percent deployment, circuit breaker, `stopTimeout` 120 s, 0.5 vCPU and 1 GB), the security groups (port 443 from the ALB only), and the log group
     - _Requirements: 4.7, 16.1, 1.1_
 
-  - [~] 3.4 Write the SAM template: data, secrets, IAM, and alarms
+  - [x] 3.4 Write the SAM template: data, secrets, IAM, and alarms
     - Add the KMS key, the DynamoDB table `CallAgent` (`pk`, `sk`, TTL `ttl`) with the global secondary index `gsi1` (`gsi1pk`, `gsi1sk`), the S3 bucket `callagent-recordings-<account>-ap-northeast-1` (block public access, KMS, 366-day lifecycle backstop, keys under `users/<sub>/`), and the Secrets Manager entries (Exotel account, stream Basic credentials, token HMAC secret, FCM service account)
     - Add the task role with the least-privilege statements of the design (Bedrock bidirectional stream on the Sonic model and profile, the table and the `gsi1` index, the bucket, one key, logs, metrics) and the execution role (secrets, image pull)
     - Add the configuration parameters `limits.perUser` (3) and `limits.global` (10), and remove any single-household parameter such as a configured `sub`
@@ -189,7 +189,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 15: Resampling keeps duration and bounded amplitude**
     - **Validates: Requirements 3.2, 3.3, 3.6**
 
-  - [~] 4.5 Implement `OutboundPacer` with chunking and `clear`
+  - [x] 4.5 Implement `OutboundPacer` with chunking and `clear`
     - Outbound queue, 3200-byte chunks (multiples of 320 bytes, last chunk padded with silence), at most 300 ms of send-ahead, `mark` after each utterance, and queue flush with exactly one `clear` event on interruption or PII hit within 200 ms
     - Drop later audio of an interrupted content until its end; use small chunks and a 100 ms send-ahead if spike C-1 requires it
     - _Requirements: 3.3, 3.4, 5.1, 5.2, 12.9_
@@ -244,7 +244,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 9: Voice is constant for the whole call**
     - **Validates: Requirements 7.3, 7.5, 7.6, 14.2**
 
-  - [~] 5.5 Implement `SonicClient` and `SonicSession`
+  - [x] 5.5 Implement `SonicClient` and `SonicSession`
     - Wrap `InvokeModelWithBidirectionalStream`; send audio input; handle output events (transcript, speculative text, audio, tool use, usage, completion, `INTERRUPTED`); run each tool with a 2-second timeout and always send exactly one `toolResult`; server-to-model instructions through marked cross-modal text
     - Report Sonic start failures and stream errors as events to the caller
     - _Requirements: 4.4, 5.1, 5.4, 8.2, 15.6_
@@ -268,7 +268,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Tools are plain classes; they are registered in `ToolRegistry` in task 8.7
     - _Requirements: 8.2, 16.10_
 
-  - [~] 6.2 Implement `get_gate_info`
+  - [x] 6.2 Implement `get_gate_info`
     - `GateSelector.selectGate` with the server `Clock` in Asia/Kolkata at minute resolution, `GateInfoRenderer` text in English and Hindi, window times only on request, and both gates with `"clock": "UNAVAILABLE"` plus a Call_Log entry when the clock fails
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.10, 9.11_
 
@@ -280,7 +280,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 2: `get_gate_info` result is exact and free of personal data**
     - **Validates: Requirements 9.5, 9.6, 7.7**
 
-  - [~] 6.5 Implement `get_delivery_directions`
+  - [x] 6.5 Implement `get_delivery_directions`
     - Return the Colony_Gate_Info first, then the Delivery_Steps in order with `{map_location}` replaced, the speak-in-Caller's-language note for single-language steps, the default language for other languages, the `OK` status for the first 4 calls and `REPETITION_LIMIT` afterwards, and a `MAP_LOCATION_MISSING` push request when no Map_Location is configured
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.6, 10.11, 7.7, 7.8_
 
@@ -300,7 +300,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 6: Map SMS is sent at most once to an eligible number**
     - **Validates: Requirements 10.5, 10.7, 10.10**
 
-  - [~] 6.10 Implement `log_note`
+  - [x] 6.10 Implement `log_note`
     - Accept intent values only from DELIVERY, DOOR_NOT_OPENED, SOLICITATION, and UNKNOWN; reject others with `REJECTED` and the current category; store accepted values in the call state within 2 seconds; support the other note kinds of the design
     - _Requirements: 8.2, 8.10_
 
@@ -346,7 +346,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 20: Route decision**
     - **Validates: Requirements 1.5, 1.7, 17.2, 17.4, 20.7, 22.5, 25.8, 29.1, 29.2, 29.3**
 
-  - [~] 8.5 Add the takeover state machine and the `request_takeover` and `end_call` tools
+  - [x] 8.5 Add the takeover state machine and the `request_takeover` and `end_call` tools
     - Extend `CallPolicy` with the takeover events: one Bridge_Call at a time, ignore a second tap, no replacement Sonic_Session in TAKEOVER, "please wait" every 15 seconds, the 30-second nobody-available instruction while staying with the Agent, and the return to the Agent after a failed bridge with the failure recorded
     - Implement the two tools; `end_call` runs after the last `mark` has played
     - _Requirements: 11.1, 11.2, 11.3, 11.5, 11.6, 11.7, 11.10, 11.11_
@@ -387,11 +387,11 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 17: Call_Log and settings round trip**
     - **Validates: Requirements 18.1, 18.9, 20.3, 20.4, 20.8**
 
-  - [~] 9.3 Implement `RecordingStore`
+  - [x] 9.3 Implement `RecordingStore`
     - S3 upload and delete under `users/<sub>/recordings/`, taking a `UserId` and refusing to presign a key outside that prefix; presigned URL that expires in 10 minutes; and the recording status values (`AVAILABLE`, `NOT_FOUND`)
     - _Requirements: 18.4, 18.7, 17.7, 28.4_
 
-  - [~] 9.4 Implement `CostEstimator` and the monthly counter in `:core` and `:agent`
+  - [x] 9.4 Implement `CostEstimator` and the monthly counter in `:core` and `:agent`
     - Estimate from the Exotel minutes and the Sonic input and output minutes at the configured rates; atomic month total per User in DynamoDB (`USER#<sub>` / `COST#<yyyy-MM>`); the 80 percent notification exactly once and the 100 percent switch to the Fallback_Route, per User; no billing or invoice
     - _Requirements: 22.1, 22.4, 22.5, 22.8_
 
@@ -423,7 +423,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - DynamoDB round trip of a call entry and the sweeper against a test table (1 to 3 examples)
     - _Requirements: 18.9, 17.5_
 
-  - [~] 9.12 Implement `SettingsStore` with optimistic concurrency
+  - [x] 9.12 Implement `SettingsStore` with optimistic concurrency
     - `update(userId, expectedVersion, candidate)`: validate with `SettingsValidator` and the cross-record rule (`userMobile` is not an assigned number), then a conditional `PutItem` (`attribute_not_exists` for expected version 0, `version = :expected` otherwise) that writes `version + 1`; on a failed condition read the stored item and return `Conflict(document, version)`; return `Invalid(field)` on validation failure
     - `get(userId)` returns defaults with version 0 when no item exists; `freeze(userId)` returns the consistent snapshot used at call start
     - _Requirements: 20.2, 20.4, 20.5, 27.1, 27.2, 27.3, 27.4, 27.5, 27.6, 27.7_
@@ -433,7 +433,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Run against the in-memory `ItemStore` fake, including interleaved concurrent attempts with the same expected version
     - **Validates: Requirements 27.3, 27.4, 27.5, 27.6, 27.12**
 
-  - [~] 9.14 Implement `TenantResolver`, `NumberAssignmentService`, and the unassigned-call log
+  - [x] 9.14 Implement `TenantResolver`, `NumberAssignmentService`, and the unassigned-call log
     - `TenantResolver.resolve(to)`: normalize with `PhoneNumbers.normalize`, `GetItem NUMBER#<e164>`, check the profile is active, 30-second cache for hits and misses, cache cleared on Admin writes; returns the User_Id or `OutOfService(reason)`
     - Forwarded_From_Hint handling: compare with the User_Mobile and expose only `hintPresent` and `hintMatchesUserMobile`; never used for the lookup
     - `NumberAssignmentService`: assign and unassign with `TransactWriteItems` and `attribute_not_exists` conditions (409 when the number or the User already has an assignment); reject a number that equals any User's `userMobile`; deactivate a User
@@ -524,7 +524,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Remove the `sherpa-onnx` AAR and any native libraries that only the archived code used; keep `:app` free of 4 KB-aligned native libraries and add the 16 KB check script `scripts/check-16kb.sh` (zipalign and ELF `LOAD` segment alignment of the release APK)
     - _Requirements: 24.3, 24.4_
 
-  - [~] 12.3 Add the API client, authentication, and the data layer changes
+  - [x] 12.3 Add the API client, authentication, and the data layer changes
     - HTTP and WebSocket client for `api.leadingdots.com` with the Cognito ID token (token in the first WebSocket message), Room cache of the last server settings document with its Settings_Version and of the call log, and the existing outbox extended to store the base version and the changed fields of a pending settings edit
     - Declare all navigation destinations in one shared `Routes.kt` so that screen tasks do not edit the same file
     - _Requirements: 20.6, 16.6_

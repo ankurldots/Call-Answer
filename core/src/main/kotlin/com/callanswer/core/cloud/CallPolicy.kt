@@ -12,6 +12,12 @@ object CallPolicy {
     const val MAX_CALL_MS = 15 * 60_000L
     const val HARD_LIMIT_MS = 60 * 60_000L
     const val CLOSE_GRACE_MS = 10_000L
+    /** "Please wait" interval while the Takeover_Alert waits (Requirement 11.3). */
+    const val PLEASE_WAIT_INTERVAL_MS = 15_000L
+    /** After this time without a take over the Agent says nobody is available and stays with the Caller (11.6). */
+    const val NOBODY_AVAILABLE_MS = 30_000L
+    /** Dial timeout of the Bridge_Call (Connect applet, shorter than the carrier ring time). */
+    const val BRIDGE_DIAL_TIMEOUT_MS = 15_000L
     const val MAX_DIRECTIONS_REPETITIONS = 3
     const val MAX_CLARIFY_PROMPTS = 2
     const val MAX_GARBLED_REPEATS = 3
@@ -23,7 +29,7 @@ object CallPolicy {
 
     enum class Phase { GREETING, LISTENING, DELIVERY, WAITING_TAKEOVER, STALLING, UNKNOWN_CLARIFY, CLOSING, TAKEOVER, ENDED }
     enum class Intent { DELIVERY, DOOR_NOT_OPENED, SOLICITATION, UNKNOWN }
-    enum class TimerKind { SILENCE, MAX_CALL, HARD_LIMIT, STALLING_MAX, CLOSE_GRACE }
+    enum class TimerKind { SILENCE, MAX_CALL, HARD_LIMIT, STALLING_MAX, CLOSE_GRACE, TAKEOVER_WAIT, TAKEOVER_NOBODY, BRIDGE_DIAL }
     enum class EndReason {
         CALLER_SILENCE, MAX_DURATION, MAX_STALLING, HARD_LIMIT, GARBLED, DIRECTIONS_LIMIT,
         UNKNOWN_MESSAGE, CALLER_HUNG_UP, USER_ENDED,
@@ -50,6 +56,11 @@ object CallPolicy {
         val garbledRepeats: Int = 0,
         val messageRequested: Boolean = false,
         val endReason: EndReason? = null,
+        /** True from the User's tap until the Bridge_Call connects or fails; a second tap is ignored meanwhile. */
+        val bridgeInProgress: Boolean = false,
+        val bridgeConnected: Boolean = false,
+        val bridgeFailures: Int = 0,
+        val nobodyAnnounced: Boolean = false,
     )
 
     sealed interface Event {
@@ -83,6 +94,8 @@ object CallPolicy {
         data object OpenReplacementSession : Effect
         data class ApplyFallback(val cause: String) : Effect
         data class Record(val note: String) : Effect
+        /** Closes the Sonic_Session when the Bridge_Call connected; no replacement is opened afterwards. */
+        data object CloseSonicSession : Effect
     }
 
     data class Result(val state: State, val effects: List<Effect>)
@@ -117,20 +130,10 @@ object CallPolicy {
             is Event.TimerFired -> onTimer(s, event.kind, now)
             is Event.ToolCalled -> onTool(s, event, now)
             is Event.IntentLogged -> onIntent(s, event.intent, now)
-            Event.TakeoverRequested -> when (s.phase) {
-                Phase.TAKEOVER, Phase.WAITING_TAKEOVER, Phase.CLOSING -> Result(s, emptyList())
-                else -> Result(s.copy(phase = Phase.WAITING_TAKEOVER), listOf(Effect.SendAlert("TAKEOVER_REQUEST")))
-            }
-            Event.UserTookOver, Event.BridgeConnected ->
-                if (s.phase == Phase.CLOSING) Result(s, emptyList())
-                else Result(
-                    s.copy(phase = Phase.TAKEOVER),
-                    listOf(Effect.CancelTimer(TimerKind.SILENCE), Effect.CancelTimer(TimerKind.STALLING_MAX)),
-                )
-            Event.BridgeFailed ->
-                if (s.phase == Phase.WAITING_TAKEOVER || s.phase == Phase.TAKEOVER)
-                    Result(s.copy(phase = Phase.LISTENING), listOf(Effect.Record("BRIDGE_FAILED")))
-                else Result(s, emptyList())
+            Event.TakeoverRequested -> onTakeoverRequested(s)
+            Event.UserTookOver -> onUserTookOver(s)
+            Event.BridgeConnected -> onBridgeConnected(s)
+            Event.BridgeFailed -> onBridgeFailed(s)
             Event.SonicFailed ->
                 if (s.phase == Phase.TAKEOVER || s.phase == Phase.CLOSING) Result(s, emptyList())
                 else Result(s, listOf(Effect.OpenReplacementSession))
@@ -147,6 +150,86 @@ object CallPolicy {
                 ),
             )
         }
+    }
+
+    private val takeoverTimers = listOf(
+        Effect.CancelTimer(TimerKind.TAKEOVER_WAIT),
+        Effect.CancelTimer(TimerKind.TAKEOVER_NOBODY),
+    )
+
+    /** One Take_Over request at a time: ignored while waiting, while a Bridge_Call runs, in TAKEOVER and while closing. */
+    private fun onTakeoverRequested(s: State): Result = when {
+        s.phase == Phase.TAKEOVER || s.phase == Phase.WAITING_TAKEOVER || s.phase == Phase.CLOSING || s.bridgeInProgress ->
+            Result(s, emptyList())
+        else -> Result(
+            s.copy(phase = Phase.WAITING_TAKEOVER, nobodyAnnounced = false),
+            listOf(
+                Effect.SendAlert("TAKEOVER_REQUEST"),
+                Effect.StartTimer(TimerKind.TAKEOVER_WAIT, PLEASE_WAIT_INTERVAL_MS),
+                Effect.StartTimer(TimerKind.TAKEOVER_NOBODY, NOBODY_AVAILABLE_MS),
+            ),
+        )
+    }
+
+    /** The User tapped "Take over": stop the Agent audio and start one Bridge_Call. A second tap changes nothing. */
+    private fun onUserTookOver(s: State): Result {
+        if (s.phase == Phase.CLOSING || s.phase == Phase.TAKEOVER || s.bridgeInProgress) return Result(s, emptyList())
+        return Result(
+            s.copy(phase = Phase.TAKEOVER, bridgeInProgress = true),
+            takeoverTimers + listOf(
+                Effect.CancelTimer(TimerKind.SILENCE),
+                Effect.CancelTimer(TimerKind.STALLING_MAX),
+                Effect.ClearAudio,
+                Effect.Record("TAKEOVER_STARTED"),
+                Effect.Inject("CONNECTING"),
+                Effect.StartTimer(TimerKind.BRIDGE_DIAL, BRIDGE_DIAL_TIMEOUT_MS),
+            ),
+        )
+    }
+
+    private fun onBridgeConnected(s: State): Result {
+        if (s.phase == Phase.CLOSING || s.bridgeConnected) return Result(s, emptyList())
+        val start = if (s.phase == Phase.TAKEOVER) emptyList() else listOf(Effect.Record("TAKEOVER_STARTED"))
+        return Result(
+            s.copy(phase = Phase.TAKEOVER, bridgeInProgress = false, bridgeConnected = true),
+            takeoverTimers + start + listOf(
+                Effect.CancelTimer(TimerKind.SILENCE),
+                Effect.CancelTimer(TimerKind.STALLING_MAX),
+                Effect.CancelTimer(TimerKind.BRIDGE_DIAL),
+                Effect.CloseSonicSession,
+            ),
+        )
+    }
+
+    /** A failed Bridge_Call returns the Caller to the Agent and records the failure. */
+    private fun onBridgeFailed(s: State): Result {
+        if (!s.bridgeInProgress || s.phase == Phase.CLOSING) return Result(s, emptyList())
+        return Result(
+            s.copy(phase = Phase.LISTENING, bridgeInProgress = false, bridgeFailures = s.bridgeFailures + 1, silencePrompts = 0),
+            listOf(
+                Effect.CancelTimer(TimerKind.BRIDGE_DIAL),
+                Effect.Record("BRIDGE_FAILED"),
+                Effect.Inject("PERSON_UNREACHABLE"),
+            ),
+        )
+    }
+
+    private fun onTakeoverTimer(s: State, kind: TimerKind): Result = when (kind) {
+        TimerKind.TAKEOVER_WAIT ->
+            if (s.phase == Phase.WAITING_TAKEOVER) Result(
+                s,
+                listOf(Effect.Inject("PLEASE_WAIT"), Effect.StartTimer(TimerKind.TAKEOVER_WAIT, PLEASE_WAIT_INTERVAL_MS)),
+            ) else Result(s, emptyList())
+        TimerKind.TAKEOVER_NOBODY ->
+            if (s.phase == Phase.WAITING_TAKEOVER) Result(
+                s.copy(phase = Phase.LISTENING, nobodyAnnounced = true),
+                listOf(
+                    Effect.CancelTimer(TimerKind.TAKEOVER_WAIT),
+                    Effect.Record("TAKEOVER_NOBODY_AVAILABLE"),
+                    Effect.Inject("NOBODY_AVAILABLE"),
+                ),
+            ) else Result(s, emptyList())
+        else -> if (s.bridgeInProgress) onBridgeFailed(s) else Result(s, emptyList()) // BRIDGE_DIAL
     }
 
     private fun limitReason(s: State, now: Long): EndReason? {
@@ -207,7 +290,7 @@ object CallPolicy {
 
     private fun onAudioDone(s: State, now: Long): Result = when (s.phase) {
         Phase.CLOSING -> finish(s, s.endReason ?: EndReason.CALLER_SILENCE, now, closeStream = true)
-        Phase.TAKEOVER, Phase.ENDED -> Result(s, emptyList())
+        Phase.TAKEOVER, Phase.ENDED, Phase.WAITING_TAKEOVER -> Result(s, emptyList())
         else -> Result(s, listOf(Effect.StartTimer(TimerKind.SILENCE, s.config.silenceTimeoutMs)))
     }
 
@@ -218,11 +301,12 @@ object CallPolicy {
             else Result(s, emptyList())
         // Limit timers: the limit check ran before dispatch and already closed the call when due.
         TimerKind.MAX_CALL, TimerKind.HARD_LIMIT, TimerKind.STALLING_MAX -> Result(s, emptyList())
+        TimerKind.TAKEOVER_WAIT, TimerKind.TAKEOVER_NOBODY, TimerKind.BRIDGE_DIAL -> onTakeoverTimer(s, kind)
     }
 
     private fun onSilence(s: State, now: Long): Result {
         when (s.phase) {
-            Phase.TAKEOVER, Phase.CLOSING, Phase.ENDED -> return Result(s, emptyList())
+            Phase.TAKEOVER, Phase.WAITING_TAKEOVER, Phase.CLOSING, Phase.ENDED -> return Result(s, emptyList())
             else -> Unit
         }
         val alert = listOf(Effect.SendAlert("CALLER_SILENT"))
@@ -253,6 +337,7 @@ object CallPolicy {
     private fun onIntent(s: State, intent: Intent, now: Long): Result {
         if (s.phase == Phase.CLOSING || s.phase == Phase.TAKEOVER) return Result(s, emptyList())
         if (s.phase == Phase.STALLING) return Result(s, emptyList())
+        if (s.phase == Phase.WAITING_TAKEOVER) return Result(s.copy(intent = intent), emptyList())
         val base = s.copy(intent = intent)
         return when (intent) {
             Intent.DELIVERY -> Result(base.copy(phase = Phase.DELIVERY), emptyList())

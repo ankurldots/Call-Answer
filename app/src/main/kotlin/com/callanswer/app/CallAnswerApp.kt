@@ -1,11 +1,17 @@
 package com.callanswer.app
 import android.app.Application
 import android.util.Log
+import com.callanswer.app.api.ApiConfig
+import com.callanswer.app.api.CompanionApi
+import com.callanswer.app.api.LiveSocket
+import com.callanswer.app.api.asTokenSource
 import com.callanswer.app.auth.AuthConfig
 import com.callanswer.app.auth.AuthRepository
 import com.callanswer.app.auth.AuthState
 import com.callanswer.app.auth.KeystoreTokenStore
 import com.callanswer.app.data.CallAnswerDatabase
+import com.callanswer.app.data.CallLogRepository
+import com.callanswer.app.data.SettingsRepository
 import com.callanswer.app.data.SettingsStore
 import com.callanswer.app.legacy.LegacyA11yCleanup
 import com.callanswer.app.report.AndroidSmsIntentLauncher
@@ -21,6 +27,13 @@ class CallAnswerApp : Application() {
     val settingsStore: SettingsStore by lazy { SettingsStore.create(this) }
     val authConfig: AuthConfig by lazy { AuthConfig.fromBuild() }
     val authRepository: AuthRepository by lazy { AuthRepository(authConfig, KeystoreTokenStore(this)) }
+    val apiConfig: ApiConfig by lazy { ApiConfig() }
+    val companionApi: CompanionApi by lazy { CompanionApi(apiConfig, authRepository.asTokenSource()) }
+    val liveSocket: LiveSocket by lazy { LiveSocket(apiConfig, authRepository.asTokenSource()) }
+    val settingsRepository: SettingsRepository by lazy {
+        SettingsRepository(companionApi, database.settingsCacheDao(), database.outboxDao())
+    }
+    val callLogRepository: CallLogRepository by lazy { CallLogRepository(companionApi, database.callLogDao()) }
     val spamReporter: SpamReporter by lazy {
         SpamReporter.create(
             context = this,

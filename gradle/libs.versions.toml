@@ -21,6 +21,7 @@ androidxTestExtJunit = "1.3.0"
 awsSdk = "2.31.50"
 ktor = "3.1.3"
 slf4j = "2.0.17"
+okhttp = "4.12.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -62,6 +63,8 @@ aws-s3 = { group = "software.amazon.awssdk", name = "s3", version.ref = "awsSdk"
 aws-secretsmanager = { group = "software.amazon.awssdk", name = "secretsmanager", version.ref = "awsSdk" }
 aws-cloudwatch = { group = "software.amazon.awssdk", name = "cloudwatch", version.ref = "awsSdk" }
 ktor-server-test-host = { group = "io.ktor", name = "ktor-server-test-host-jvm", version.ref = "ktor" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 
 [plugins]

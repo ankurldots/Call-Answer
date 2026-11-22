@@ -27,6 +27,16 @@ abstract class CallLogDao {
     @Query("SELECT * FROM call_log WHERE id = :id")
     abstract suspend fun getRow(id: String): CallLogEntity?
 
+    @Query("DELETE FROM call_log")
+    protected abstract suspend fun deleteAll(): Int
+
+    /** Replaces the whole cache with the call log received from the server (the server is the source of truth). */
+    @Transaction
+    open suspend fun replaceAll(entries: List<CallLogEntry>) {
+        deleteAll()
+        entries.forEach { insert(it.toEntity()) }
+    }
+
     @Query("DELETE FROM call_log WHERE id = :id")
     abstract suspend fun deleteById(id: String): Int
 

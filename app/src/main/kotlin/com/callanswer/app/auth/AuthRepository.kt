@@ -121,6 +121,18 @@ class AuthRepository(
             ).also { credentials = it }
         }
     }
+    /**
+     * The Cognito ID token for `Authorization: Bearer` on the companion API and for the first WebSocket message.
+     * Refreshed with the stored refresh token when it expires within a minute, or when [forceRefresh] is set
+     * (after the server answered 401). Throws [AuthException] (NOT_SIGNED_IN when the session is gone).
+     */
+    suspend fun idToken(forceRefresh: Boolean = false): String = onIo {
+        if (!config.isConfigured) throw AuthException(AuthError.NOT_CONFIGURED)
+        lock.withLock {
+            if (forceRefresh) { idToken = null; idTokenExpiresAt = 0 }
+            freshIdToken()
+        }
+    }
     /** Must run under [lock]. */
     private fun freshIdToken(): String {
         idToken?.takeIf { idTokenExpiresAt - nowSec() > REFRESH_MARGIN_SEC }?.let { return it }

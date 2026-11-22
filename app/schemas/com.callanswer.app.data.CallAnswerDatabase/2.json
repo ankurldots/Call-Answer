@@ -1,0 +1,301 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "52a37f70fedeb6363ca99c8c11ac349b",
+    "entities": [
+      {
+        "tableName": "call_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `callerNumber` TEXT, `startedAtEpochMs` INTEGER NOT NULL, `zoneId` TEXT NOT NULL, `durationSec` INTEGER NOT NULL, `language` TEXT, `intent` TEXT NOT NULL, `outcome` TEXT NOT NULL, `endReason` TEXT NOT NULL, `voiceGender` TEXT NOT NULL, `stallingDurationSec` INTEGER, `recordingStatus` TEXT NOT NULL, `recordingUri` TEXT, `recordingDurationMs` INTEGER, `recordingSizeBytes` INTEGER, `transcript` TEXT NOT NULL, `gateStatements` TEXT NOT NULL, `takeovers` TEXT NOT NULL, `notes` TEXT NOT NULL, `transfer` TEXT, `voiceSubstitutions` TEXT NOT NULL, `interruption` TEXT, `reportStatus` TEXT NOT NULL DEFAULT 'NOT_REPORTED', `reportedAtEpochMs` INTEGER, `reportedZoneId` TEXT, `reportAttemptId` TEXT, `reportDispatched` INTEGER NOT NULL DEFAULT 0, `reportPendingRestore` TEXT, `cloudExtras` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "callerNumber",
+            "columnName": "callerNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "startedAtEpochMs",
+            "columnName": "startedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "zoneId",
+            "columnName": "zoneId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationSec",
+            "columnName": "durationSec",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "language",
+            "columnName": "language",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "intent",
+            "columnName": "intent",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "outcome",
+            "columnName": "outcome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endReason",
+            "columnName": "endReason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "voiceGender",
+            "columnName": "voiceGender",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stallingDurationSec",
+            "columnName": "stallingDurationSec",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "recordingStatus",
+            "columnName": "recordingStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordingUri",
+            "columnName": "recordingUri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "recordingDurationMs",
+            "columnName": "recordingDurationMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "recordingSizeBytes",
+            "columnName": "recordingSizeBytes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "transcript",
+            "columnName": "transcript",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gateStatements",
+            "columnName": "gateStatements",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "takeovers",
+            "columnName": "takeovers",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "transfer",
+            "columnName": "transfer",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "voiceSubstitutions",
+            "columnName": "voiceSubstitutions",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "interruption",
+            "columnName": "interruption",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reportStatus",
+            "columnName": "reportStatus",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'NOT_REPORTED'"
+          },
+          {
+            "fieldPath": "reportedAtEpochMs",
+            "columnName": "reportedAtEpochMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "reportedZoneId",
+            "columnName": "reportedZoneId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reportAttemptId",
+            "columnName": "reportAttemptId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reportDispatched",
+            "columnName": "reportDispatched",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "reportPendingRestore",
+            "columnName": "reportPendingRestore",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "cloudExtras",
+            "columnName": "cloudExtras",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_call_log_recordingUri",
+            "unique": true,
+            "columnNames": [
+              "recordingUri"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_call_log_recordingUri` ON `${TABLE_NAME}` (`recordingUri`)"
+          },
+          {
+            "name": "index_call_log_startedAtEpochMs",
+            "unique": false,
+            "columnNames": [
+              "startedAtEpochMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_call_log_startedAtEpochMs` ON `${TABLE_NAME}` (`startedAtEpochMs`)"
+          }
+        ]
+      },
+      {
+        "tableName": "outbox",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` TEXT NOT NULL, `payload` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `attempts` INTEGER NOT NULL, `baseVersion` INTEGER, `changedFields` TEXT, `baseValues` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMs",
+            "columnName": "createdAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseVersion",
+            "columnName": "baseVersion",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "changedFields",
+            "columnName": "changedFields",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "baseValues",
+            "columnName": "baseValues",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "settings_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `version` INTEGER NOT NULL, `json` TEXT NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "json",
+            "columnName": "json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMs",
+            "columnName": "updatedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '52a37f70fedeb6363ca99c8c11ac349b')"
+    ]
+  }
+}

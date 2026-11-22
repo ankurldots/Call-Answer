@@ -44,4 +44,6 @@ data class CallLogEntity(
     val reportAttemptId: String? = null,
     @ColumnInfo(defaultValue = "0") val reportDispatched: Boolean = false,
     val reportPendingRestore: String? = null,
+    /** JSON of the fields only the cloud Agent fills (cost, latency, sessions, recording key, settings version). */
+    val cloudExtras: String? = null,
 )

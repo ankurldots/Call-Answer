@@ -11,23 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
-object Routes {
-    const val ONBOARDING = "onboarding"
-    const val HOME = "home"
-    const val SETTINGS = "settings"
-    const val SETTINGS_GENERAL = "settings/general"
-    const val SETTINGS_GATES = "settings/gates"
-    const val SETTINGS_CALL = "settings/call"
-    const val SETTINGS_SPAM = "settings/spam"
-    const val SETTINGS_STEPS = "settings/steps"
-    const val SETTINGS_ACCOUNT = "settings/account"
-    const val CALL_LOG = "calllog"
-    const val CALL_DETAIL = "calllog/{entryId}"
-    fun callDetail(id: String) = "calllog/" + android.net.Uri.encode(id)
-}
-
 /**
- * Navigation graph. Later screens (settings, Delivery_Steps, Call_Log, call detail) add their routes here.
+ * Navigation graph. Routes are declared in [Routes] (Routes.kt); screens register their composable here.
  * [resumeTick] changes on every activity resume so grants made in system settings are re-read.
  */
 @Composable

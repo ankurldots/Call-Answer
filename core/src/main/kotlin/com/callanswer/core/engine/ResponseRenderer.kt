@@ -92,6 +92,10 @@ class ResponseRenderer(
             is SpeechSpec.QuickReply -> spec.text
             SpeechSpec.FallbackPhrase -> t("One moment, please.", "कृपया एक क्षण रुकिए।")
             SpeechSpec.PoliteGoodbye -> t("Thank you. Goodbye.", "धन्यवाद। नमस्ते।")
+            SpeechSpec.AbuseGoodbye -> t(
+                "Abusive language is not accepted. This call is being ended.",
+                "गाली-गलौज स्वीकार नहीं है। यह कॉल समाप्त की जा रही है।",
+            )
         }
     }
 }

@@ -24,6 +24,8 @@ import com.callanswer.app.ui.components.StatusBanner
 import com.callanswer.app.ui.theme.AppDimens
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+/** Off while the user pool only allows admin-created users (template parameter AdminCreateUsersOnly). */
+private const val SELF_SIGN_UP = false
 private enum class Mode { SIGN_IN, SIGN_UP, CONFIRM, FORGOT, RESET }
 /** Email and password account: sign in, create account, confirm email, reset password, sign out. */
 @Composable
@@ -142,7 +144,10 @@ private fun SignedOutForm(auth: AuthRepository) {
     })
     when (mode) {
         Mode.SIGN_IN -> {
-            AppButton(stringResource(R.string.account_to_create), primary = false, enabled = !busy, onClick = { go(Mode.SIGN_UP) })
+            // No self registration for now: accounts are created by the admin in Cognito.
+            if (SELF_SIGN_UP) {
+                AppButton(stringResource(R.string.account_to_create), primary = false, enabled = !busy, onClick = { go(Mode.SIGN_UP) })
+            }
             AppButton(stringResource(R.string.account_forgot), primary = false, enabled = !busy, onClick = { go(Mode.FORGOT) })
         }
         Mode.SIGN_UP, Mode.FORGOT, Mode.RESET ->

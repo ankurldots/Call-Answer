@@ -99,4 +99,21 @@ class BaseConversationEngineTest : FunSpec({
         specs(t).single().shouldBeInstanceOf<SpeechSpec.DeliveryDirections>()
         t.state.locationWanted shouldBe true
     }
+    // ---- Abusive language ----
+    test("abusive caller is told and the call ends, even during delivery") {
+        for (s in listOf(ConversationState(phase = Phase.GREETING), ConversationState(phase = Phase.DELIVERY, intent = IntentCategory.DELIVERY))) {
+            val t = engine.reduce(s, utter("parcel hai, chutiya"), ctx())
+            specs(t) shouldBe listOf(SpeechSpec.AbuseGoodbye)
+            t.effects.last() shouldBe Effect.EndCall(com.callanswer.core.model.EndReason.ABUSIVE_LANGUAGE)
+            t.state.phase shouldBe Phase.ENDED
+            t.state.transcript.last().text shouldBe "parcel hai, chutiya"
+        }
+    }
+    test("abuse is ignored while the User has taken over or muted the Agent") {
+        for (mode in listOf(Mode.TAKE_OVER, Mode.AGENT_MUTED)) {
+            val t = engine.reduce(ConversationState(phase = Phase.LISTENING, mode = mode), utter("madarchod"), ctx())
+            t.effects shouldBe emptyList()
+            t.state.phase shouldBe Phase.LISTENING
+        }
+    }
 })

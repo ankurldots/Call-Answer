@@ -131,6 +131,8 @@ sealed interface SpeechSpec {
     data class QuickReply(val text: String) : SpeechSpec
     data object FallbackPhrase : SpeechSpec
     data object PoliteGoodbye : SpeechSpec
+    /** Said once before hanging up on an abusive Caller. */
+    data object AbuseGoodbye : SpeechSpec
 }
 
 sealed interface Effect {

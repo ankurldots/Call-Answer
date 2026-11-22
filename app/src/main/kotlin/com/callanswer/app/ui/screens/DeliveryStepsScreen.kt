@@ -18,11 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import com.callanswer.app.CallAnswerApp
 import com.callanswer.app.R
-import com.callanswer.app.auth.AuthState
-import com.callanswer.app.cloudtts.PollyException
-import com.callanswer.core.model.VoiceGender
 import com.callanswer.app.data.SettingsStore
 import com.callanswer.app.data.UpdateResult
 import com.callanswer.app.tts.VoiceSamplePlayer
@@ -48,20 +44,6 @@ fun DeliveryStepsScreen(store: SettingsStore, onBack: () -> Unit) {
     }
 }
 
-private class VoiceMessage(val res: Int, val count: Int? = null, val error: Boolean = false)
-/** Fetches Polly audio for the saved steps when the User is signed in; the result is a hint, never a failure of the save. */
-private suspend fun refreshCloudVoice(context: android.content.Context, saved: Settings): VoiceMessage? {
-    val app = context.applicationContext as CallAnswerApp
-    if (!app.authRepository.isConfigured || saved.voiceGender != VoiceGender.FEMALE) return null
-    if (app.authRepository.state.value !is AuthState.SignedIn) return VoiceMessage(R.string.voice_audio_signin)
-    val result = app.pollyPrefetcher.refresh(saved.deliverySteps, saved.mapLocation)
-    return when (result.stoppedBy) {
-        null -> VoiceMessage(R.string.voice_audio_refreshed, result.fetched)
-        PollyException.Kind.RATE_LIMITED -> VoiceMessage(R.string.voice_audio_limit, error = true)
-        PollyException.Kind.NOT_SIGNED_IN -> VoiceMessage(R.string.voice_audio_signin)
-        else -> VoiceMessage(R.string.voice_audio_failed, error = true)
-    }
-}
 private sealed interface StepsStatus {
     data class Saved(val warnings: List<String>) : StepsStatus
     data class Invalid(val message: String) : StepsStatus
@@ -76,7 +58,6 @@ private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
     val rows = remember { mutableStateListOf<DeliveryStep>().apply { addAll(initial.deliverySteps) } }
     var status by remember { mutableStateOf<StepsStatus?>(null) }
     var sampleFailed by remember { mutableStateOf(false) }
-    var voiceMessage by remember { mutableStateOf<VoiceMessage?>(null) }
     val sampler = remember { VoiceSamplePlayer(context) }
     DisposableEffect(sampler) { onDispose { sampler.release() } }
 
@@ -134,8 +115,6 @@ private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
                 is DeliveryStepsDraft.Result.Invalid -> StepsStatus.Invalid(r.message)
                 is DeliveryStepsDraft.Result.Ok -> when (store.update(r.settings)) {
                     UpdateResult.Saved -> {
-                        voiceMessage = null
-                        scope.launch { voiceMessage = refreshCloudVoice(context, r.settings) }
                         val order = rows.map { it.id }
                         StepsStatus.Saved(
                             r.warnings.map { w ->
@@ -152,10 +131,6 @@ private fun DeliveryStepsForm(store: SettingsStore, initial: Settings) {
             }
         }
     })
-    voiceMessage?.let {
-        val text = if (it.count != null) stringResource(it.res, it.count) else stringResource(it.res)
-        StatusBanner(text, if (it.error) BannerSeverity.WARNING else BannerSeverity.INFO)
-    }
     AppButton(stringResource(R.string.settings_steps_reset), primary = false, onClick = {
         scope.launch {
             val result = store.update(store.current().copy(deliverySteps = DefaultDeliverySteps))

@@ -43,12 +43,19 @@ Resources:
       Environment:
         Variables:
           USAGE_TABLE: !Ref UsageTable
+          AUDIO_BUCKET: !Ref AudioBucket
           DAILY_CHAR_LIMIT: !Ref DailyCharLimit
       Policies:
         - Statement:
             - Effect: Allow
               Action: polly:SynthesizeSpeech
               Resource: "*"
+            - Effect: Allow
+              Action: [s3:GetObject, s3:PutObject]
+              Resource: !Sub ${AudioBucket.Arn}/audio/*
+            - Effect: Allow   # without it a missing object reads as 403 instead of NoSuchKey
+              Action: s3:ListBucket
+              Resource: !GetAtt AudioBucket.Arn
             - Effect: Allow
               Action: dynamodb:UpdateItem
               Resource: !GetAtt UsageTable.Arn
@@ -97,6 +104,46 @@ Resources:
         AccessToken: minutes
         IdToken: minutes
         RefreshToken: days
+
+  AudioBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: tidy
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  AudioBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AudioBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: TlsOnly
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource: [!GetAtt AudioBucket.Arn, !Sub "${AudioBucket.Arn}/*"]
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
 
   UsageTable:
     Type: AWS::DynamoDB::Table
@@ -163,3 +210,5 @@ Outputs:
     Value: !Ref UserPool
   UserPoolClientId:
     Value: !Ref UserPoolClient
+  AudioBucketName:
+    Value: !Ref AudioBucket

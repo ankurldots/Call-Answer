@@ -4,10 +4,12 @@ API Gateway verifies the SigV4 signature before this code runs, so the handler o
 validates input and calls Polly.
 
 Request:  POST /tts, JSON body {"text": "...", "language_code": "en-IN|hi-IN", "voice": "Kajal"}
-Limit:    DAILY_CHAR_LIMIT characters per Cognito identity per UTC day, else 429.
+Cache:    audio is kept in S3 (AUDIO_BUCKET) by a hash of voice, language and text; a hit skips Polly.
+Limit:    DAILY_CHAR_LIMIT Polly characters per Cognito identity per UTC day, else 429. Cache hits are free.
 Response: 200 {"audio_base64": "<mono PCM16 16 kHz WAV>", "sample_rate": 16000, "content_type": "audio/wav"}
 """
 import base64
+import hashlib
 import io
 import json
 import logging
@@ -28,6 +30,7 @@ ALLOWED_VOICES = {"Kajal"}
 
 _polly = None
 _ddb = None
+_s3 = None
 
 
 def _polly_client():
@@ -35,6 +38,35 @@ def _polly_client():
     if _polly is None:
         _polly = boto3.client("polly")
     return _polly
+
+
+def _s3_client():
+    global _s3
+    if _s3 is None:
+        _s3 = boto3.client("s3")
+    return _s3
+
+
+def audio_key(voice: str, language: str, text: str) -> str:
+    """Content address of one rendering. Same text, language and voice give the same object for every user."""
+    digest = hashlib.sha256(f"{voice}|neural|{SAMPLE_RATE}|{language}|{text}".encode()).hexdigest()
+    return f"audio/v1/{digest}.wav"
+
+
+def _cached_wav(key: str):
+    try:
+        return _s3_client().get_object(Bucket=os.environ["AUDIO_BUCKET"], Key=key)["Body"].read()
+    except Exception as e:  # botocore ClientError; matched by code so botocore need not be imported
+        if getattr(e, "response", {}).get("Error", {}).get("Code") in ("NoSuchKey", "404"):
+            return None
+        raise
+
+
+def _store_wav(key: str, wav: bytes) -> None:
+    try:
+        _s3_client().put_object(Bucket=os.environ["AUDIO_BUCKET"], Key=key, Body=wav, ContentType="audio/wav")
+    except Exception:  # the caller still gets the audio; the next request synthesizes again
+        log.exception("s3 put failed")
 
 
 def _ddb_client():
@@ -110,16 +142,23 @@ def handler(event, _context):
     identity = _identity(event)
     if identity == "unknown":
         return _resp(401, {"error": "unauthorized"})
-    if not _consume_quota(identity, len(text), time.time()):
-        return _resp(429, {"error": "daily limit reached"})
-    log.info("tts identity=%s lang=%s chars=%d", identity, language, len(text))
-    out = _polly_client().synthesize_speech(
-        Text=text, TextType="text", VoiceId=voice, LanguageCode=language,
-        Engine="neural", OutputFormat="pcm", SampleRate=str(SAMPLE_RATE),
-    )
-    pcm = out["AudioStream"].read()
+    key = audio_key(voice, language, text)
+    wav = _cached_wav(key)
+    cached = wav is not None
+    if not cached:
+        # Only Polly synthesis counts against the daily limit; cached audio is free.
+        if not _consume_quota(identity, len(text), time.time()):
+            return _resp(429, {"error": "daily limit reached"})
+        out = _polly_client().synthesize_speech(
+            Text=text, TextType="text", VoiceId=voice, LanguageCode=language,
+            Engine="neural", OutputFormat="pcm", SampleRate=str(SAMPLE_RATE),
+        )
+        wav = _wav(out["AudioStream"].read())
+        _store_wav(key, wav)
+    log.info("tts identity=%s lang=%s chars=%d cached=%s", identity, language, len(text), cached)
     return _resp(200, {
-        "audio_base64": base64.b64encode(_wav(pcm)).decode(),
+        "audio_base64": base64.b64encode(wav).decode(),
+        "cached": cached,
         "sample_rate": SAMPLE_RATE,
         "content_type": "audio/wav",
     })

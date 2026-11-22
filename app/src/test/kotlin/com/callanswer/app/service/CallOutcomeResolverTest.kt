@@ -41,4 +41,8 @@ class CallOutcomeResolverTest {
             CallOutcomeResolver.outcome(ConversationState(), EndReason.CALLER_HUNG_UP, listOf(LogNoteKind.TRANSFER_FAILED)),
         )
     }
+    @Test
+    fun abusiveCallerOutcome() {
+        assertEquals(Outcome.ABUSIVE_CALLER, CallOutcomeResolver.outcome(ConversationState(), EndReason.ABUSIVE_LANGUAGE, emptyList()))
+    }
 }

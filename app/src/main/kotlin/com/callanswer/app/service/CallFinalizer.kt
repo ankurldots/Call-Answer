@@ -57,6 +57,7 @@ object CallOutcomeResolver {
                 else -> Outcome.CALLER_HUNG_UP
             }
             EndReason.AUDIO_INTERRUPTED -> Outcome.INTERRUPTED
+            EndReason.ABUSIVE_LANGUAGE -> Outcome.ABUSIVE_CALLER
         }
     }
 }

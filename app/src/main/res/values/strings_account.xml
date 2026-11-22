@@ -1,7 +1,7 @@
 <resources>
     <string name="settings_section_account">Account</string>
     <string name="account_not_configured">Sign-in is not set up in this build. Cloud voices are unavailable; the on-device voice is used.</string>
-    <string name="account_hint">Signing in lets the app fetch higher-quality voice audio when you save Delivery steps. Calls never need the internet: the audio is stored on this phone.</string>
+    <string name="account_hint">Signing in lets the app fetch higher-quality voice audio whenever you change settings. Calls never need the internet: the audio is stored on this phone.</string>
     <string name="account_signed_in_as">Signed in as %1$s</string>
     <string name="account_sign_out">Sign out</string>
     <string name="account_email">Email</string>
@@ -32,8 +32,4 @@
     <string name="account_err_too_many">Too many attempts. Try again later.</string>
     <string name="account_err_network">No connection. Check the internet and try again.</string>
     <string name="account_err_unknown">Something went wrong. Try again.</string>
-    <string name="voice_audio_refreshed">Cloud voice audio is ready on this phone (%1$d new).</string>
-    <string name="voice_audio_signin">Sign in under Account to use cloud voice audio. The on-device voice is used until then.</string>
-    <string name="voice_audio_limit">Daily cloud voice limit reached. The on-device voice is used for the rest.</string>
-    <string name="voice_audio_failed">Could not fetch cloud voice audio. The on-device voice is used.</string>
 </resources>

@@ -5,7 +5,8 @@ import com.callanswer.app.auth.CognitoApi
 import com.callanswer.app.auth.StoredSession
 import com.callanswer.app.auth.TokenStore
 import com.callanswer.app.auth.Transport
-import com.callanswer.core.model.DeliveryStep
+import com.callanswer.core.model.QuickReply
+import com.callanswer.core.model.Settings
 import com.callanswer.core.model.Language
 import com.callanswer.core.model.VoiceGender
 import kotlinx.coroutines.Dispatchers
@@ -87,17 +88,24 @@ class PollyTest {
             try { s.synthesize(t, Language.EN, g); fail() } catch (_: NoSuchElementException) {}
         }
     }
-    @Test fun prefetchFetchesOnlyMissingAndStopsOnLimit() = runBlocking {
-        val steps = listOf(DeliveryStep("1", "Go to {map_location}. Turn left.", "बाएं मुड़िए।"))
+    @Test fun prefetchFetchesOnlyMissingPrunesAndStopsOnLimit() = runBlocking {
+        val settings = Settings()
+        val expected = SpokenTextCatalog.sentences(settings).size
         val cache = tempCache()
         var calls = 0
         val prefetcher = PollyPrefetcher(client { _, _, _ -> calls++; 200 to ok(wav(samples)) }, cache)
-        val first = prefetcher.refresh(steps, "Gate 2")
-        assertEquals(3, first.fetched) // two English sentences, one Hindi
+        val first = prefetcher.refresh(settings)
+        assertEquals(expected, first.fetched)
         assertNull(first.stoppedBy)
-        val again = prefetcher.refresh(steps, "Gate 2")
-        assertEquals(0, again.fetched); assertEquals(3, again.alreadyCached); assertEquals(3, calls)
-        val limited = PollyPrefetcher(client { _, _, _ -> 429 to "{}" }, tempCache()).refresh(steps, "Gate 2")
+        val again = prefetcher.refresh(settings)
+        assertEquals(0, again.fetched); assertEquals(expected, again.alreadyCached); assertEquals(expected, calls)
+        // Changing one quick reply fetches only that sentence (both languages) and drops the old audio.
+        val changed = settings.copy(quickReplies = listOf(QuickReply("Leave it at the door.", "दरवाज़े पर रख दीजिए।")) + settings.quickReplies.drop(1))
+        val third = prefetcher.refresh(changed)
+        assertEquals(2, third.fetched)
+        assertFalse(cache.has("Please wait", Language.EN))
+        assertTrue(cache.has("Leave it at the door.", Language.EN))
+        val limited = PollyPrefetcher(client { _, _, _ -> 429 to "{}" }, tempCache()).refresh(settings)
         assertEquals(PollyException.Kind.RATE_LIMITED, limited.stoppedBy)
     }
 }

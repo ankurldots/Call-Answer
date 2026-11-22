@@ -6,6 +6,7 @@ import com.callanswer.app.auth.AuthRepository
 import com.callanswer.app.auth.KeystoreTokenStore
 import com.callanswer.app.cloudtts.PollyAudioCache
 import com.callanswer.app.cloudtts.PollyClient
+import com.callanswer.app.cloudtts.PollyPrefetchWorker
 import com.callanswer.app.cloudtts.PollyPrefetcher
 import com.callanswer.app.data.CallAnswerDatabase
 import com.callanswer.app.data.SettingsStore
@@ -45,5 +46,6 @@ class CallAnswerApp : Application() {
     override fun onCreate() {
         super.onCreate()
         spamReporter.register()
+        if (authConfig.isConfigured) PollyPrefetchWorker.watch(this, appScope)
     }
 }

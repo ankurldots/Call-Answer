@@ -4,6 +4,7 @@ import com.callanswer.core.gate.GateSelection
 import com.callanswer.core.gate.selectGate
 import com.callanswer.core.intent.IntentClassifier
 import com.callanswer.core.intent.PhraseTables
+import com.callanswer.core.intent.ProfanityFilter
 import com.callanswer.core.intent.RuleIntentClassifier
 import com.callanswer.core.language.LanguageDetector
 import com.callanswer.core.language.ResponseLanguageResolver
@@ -177,6 +178,13 @@ class BaseConversationEngine(
             )
         }
         if (!canDispatch(next)) return Transition(next, emptyList())
+        // Abusive language ends the call in any phase the Agent handles, before any other rule.
+        if (text.isNotEmpty() && ProfanityFilter.isAbusive(text)) {
+            return Transition(
+                next.copy(phase = Phase.ENDED),
+                listOf(speak(SpeechSpec.AbuseGoodbye, language), Effect.EndCall(EndReason.ABUSIVE_LANGUAGE)),
+            )
+        }
 
         if (text.isEmpty()) {
             return Transition(next, listOf(speak(SpeechSpec.AskRepeatRequest, language)))

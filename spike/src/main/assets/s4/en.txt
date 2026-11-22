@@ -1,0 +1,10 @@
+Hello, this is the AI assistant for Ankur. May I know who is calling?
+Please tell me your name and the reason for your call.
+What is this regarding, please?
+Please hold on for a moment while I check.
+Sorry, nobody is available right now. Can I take a message?
+Are you calling for a delivery? Please leave the parcel with the security guard at gate number two.
+Our address is B-14, Sector 22, Noida. Come straight from the main road and turn left at the second lane.
+Sorry, I did not catch that. Could you please repeat?
+Okay, I will pass your message to Ankur. Thank you, have a nice day.
+Please say your phone number so that he can call you back.

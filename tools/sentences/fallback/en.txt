@@ -1,0 +1,5 @@
+# order: fallback, filler, please wait, nobody available (matches ResponseRenderer)
+One moment, please.
+Hmm, one moment please.
+Please wait.
+Nobody is available right now. Please call again shortly.

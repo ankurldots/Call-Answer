@@ -1,0 +1,1439 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create the Gradle root project and the `:spike` Android module": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286077651
+      },
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286091382
+      },
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286393476
+      }
+    ],
+    "1.2 Implement spike S1: screen, answer, foreground service and end call": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286077724
+      },
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286398421
+      },
+      {
+        "executionId": "c37c1784-f9c9-4782-bb66-359a365cf70b",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286631355
+      }
+    ],
+    "1.3 Implement spike S2: microphone capture as accessibility service": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286077784
+      },
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286398473
+      },
+      {
+        "executionId": "c37c1784-f9c9-4782-bb66-359a365cf70b",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286631409
+      }
+    ],
+    "1.4 Implement spike S3: Agent speech audible to the Caller, and speaker route": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286077816
+      },
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286398691
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286822325
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795287207494
+      }
+    ],
+    "1.5 Implement spike S4: echo handling prototype": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286077857
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795287211100
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795287390018
+      }
+    ],
+    "1.6 Implement spike S5: Samsung recording folder probe": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286077891
+      },
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286399207
+      },
+      {
+        "executionId": "c37c1784-f9c9-4782-bb66-359a365cf70b",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286631781
+      }
+    ],
+    "1.7 Implement spike S6: transfer Path A and Path B": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286077930
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795287211555
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795287389365
+      }
+    ],
+    "1.8 Implement spike S7: on-device AI benchmark": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286077958
+      },
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286399823
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286822377
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795287207829
+      }
+    ],
+    "1.9 Implement spike S8: 1909 hand-off and send": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286077990
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286822408
+      },
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795287206786
+      }
+    ],
+    "2. Checkpoint - Spike go/no-go on the Galaxy M34 5G": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078033
+      }
+    ],
+    "3.1 Create the `:core` and `:app` Gradle modules": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078108
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795289669717
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795289934349
+      }
+    ],
+    "3.2 Create the shared UI theme and components": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078166
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795289938559
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290048406
+      }
+    ],
+    "4.1 Create the core data models and defaults": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078197
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795289938870
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290048871
+      }
+    ],
+    "4.2 Implement `SettingsValidator` field checks": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078231
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290053848
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290255072
+      }
+    ],
+    "5.1 Implement `PhoneNumberMatcher` and `ScreeningDecision`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078286
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290053915
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290255847
+      }
+    ],
+    "6.1 Implement `TextNormalizer`, `PhraseTables` and `RuleIntentClassifier`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078317
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290054276
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290253463
+      }
+    ],
+    "6.5 Implement `ScriptLanguageDetector` and `ResponseLanguageResolver`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078365
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290357336
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290447862
+      }
+    ],
+    "7.1 Implement `GateSelector` and `GateInfoRenderer`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078455
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290055069
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290254275
+      }
+    ],
+    "8.1 Implement `DeliveryDirectionsRenderer` and `StepListValidator`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078484
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290357407
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290449808
+      }
+    ],
+    "9.1 Implement `PiiGuard`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078523
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290055610
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290256232
+      }
+    ],
+    "9.2 Implement `FictitiousReplyLibrary`, `FictitiousGate` and `PromptBuilder`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078557
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290358105
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290448670
+      }
+    ],
+    "10.1 Implement `NetworkClassifier`, `ProviderRouter` and the cloud deadline": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078598
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290264022
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290349631
+      }
+    ],
+    "11.1 Implement `EchoTextFilter`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078626
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290264219
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290350337
+      }
+    ],
+    "12.1 Implement `VoiceSelector` and `SpeakerPolicy`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078658
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290264968
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290351151
+      }
+    ],
+    "13.1 Implement `RecordingMatcher` and `LinkPolicy`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078690
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290265551
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290351911
+      }
+    ],
+    "14.1 Implement `TraiReport`, `BriefDescriptionGenerator`, `SenderNumber` and `SpamReportBuilder`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078723
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290358809
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290450301
+      }
+    ],
+    "14.7 Implement `ReportStatusMachine` and `ReportFlowPolicy`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078751
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290454617
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290547930
+      }
+    ],
+    "15.1 Create the engine types and the `ResponseRenderer`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078784
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290454801
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290548815
+      }
+    ],
+    "15.2 Implement the base reducer": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078814
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290554032
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290644571
+      }
+    ],
+    "16.1 Add delivery handling to the reducer": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078845
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290647823
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290790156
+      }
+    ],
+    "17.1 Add the remaining phase rules to the reducer": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078881
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290795501
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290929583
+      }
+    ],
+    "18.1 Add transfer handling to the reducer": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078918
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290932941
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291012469
+      }
+    ],
+    "19.1 Add override handling to the reducer": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078957
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291016921
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291140484
+      }
+    ],
+    "20.1 Implement `CallLogEntryBuilder` and `CallLogOrder`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286078997
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291144146
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291196400
+      }
+    ],
+    "21. Checkpoint - Core logic complete": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079075
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795294381918
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795294424267
+      }
+    ],
+    "22.1 Implement Room storage for the Call_Log and the Outbox": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079111
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291201697
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291329375
+      }
+    ],
+    "22.4 Implement `SettingsStore` with DataStore": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079149
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291201784
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291330171
+      }
+    ],
+    "22.6 Implement `OutboxWorker`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079186
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291340933
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291577651
+      }
+    ],
+    "23.1 Implement `NotificationCenter` and `LiveCallActivity` host": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079223
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291202834
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291331244
+      }
+    ],
+    "23.2 Implement the `CallForegroundService` shell": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079264
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291341801
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291578531
+      }
+    ],
+    "24.1 Implement `ContactIndex`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079321
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291203276
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291331742
+      }
+    ],
+    "24.2 Implement `CallScreenerService` and `CallAnswerer`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079350
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291583361
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291707169
+      }
+    ],
+    "25.1 Implement `CallAudioAccessibilityService`, `CallAudioCapture` and `InCallUiAutomator`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079389
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291342776
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291579478
+      }
+    ],
+    "25.2 Implement `AgentAudioPlayer` and `EchoGate`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079424
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291584399
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291705430
+      }
+    ],
+    "25.3 Implement `AudioRouteController`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079458
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291585573
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291706384
+      }
+    ],
+    "26.1 Implement `TransferController` behind the `pathAEnabled` flag": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079492
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291711607
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291863879
+      }
+    ],
+    "26.2 Implement `TakeoverAlertPresenter`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079537
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291712309
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291864450
+      }
+    ],
+    "27.1 Implement `SileroVad` and the segmenter": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079570
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291586301
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291707944
+      }
+    ],
+    "27.2 Implement the speech recognizer for the S7-chosen engine": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079600
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291713402
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291863078
+      },
+      {
+        "executionId": "ea5a2d94-84ad-4c2d-af06-2a2394eb8026",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795308732445
+      },
+      {
+        "executionId": "ea5a2d94-84ad-4c2d-af06-2a2394eb8026",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795308893644
+      }
+    ],
+    "27.3 Implement `SherpaPiperSynthesizer`, `ScriptSplitter` and `AndroidTtsSynthesizer`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079633
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291714424
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291862041
+      }
+    ],
+    "27.4 Generate and bundle the fallback phrase WAVs": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079669
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291869394
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291952278
+      }
+    ],
+    "28.1 Implement `NetworkMonitor`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079713
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291587043
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291705324
+      }
+    ],
+    "28.2 Implement `CloudLlmClient` and `StallingResponder`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079746
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291715018
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291860961
+      }
+    ],
+    "29.1 Wire capture to engine in `CallForegroundService`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079783
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291959923
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292153231
+      }
+    ],
+    "29.2 Implement the effect executor and `MapSmsSender`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079814
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292157970
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292562235
+      }
+    ],
+    "29.3 Implement call-end finalization": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079848
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292566089
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292809671
+      }
+    ],
+    "29.4 Build the Live_Call_Screen and live call notification": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079875
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292815239
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292948166
+      }
+    ],
+    "30.1 Implement `RecordingFolderRepository`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079912
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291869441
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291954701
+      }
+    ],
+    "30.2 Implement `RecordingLinker`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079958
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291960006
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292154289
+      }
+    ],
+    "30.3 Implement `PlaybackController` with Media3": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286079988
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292158499
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292562074
+      }
+    ],
+    "31.1 Implement `SmsIntentLauncher`, `SmsGateway`, `SmsSentReceiver` and `CellServiceState`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080015
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292566797
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292809196
+      }
+    ],
+    "31.2 Implement `SpamReporter`": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080047
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292952269
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293092965
+      }
+    ],
+    "31.3 Implement `ReportSpamActivity` and the entry points": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080074
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293097040
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293302105
+      }
+    ],
+    "32.1 Build onboarding, permissions and Home": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080106
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293097803
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293302244
+      }
+    ],
+    "32.2 Build the settings screens": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080138
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293306031
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293552733
+      }
+    ],
+    "32.3 Build the Delivery_Steps editor": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080166
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293561608
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293675082
+      }
+    ],
+    "32.4 Build the Call_Log, call detail and player screens": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080197
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293678865
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293865506
+      }
+    ],
+    "33. Checkpoint - Integration complete": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080225
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795294382310
+      },
+      {
+        "executionId": "ea5a2d94-84ad-4c2d-af06-2a2394eb8026",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795308732273
+      }
+    ],
+    "34.1 Add the patchy-network test harness and run the matrix": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080257
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293878851
+      },
+      {
+        "executionId": "ea5a2d94-84ad-4c2d-af06-2a2394eb8026",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795308732320
+      }
+    ],
+    "34.2 Write and run the airplane-mode instrumented suite": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080289
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293878923
+      },
+      {
+        "executionId": "ea5a2d94-84ad-4c2d-af06-2a2394eb8026",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795308732363
+      }
+    ],
+    "34.3 Add the end-to-end scenario script and run it with the User": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080316
+      },
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293879877
+      },
+      {
+        "executionId": "ea5a2d94-84ad-4c2d-af06-2a2394eb8026",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795308732403
+      }
+    ],
+    "35. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "c2dbf47d-6b6e-4e9c-a486-70190405e4c7",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795286080344
+      }
+    ],
+    "1. Build the feasibility spike app (`:spike`) for the Galaxy M34 5G": [
+      {
+        "executionId": "78e498cb-a304-428a-a092-0e2b7991109e",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795287390045
+      }
+    ],
+    "3. Set up the production project structure": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290048463
+      }
+    ],
+    "7. Implement colony gate selection and rendering": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290254321
+      }
+    ],
+    "4. Implement core models, defaults and settings validation": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290255106
+      }
+    ],
+    "5. Implement phone number matching and the screening decision": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290255890
+      }
+    ],
+    "10. Implement the network classifier and provider router": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290349676
+      }
+    ],
+    "11. Implement the echo text filter": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290350575
+      }
+    ],
+    "12. Implement voice selection and speaker policy": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290351214
+      }
+    ],
+    "13. Implement the recording matcher and link policy": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290351946
+      }
+    ],
+    "6. Implement text normalization, intent classification and language detection": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290447931
+      }
+    ],
+    "9. Implement the stalling library, PII guard and fictitious gate": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290448705
+      }
+    ],
+    "8. Implement Delivery_Directions rendering and step-list validation": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290449877
+      }
+    ],
+    "14. Implement the spam report builder and report status machine": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290547984
+      }
+    ],
+    "15. Implement the conversation engine core (greeting, dispatch, language)": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290644642
+      }
+    ],
+    "16. Implement the delivery flow in the engine": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290790205
+      }
+    ],
+    "17. Implement stalling, silence, clarification, interruption and failure handling in the engine": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795290929665
+      }
+    ],
+    "18. Implement the transfer flow in the engine (Path A and AWAITING_TAKEOVER)": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291012519
+      }
+    ],
+    "19. Implement override modes in the engine (take over, mute, resume, quick replies, end call)": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291140542
+      }
+    ],
+    "20. Implement Call_Log entry building, ordering and serialization": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291196461
+      }
+    ],
+    "22. Implement the `:app` data layer": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291577702
+      }
+    ],
+    "23. Implement the notification center and the call service shell": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291578582
+      }
+    ],
+    "25. Implement the audio path": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291706427
+      }
+    ],
+    "24. Implement call screening and answering": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291707208
+      }
+    ],
+    "28. Implement the network monitor and the optional cloud LLM client": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291861027
+      }
+    ],
+    "26. Implement the transfer controller (Path A) and the Takeover_Alert (Path B)": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291864519
+      }
+    ],
+    "27. Implement VAD, ASR and TTS adapters with bundled models": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795291952341
+      }
+    ],
+    "30. Implement recording linking and playback": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292562158
+      }
+    ],
+    "29. Wire the call pipeline in `CallForegroundService` and build the Live_Call_Screen": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795292948223
+      }
+    ],
+    "31. Implement the spam reporter": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293302177
+      }
+    ],
+    "32. Build the remaining screens": [
+      {
+        "executionId": "9e28f1c9-b393-433b-af86-7ec8aee622bf",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795293865556
+      }
+    ]
+  }
+}

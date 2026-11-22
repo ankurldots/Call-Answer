@@ -1,0 +1,4 @@
+<resources>
+    <string name="notif_answer_failed">Could not answer the call from %1$s. Answer it yourself.</string>
+    <string name="notif_end_call_failed">Could not end the call. Please hang up manually.</string>
+</resources>

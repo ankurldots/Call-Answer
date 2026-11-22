@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Call Answer</string>
+    <string name="speaker_caller">Caller</string>
+    <string name="speaker_agent">Agent</string>
+    <string name="speaker_user">You</string>
+    <string name="speaker_live">Live</string>
+    <string name="cd_transcript_bubble">%1$s said: %2$s</string>
+    <string name="cd_banner_info">Information: %1$s</string>
+    <string name="cd_banner_warning">Warning: %1$s</string>
+    <string name="cd_banner_error">Error: %1$s</string>
+    <string name="cd_chip_selected">%1$s, selected</string>
+    <string name="cd_error_prefix">Error: %1$s</string>
+    <string name="dialog_confirm">Confirm</string>
+    <string name="dialog_dismiss">Cancel</string>
+</resources>

@@ -1,0 +1,31 @@
+id	lang	polly_lang	expected_intent	text
+hi_01	hi	hi-IN	DELIVERY	नमस्ते, मैं डिलीवरी बॉय बोल रहा हूँ, आपका पार्सल आया है।
+hi_02	hi	hi-IN	DELIVERY	मैं कूरियर वाला बोल रहा हूँ, मुझे पता नहीं मिल रहा, आपका एड्रेस कहाँ है?
+hi_03	hi	hi-IN	DOOR_NOT_OPENED	मैं आपके घर के बाहर खड़ा हूँ, कोई दरवाज़ा नहीं खोल रहा।
+hi_04	hi	hi-IN	SOLICITATION	आपके लिए पाँच लाख का पर्सनल लोन तुरंत मंज़ूर हुआ है।
+hi_05	hi	hi-IN	SOLICITATION	मैं बैंक से बोल रहा हूँ, अपना ओटीपी बताइए।
+hi_06	hi	hi-IN	SOLICITATION	हमारी स्कीम में प्लॉट खरीदने पर आकर्षक ऑफर मिल रहा है।
+hi_07	hi	hi-IN	UNKNOWN	हैलो, अंकुर जी घर पर हैं क्या?
+hi_08	hi	hi-IN	UNKNOWN	मैं उनका रिश्तेदार बोल रहा हूँ, मामा जी से बात करनी है।
+hi_09	hi	hi-IN	UNKNOWN	सॉरी, ग़लत नंबर लग गया।
+hi_10	hi	hi-IN	SOLICITATION	बधाई हो, आपने इनाम जीता है, क्रेडिट कार्ड की जानकारी दीजिए।
+en_01	en	en-IN	DELIVERY	Hello, I am the delivery person, I have a parcel for you.
+en_02	en	en-IN	DELIVERY	I am from the courier company, I cannot find the address, where exactly is it?
+en_03	en	en-IN	DOOR_NOT_OPENED	I am standing outside your house but nobody is opening the door.
+en_04	en	en-IN	SOLICITATION	Good morning sir, we are offering you a pre-approved personal loan today.
+en_05	en	en-IN	SOLICITATION	This is your bank calling, please share the OTP you just received.
+en_06	en	en-IN	SOLICITATION	Would you like to buy a plot in our new township? We have a special offer.
+en_07	en	en-IN	UNKNOWN	Hello, is Ankur there?
+en_08	en	en-IN	UNKNOWN	Hi, I am his cousin, can you ask him to call me back please?
+en_09	en	en-IN	UNKNOWN	Sorry, I think I dialed the wrong number.
+en_10	en	en-IN	SOLICITATION	Congratulations, you have won a free gift, just confirm your credit card details.
+hl_01	hinglish	en-IN	DELIVERY	Hello sir, main delivery boy bol raha hoon, aapka parcel aaya hai.
+hl_02	hinglish	hi-IN	DELIVERY	Sir मैं courier से बोल रहा हूँ, आपका address नहीं मिल रहा, location बताइए।
+hl_03	hinglish	en-IN	DOOR_NOT_OPENED	Madam main gate ke bahar khada hoon, koi darwaza nahi khol raha.
+hl_04	hinglish	hi-IN	SOLICITATION	Sir, आपके लिए pre-approved personal loan का offer है, आज ही apply करें।
+hl_05	hinglish	en-IN	SOLICITATION	Main bank se bol raha hoon, aapka KYC update karna hai, abhi OTP bataiye.
+hl_06	hinglish	hi-IN	SOLICITATION	क्या आप अपने लिए flat या plot में investment करना चाहेंगे?
+hl_07	hinglish	en-IN	UNKNOWN	Hello, Ankur ji ghar par hain kya?
+hl_08	hinglish	hi-IN	UNKNOWN	मैं उनका cousin बोल रहा हूँ, उन्हें call back करने के लिए बोलिए।
+hl_09	hinglish	en-IN	UNKNOWN	Sorry sir, galat number lag gaya.
+hl_10	hinglish	hi-IN	SOLICITATION	Congratulations, आपने lucky draw जीता है, अपने credit card की details बताइए।

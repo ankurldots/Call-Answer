@@ -1,0 +1,23 @@
+<resources>
+    <string name="report_title">Report spam to 1909</string>
+    <string name="report_message_label">Message to send</string>
+    <string name="report_description_label">Brief description</string>
+    <string name="report_truncated_note">The description was shortened to fit one message.</string>
+    <string name="report_permission_note">Confirmation is required because the SMS permission is not granted.</string>
+    <string name="report_error_empty">The description cannot be empty.</string>
+    <string name="report_error_ascii">Use only printable English letters, digits and symbols.</string>
+    <string name="report_error_comma">The description cannot contain a comma.</string>
+    <string name="report_error_protected">The description cannot contain your own number, location or protected terms.</string>
+    <string name="report_repeat_title">Report again?</string>
+    <string name="report_repeat_body">This call was already reported (status: %1$s). Prepare another report?</string>
+    <string name="report_status_prepared">prepared</string>
+    <string name="report_status_handed_off">handed to messaging app</string>
+    <string name="report_status_sent">sent</string>
+    <string name="report_cannot_report">This call cannot be reported because the number is unavailable.</string>
+    <string name="report_no_messaging_app">No messaging app is available to send the report.</string>
+    <string name="report_retry_offer">The report could not be sent. Try again?</string>
+    <string name="report_retry">Retry</string>
+    <string name="report_silent_sent">Sent to 1909: %1$s</string>
+    <string name="report_handed_off">The report is ready in your messaging app. Press send there.</string>
+    <string name="report_ok">OK</string>
+</resources>

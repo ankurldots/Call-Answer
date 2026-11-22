@@ -1,0 +1,31 @@
+<resources>
+    <string name="channel_live_call">Live call</string>
+    <string name="channel_takeover_alert">Take-over alerts</string>
+    <string name="channel_post_call">After a call</string>
+    <string name="channel_alerts">Alerts</string>
+    <string name="notif_contacts_access_required">Contacts access is required to recognise known callers. Open the app to allow it.</string>
+    <string name="notif_map_location_missing">A caller (%1$s) asked for the location, but no Location URL is set or the number is unknown, so no text was sent.</string>
+    <string name="notif_map_sms_failed">The map SMS to %1$s could not be sent.</string>
+    <string name="notif_transfer_started">Transferring the call from %1$s.</string>
+    <string name="notif_transfer_failed">Could not transfer the call from %1$s.</string>
+    <string name="notif_transfer_target_missing">No transfer number is set. Call from %1$s was not transferred.</string>
+    <string name="notif_speakerphone_off">Speakerphone could not be turned on. Plug out the headset or turn it on manually.</string>
+    <string name="notif_speakerphone_headset">Speakerphone was not turned on because a headset is connected.</string>
+    <string name="notif_unknown_call_transcript">Unknown call from %1$s: %2$s</string>
+    <string name="notif_silent_caller">Silent caller: %1$s</string>
+    <string name="notif_call_not_logged">The call from %1$s could not be saved to the call log.</string>
+    <string name="notif_recording_not_found">No recording was found for the call from %1$s.</string>
+    <string name="notif_folder_access_lost">Access to the recordings folder was lost. Choose the folder again.</string>
+    <string name="notif_permission_required">%1$s permission is required. Open the app to allow it.</string>
+    <string name="notif_title_attention">Call Answer needs attention</string>
+    <string name="notif_takeover_title">Caller at the door needs you: %1$s</string>
+    <string name="notif_capture_silenced">The caller\'s voice cannot be heard. The Agent will only speak, so please take over the call.</string>
+    <string name="a11y_description">Lets Call Answer hear the caller during a call and press the speaker and merge buttons on the in-call screen.</string>
+    <string name="notif_number_unavailable">number unavailable</string>
+    <string name="notif_title_spam_screened">Spam call screened</string>
+    <string name="notif_spam_call_screened">Spam call screened: %1$s</string>
+    <string name="notif_action_report_spam">Report spam</string>
+    <string name="notif_title_spam_report_sent">Spam report</string>
+    <string name="notif_spam_report_sent">Sent to 1909: %1$s</string>
+    <string name="notif_spam_report_failed">The spam report could not be sent. Open the call log to retry.</string>
+</resources>

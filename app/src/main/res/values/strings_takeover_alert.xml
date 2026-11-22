@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="takeover_alert_title">Take over the call</string>
+    <string name="takeover_alert_text">The caller %1$s is waiting for you.</string>
+    <string name="takeover_alert_text_hold">The caller %1$s is waiting for you and may be on hold.</string>
+    <string name="takeover_alert_unknown_number">Unknown number</string>
+</resources>

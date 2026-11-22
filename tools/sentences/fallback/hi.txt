@@ -1,0 +1,5 @@
+# order: fallback, filler, please wait, nobody available (matches ResponseRenderer)
+कृपया एक क्षण रुकिए।
+हम्म, एक मिनट रुकिए।
+कृपया प्रतीक्षा कीजिए।
+अभी कोई उपलब्ध नहीं है। कृपया थोड़ी देर बाद फिर से फ़ोन कीजिए।

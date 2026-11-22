@@ -1,0 +1,79 @@
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_open">Settings</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_save">Save</string>
+    <string name="settings_saved">Saved.</string>
+    <string name="settings_not_saved">Not saved. Fix the marked fields. Previous values were kept.</string>
+    <string name="settings_save_failed">Could not save. Previous values were kept.</string>
+
+    <string name="settings_section_general">General</string>
+    <string name="settings_section_gates">Gates and night window</string>
+    <string name="settings_section_call">Voice, disclosure and replies</string>
+    <string name="settings_section_recording">Recording folder</string>
+    <string name="settings_section_spam">Spam reporting</string>
+
+    <string name="settings_screening">Screen unknown calls</string>
+    <string name="settings_map_location">Location URL (texted to a delivery caller who needs directions)</string>
+    <string name="settings_transfer_target">Transfer number (optional)</string>
+    <string name="settings_max_stalling">Maximum stalling time (30 to 600 seconds)</string>
+    <string name="settings_protected_terms">Protected terms (separate with commas or new lines)</string>
+    <string name="settings_cloud_llm">Use cloud language model for stalling replies</string>
+    <string name="settings_address">Address (used to confirm the address a delivery caller states; never spoken or sent)</string>
+    <string name="settings_address_hi">Address in Hindi (optional; also used to confirm the address a caller states in Hindi)</string>
+    <string name="settings_location_hint">The agent texts the Location URL only when a delivery caller asks for the location or directions, or states an address that matches the Address above. If the stated address does not match, nothing is sent.</string>
+    <string name="settings_cloud_llm_hint">When on, text of the conversation (never your protected terms, map location or transfer number) may be sent to a cloud service.</string>
+
+    <string name="settings_gate1">Gate 1</string>
+    <string name="settings_gate3">Gate 3</string>
+    <string name="settings_gate_number">Gate number</string>
+    <string name="settings_gate_location">Location description</string>
+    <string name="settings_gate_landmark">Landmark</string>
+    <string name="settings_night_window">Night window (24-hour HH:MM)</string>
+    <string name="settings_night_start">Start</string>
+    <string name="settings_night_end">End</string>
+
+    <string name="settings_disclosure">Tell callers they are speaking to an automated assistant</string>
+    <string name="settings_disclosure_hint">Changes apply from the next call.</string>
+    <string name="settings_voice">Voice</string>
+    <string name="settings_voice_female">Female</string>
+    <string name="settings_voice_male">Male</string>
+    <string name="settings_voice_hint">A call in progress keeps its voice. Changes apply from the next call.</string>
+    <string name="settings_voice_sample_en">Play English sample</string>
+    <string name="settings_voice_sample_hi">Play Hindi sample</string>
+    <string name="settings_voice_sample_failed">No voice could play the sample.</string>
+    <string name="settings_speaker">Turn on the speakerphone when the Agent answers</string>
+    <string name="settings_quick_replies">Quick replies</string>
+    <string name="settings_quick_reply_en">English text</string>
+    <string name="settings_quick_reply_hi">Hindi text</string>
+    <string name="settings_quick_reply_add">Add quick reply</string>
+    <string name="settings_quick_reply_delete">Delete</string>
+
+    <string name="settings_folder_current">Selected folder: %1$s</string>
+    <string name="settings_folder_none_warning">No recordings folder is selected. Phone recordings cannot be linked to the call log.</string>
+    <string name="settings_folder_choose">Choose folder</string>
+    <string name="settings_folder_change">Change folder</string>
+    <string name="settings_folder_autorecord">One-time step: turn on auto-record for unknown numbers in your phone\'s call recording settings. Call Answer cannot turn on the phone\'s recorder.</string>
+    <string name="settings_folder_autorecord_ok">Got it</string>
+    <string name="settings_folder_legal">Recording calls may require consent from the people on the call under the law where you live. You are responsible for following it. Recordings stay on your device and are never uploaded.</string>
+
+    <string name="settings_spam_silent">Send spam reports without opening the messaging app</string>
+    <string name="settings_spam_silent_hint">Needs the Send SMS permission. Changes apply from the next report.</string>
+    <string name="settings_spam_permission_missing">The Send SMS permission is not granted, so reports open your messaging app instead.</string>
+    <string name="settings_spam_destination">Reports are sent to 1909 (TRAI)</string>
+
+    <string name="settings_section_steps">Delivery directions</string>
+    <string name="settings_steps_hint">Steps spoken to a delivery caller, in order. Do not use {map_location}: the Location URL is texted, not spoken. Changes apply from the next call.</string>
+    <string name="settings_step_title">Step %1$d</string>
+    <string name="settings_step_add">Add step</string>
+    <string name="settings_step_up">Move up</string>
+    <string name="settings_step_down">Move down</string>
+    <string name="settings_step_up_cd">Move step %1$d up</string>
+    <string name="settings_step_down_cd">Move step %1$d down</string>
+    <string name="settings_step_delete_cd">Delete step %1$d</string>
+    <string name="settings_step_missing_language">Saved. Step %1$d has no %2$s text. It will be translated on the device if possible, or spoken as it is.</string>
+    <string name="settings_steps_reset">Reset to default steps</string>
+    <string name="settings_steps_sample_en">Play full directions in English</string>
+    <string name="settings_steps_sample_hi">Play full directions in Hindi</string>
+    <string name="settings_steps_sample_hint">The sample uses the voice selected in voice settings and the steps shown above.</string>
+</resources>

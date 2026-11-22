@@ -36,6 +36,10 @@ class CheckActivity : Activity() {
             body.text = "S2 opens its own screen."
             startActivity(android.content.Intent(this, S2Activity::class.java))
             finish()
+        } else if (check == SpikeCheck.S2B) {
+            startActivity(android.content.Intent(this, S2bActivity::class.java))
+            finish()
+            return
         } else if (check == SpikeCheck.S3) {
             startActivity(android.content.Intent(this, S3Activity::class.java))
             finish()

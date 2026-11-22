@@ -84,8 +84,12 @@ class CallScreenerService : CallScreeningService() {
                 answer = { TelecomCallAnswerer(ctx, number).answer() },
                 onNotStarted = {
                     // Leave the call ringing; the User taps the alert and the activity starts the service.
-                    CallOverlay.hide(ctx)
-                    CallForegroundService.postFallback(ctx, number)
+                    if (CallForegroundService.running.value) {
+                        CallLog.i("not started reported but service is running; fallback alert not posted")
+                    } else {
+                        CallOverlay.hide(ctx)
+                        CallForegroundService.postFallback(ctx, number)
+                    }
                 },
             ).run()
             CallLog.i("screened call outcome=$outcome overlay=$overlay")
@@ -123,7 +127,7 @@ class CallScreenerService : CallScreeningService() {
 
     private companion object {
         const val TAG = "CallAnswer"
-        const val START_CONFIRM_TIMEOUT_MS = 1_500L
+        const val START_CONFIRM_TIMEOUT_MS = 3_000L // covers a cold process start plus the denied-type fallback
         const val SETTINGS_TIMEOUT_MS = 1_000L
     }
 }

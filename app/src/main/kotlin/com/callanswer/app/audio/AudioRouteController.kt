@@ -7,6 +7,7 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import com.callanswer.app.CallLog
 import com.callanswer.app.service.NotificationCenter
 import com.callanswer.core.voice.SpeakerDecision
 import com.callanswer.core.voice.SpeakerPolicy
@@ -92,13 +93,20 @@ class AndroidAudioRouteController(
     }
 
     private suspend fun turnOn(): Boolean {
+        // Never call setMode: the cellular call keeps MODE_IN_CALL.
+        CallLog.i("speaker route: audioMode=${modeName()} before setSpeakerphoneOn")
         @Suppress("DEPRECATION")
-        if (attempt { audio.isSpeakerphoneOn = true }) return true
-        if (Build.VERSION.SDK_INT >= 31 && attempt {
+        val spk = attempt { audio.isSpeakerphoneOn = true }
+        CallLog.i("speaker route: setSpeakerphoneOn took effect=$spk audioMode=${modeName()}")
+        if (spk) return true
+        if (Build.VERSION.SDK_INT >= 31) {
+            val dev = attempt {
                 audio.availableCommunicationDevices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
                     ?.let { audio.setCommunicationDevice(it) }
             }
-        ) return true
+            CallLog.i("speaker route: setCommunicationDevice took effect=$dev audioMode=${modeName()}")
+            if (dev) return true
+        }
         return false
     }
 
@@ -112,6 +120,14 @@ class AndroidAudioRouteController(
             delay(POLL_MS)
             waited += POLL_MS
         }
+    }
+
+    private fun modeName(): String = when (val m = audio.mode) {
+        AudioManager.MODE_NORMAL -> "NORMAL"
+        AudioManager.MODE_RINGTONE -> "RINGTONE"
+        AudioManager.MODE_IN_CALL -> "IN_CALL"
+        AudioManager.MODE_IN_COMMUNICATION -> "IN_COMMUNICATION"
+        else -> "mode($m)"
     }
 
     private fun isSpeakerOn(): Boolean {

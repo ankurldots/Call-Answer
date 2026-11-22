@@ -743,6 +743,16 @@
         "executionId": "7e996e5d-51e6-4410-b3ce-452ddad9c99f",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795332704994
+      },
+      {
+        "executionId": "56bacb49-bedf-4e5f-af2b-87ff0dfd596b",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795338498958
+      },
+      {
+        "executionId": "56bacb49-bedf-4e5f-af2b-87ff0dfd596b",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795338923808
       }
     ],
     "25.1 Implement `CallAudioAccessibilityService`, `CallAudioCapture` and `InCallUiAutomator`": [
@@ -1545,6 +1555,18 @@
         "executionId": "33c8b41a-e446-4175-90ef-395478920f6b",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795331504960
+      }
+    ],
+    "1.3 Implement spike S2: microphone capture (plain foreground service owner)": [
+      {
+        "executionId": "56bacb49-bedf-4e5f-af2b-87ff0dfd596b",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795338509873
+      },
+      {
+        "executionId": "56bacb49-bedf-4e5f-af2b-87ff0dfd596b",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795338924262
       }
     ]
   }

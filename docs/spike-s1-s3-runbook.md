@@ -66,6 +66,28 @@ S2 answers the open question of the no-accessibility design: with a plain foregr
    (RMS well above the baseline) and `isClientSilenced` is false.
    Note which source worked. If every source is silent, the Caller cannot be recognised without
    the default assistant role (see design.md, "Decision: no accessibility service").
+## S2b: assistant-role capture
+Question: does holding the default digital assistant role let the spike capture the Caller during a cellular call?
+What Android documents ([Sharing audio input](https://developer.android.com/media/platform/sharing-audio-input),
+[Concurrent capture](https://source.android.com/docs/core/audio/concurrent)): the call always gets the audio, and the
+"voice call + ordinary app" rules name only accessibility services (and pre-installed apps with `CAPTURE_AUDIO_OUTPUT`)
+as able to capture. The Assistant exemption is documented for "assistant + ordinary app", not for a live call, and
+"privileged" means pre-installed. A user-installed spike holding the role is therefore not expected to be exempt.
+This run tests it on the M34 anyway.
+
+1. Main menu: **Request assistant role (S2b)**, or **Open default assistant settings** and pick *Call Answer Spike*
+   under Digital assistant app. The menu status shows `OK assistant role (S2b)` when held.
+2. Only one app can hold the call screening role. If the Call Answer app holds it, open the spike and tap
+   **Request call screening role**, then confirm the switch. After the test, open the Call Answer app and request
+   the role again (or Settings > Apps > Default apps > Caller ID & spam).
+3. Set the S1 mode to `AUTO_ANSWER_ONLY`. Open **S2b**. Run both buttons in separate calls: **VIS** (capture inside
+   the VoiceInteractionService) and **S2CaptureService** (comparison). Leave "Start when OFFHOOK" ticked.
+4. Call the M34 from the second phone, answer on **loudspeaker**, and speak for the whole capture (4 sources x 10 s).
+5. Tap **Export log** (main menu). Lines tagged `VIS/<source>` or `FGS/<source>` give `isClientSilenced`,
+   `rmsFirst2s`, `perSecondRms`, audio mode and speakerphone. One WAV per source is in the `s2` folder.
+6. Pass: any source with rms clearly above 0 and `isClientSilenced=false` during the call.
+7. Restore afterwards: Settings > Apps > Default apps > Digital assistant app, choose Google (or Gemini).
+
 ## S3: Agent speech audible to the Caller, and speaker route
 1. Set the S1 mode to `AUTO_ANSWER_ONLY` (or `OFF`). Open **S3**; the banner should be green.
 2. Call the M34 from the second phone and answer it (on loudspeaker) so a call is active.

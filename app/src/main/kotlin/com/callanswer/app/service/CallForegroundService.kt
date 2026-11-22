@@ -342,25 +342,33 @@ class CallForegroundService : Service() {
         // Tried first on every start: with a visible overlay (or while the app is visible) it may be allowed.
         com.callanswer.app.CallLog.i("FGS types requested: mediaPlayback|microphone (RECORD_AUDIO granted=${micGranted()}, " +
             "overlay visible=${CallOverlay.isShowing})")
-        if (micGranted() && tryStartForeground(n, media or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)) {
-            micTypeActive = true
-            com.callanswer.app.CallLog.i("FGS types granted: ${typeNames(foregroundServiceType)}")
-            return
+        val result = ForegroundTypeFallback.enter(
+            micAllowed = micGranted(),
+            tryMic = { tryStartForeground(n, media or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE) },
+            tryMedia = { tryStartForeground(n, media) },
+        )
+        when (result) {
+            ForegroundTypeFallback.Result.MEDIA_AND_MIC -> {
+                micTypeActive = true
+                com.callanswer.app.CallLog.i("FGS types granted: ${typeNames(foregroundServiceType)}")
+            }
+            ForegroundTypeFallback.Result.MEDIA_ONLY -> {
+                micTypeActive = false
+                com.callanswer.app.CallLog.i("FGS types granted: ${typeNames(foregroundServiceType)}; microphone will be retried when an activity is visible")
+            }
+            ForegroundTypeFallback.Result.FAILED -> throw IllegalStateException("startForeground denied for all types")
         }
-        micTypeActive = false
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, n, media)
-        com.callanswer.app.CallLog.i("FGS types granted: ${typeNames(foregroundServiceType)}; microphone will be retried when an activity is visible")
+        // Either type counts as started: confirm to the screener immediately.
+        _running.value = true
     }
     private fun micGranted() =
         checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
     private fun tryStartForeground(n: Notification, type: Int): Boolean = try {
         ServiceCompat.startForeground(this, NOTIFICATION_ID, n, type)
         true
-    } catch (e: SecurityException) {
-        com.callanswer.app.CallLog.w("mic type denied", e)
-        false
-    } catch (e: IllegalStateException) {
-        com.callanswer.app.CallLog.w("mic type denied", e)
+    } catch (e: RuntimeException) {
+        if (!ForegroundTypeFallback.isTypeDenial(e)) throw e
+        com.callanswer.app.CallLog.w("FGS type ${typeNames(type)} denied", e)
         false
     }
 

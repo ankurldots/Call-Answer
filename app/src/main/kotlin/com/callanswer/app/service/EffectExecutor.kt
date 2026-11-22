@@ -313,9 +313,9 @@ class EffectExecutor(
             val frozen = session.frozen
             val protected = (frozen.protectedTerms + listOfNotNull(frozen.mapLocation, frozen.address, frozen.addressHi, frozen.transferTarget)).toSet()
             val notifications = NotificationCenter(app)
-            val player = AgentAudioPlayerImpl(pipeline.echoGate)
+            val player = AgentAudioPlayerImpl(pipeline.echoGate, audioManager = app.getSystemService(android.media.AudioManager::class.java))
             // Alert tones use their own track so they never cut the Agent's speech; both mark the same EchoGate.
-            val tonePlayer = AgentAudioPlayerImpl(pipeline.echoGate)
+            val tonePlayer = AgentAudioPlayerImpl(pipeline.echoGate, audioManager = app.getSystemService(android.media.AudioManager::class.java))
             return EffectExecutor(
                 session = session,
                 scope = scope,

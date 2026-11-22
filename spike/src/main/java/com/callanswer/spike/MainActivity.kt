@@ -42,6 +42,12 @@ class MainActivity : Activity() {
         root.addView(header("Setup"))
         root.addView(button("Request runtime permissions") { requestPermissions(runtimePermissions, REQ_PERMS) })
         root.addView(button("Request call screening role") { requestScreeningRole() })
+        root.addView(button("Request assistant role (S2b)") {
+            val i = S2bAssistant.requestIntent(this)
+            if (i == null) Toast.makeText(this, "Assistant role unavailable or already held", Toast.LENGTH_LONG).show()
+            else startActivityForResult(i, REQ_ASSIST)
+        })
+        root.addView(button("Open default assistant settings") { S2bAssistant.openSettings(this) })
         root.addView(button("Full-screen intent access (Android 14+)") { openFullScreenIntentSettings() })
         root.addView(button("Battery: set to Unrestricted") { openBatterySettings() })
         S1Settings.addSelector(this, root) { refreshStatus() }
@@ -75,6 +81,10 @@ class MainActivity : Activity() {
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_ASSIST) {
+            SpikeLog.log("S2b", "assistant role result=${if (resultCode == RESULT_OK) "granted" else "denied/cancelled"} held=${S2bAssistant.roleHeld(this)}")
+            refreshStatus()
+        }
         if (requestCode == REQ_ROLE) {
             SpikeLog.log("S0", "call screening role result=${if (resultCode == RESULT_OK) "granted" else "denied/cancelled"}")
             refreshStatus()
@@ -124,7 +134,7 @@ class MainActivity : Activity() {
             getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent()
         } else true
         val battery = getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
-        status.text = "S1 auto behaviour: ${S1Settings.describe(this)}\n$perms\n${flag(role)}call screening role\n" +
+        status.text = "S1 auto behaviour: ${S1Settings.describe(this)}\n$perms\n${flag(role)}call screening role\n${flag(S2bAssistant.roleHeld(this))}assistant role (S2b)\n" +
             "${flag(fsi)}full-screen intent allowed\n${flag(battery)}battery unrestricted"
     }
 
@@ -145,5 +155,6 @@ class MainActivity : Activity() {
     companion object {
         private const val REQ_PERMS = 1
         private const val REQ_ROLE = 2
+        private const val REQ_ASSIST = 4
     }
 }

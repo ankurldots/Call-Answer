@@ -2,10 +2,12 @@ package com.callanswer.app.audio
 
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTimestamp
 import android.media.AudioTrack
 import android.os.SystemClock
 import android.util.Log
+import com.callanswer.app.CallLog
 import com.callanswer.core.echo.AgentWindow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +35,8 @@ class AgentAudioPlayerImpl(
         AudioAttributes.USAGE_ASSISTANT,
         AudioAttributes.USAGE_MEDIA,
     ),
+    /** When set, USAGE_VOICE_COMMUNICATION is kept only if the audio mode is MODE_IN_CALL after the track exists. */
+    private val audioManager: AudioManager? = null,
 ) : AgentAudioPlayer {
     private val _windows = MutableSharedFlow<AgentWindow>(extraBufferCapacity = 64)
     val windows: SharedFlow<AgentWindow> = _windows
@@ -71,6 +75,7 @@ class AgentAudioPlayerImpl(
             val written = t.write(pcm, from, total)
             if (written != total) throw IllegalStateException("AudioTrack write returned $written of $total")
             t.play()
+            logMode("after play()")
             val deadline = startWall + total * 1000L / rate + FINISH_SLACK_MS
             while (!stopped && t.playbackHeadPosition < total) {
                 if (SystemClock.elapsedRealtime() > deadline) {
@@ -118,6 +123,7 @@ class AgentAudioPlayerImpl(
             .build()
         val minBuf = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
         for (usage in usages) {
+            logMode("before AudioTrack usage=$usage")
             val t = runCatching {
                 AudioTrack.Builder()
                     .setAudioAttributes(
@@ -133,14 +139,31 @@ class AgentAudioPlayerImpl(
                     .build()
             }.onFailure { Log.w("CallAnswer", "AudioTrack build failed usage=$usage rate=$rate", it) }.getOrNull()
             // MODE_STREAM tracks report STATE_INITIALIZED right after construction.
-            if (t != null && t.state == AudioTrack.STATE_INITIALIZED) {
-                Log.i("CallAnswer", "AudioTrack created usage=$usage rate=$rate")
+            if (t != null) logMode("after AudioTrack created usage=$usage")
+            val modeOk = usage != AudioAttributes.USAGE_VOICE_COMMUNICATION || audioManager == null ||
+                audioManager.mode == AudioManager.MODE_IN_CALL
+            if (t != null && t.state == AudioTrack.STATE_INITIALIZED && modeOk) {
+                CallLog.i("AudioTrack created usage=$usage rate=$rate")
                 return t
             }
+            if (t != null && !modeOk) CallLog.w("usage=$usage changed audio mode to ${modeName()}; rejected, trying next usage")
             if (t != null) Log.w("CallAnswer", "AudioTrack state=${t.state} usage=$usage rate=$rate")
             t?.release()
         }
         return null
+    }
+
+    private fun modeName(): String = when (val m = audioManager?.mode) {
+        null -> "n/a"
+        AudioManager.MODE_NORMAL -> "NORMAL"
+        AudioManager.MODE_RINGTONE -> "RINGTONE"
+        AudioManager.MODE_IN_CALL -> "IN_CALL"
+        AudioManager.MODE_IN_COMMUNICATION -> "IN_COMMUNICATION"
+        else -> "mode($m)"
+    }
+
+    private fun logMode(where: String) {
+        if (audioManager != null) CallLog.i("audioMode=${modeName()} $where")
     }
 
     /** Pause plus flush, well inside 500 ms. */

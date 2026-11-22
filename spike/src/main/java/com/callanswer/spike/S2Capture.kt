@@ -76,14 +76,14 @@ object S2Capture {
     }
 
     /** Blocking. Call from a worker thread. [seconds] is the capture length per source. */
-    fun runAll(context: Context, seconds: Int, only: String? = null) {
+    fun runAll(context: Context, seconds: Int, only: String? = null, origin: String = "FGS") {
         if (S2Bridge.running) { SpikeLog.log("S2", "run ignored: already running"); return }
         S2Bridge.running = true
         try {
             val am = context.getSystemService(AudioManager::class.java)
-            SpikeLog.log("S2", "run start secondsPerSource=$seconds source=${only ?: "ALL"} audioMode=${modeName(am.mode)} " +
+            SpikeLog.log("S2", "run start origin=$origin assistantRoleHeld=${S2bAssistant.roleHeld(context)} secondsPerSource=$seconds source=${only ?: "ALL"} audioMode=${modeName(am.mode)} " +
                 "speakerphone=${am.isSpeakerphoneOn}")
-            for ((name, src) in SOURCES.filter { only == null || it.first == only }) captureOne(context, am, name, src, seconds)
+            for ((name, src) in SOURCES.filter { only == null || it.first == only }) captureOne(context, am, name, src, seconds, origin)
             SpikeLog.log("S2", "run done")
         } catch (e: Throwable) {
             SpikeLog.log("S2", "run failed: $e")
@@ -92,8 +92,8 @@ object S2Capture {
         }
     }
 
-    private fun captureOne(ctx: Context, am: AudioManager, name: String, source: Int, seconds: Int) {
-        val tag = "FGS/$name"
+    private fun captureOne(ctx: Context, am: AudioManager, name: String, source: Int, seconds: Int, origin: String) {
+        val tag = "$origin/$name"
         val minBuf = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (minBuf <= 0) { SpikeLog.log("S2", "$tag getMinBufferSize=$minBuf, skipped"); return }
         val rec = try {
@@ -143,7 +143,7 @@ object S2Capture {
             am.unregisterAudioRecordingCallback(callback)
             ht.quitSafely()
         }
-        summarize(ctx, tag, name, pcm, n)
+        summarize(ctx, tag, "$origin-$name", pcm, n)
     }
 
     private fun summarize(ctx: Context, tag: String, name: String, pcm: ShortArray, n: Int) {
@@ -163,6 +163,11 @@ object S2Capture {
             for (i in s * RATE until (s + 1) * RATE) q += pcm[i].toDouble() * pcm[i]
             "%.0f".format(sqrt(q / RATE))
         }
+        val first2 = minOf(n, RATE * 2)
+        var q2 = 0.0
+        for (i in 0 until first2) q2 += pcm[i].toDouble() * pcm[i]
+        val am = ctx.getSystemService(AudioManager::class.java)
+        SpikeLog.log("S2", "$tag rmsFirst2s=%.1f speakerphone=${am.isSpeakerphoneOn} audioMode=${modeName(am.mode)}".format(sqrt(q2 / first2)))
         val file = writeWav(ctx, name, pcm, n)
         SpikeLog.log("S2", "$tag samples=$n rms=%.1f dbfs=%.1f peak=$peak zeroFraction=%.3f perSecondRms=[$perSec] file=${file?.name}"
             .format(rms, dbfs, zeros.toDouble() / n))

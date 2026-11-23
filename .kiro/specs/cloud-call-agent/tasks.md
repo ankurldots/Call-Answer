@@ -18,7 +18,7 @@ The plan is in Kotlin (JVM for the server, Android for the Companion_App) and AW
 
 The product is multi-user (Requirements 25 to 31). Multi-user work is spread over the stages: tenant keys and the `admins` group (0 and 3), tenant resolution, the versioned settings store, and the isolating data access layer (9), the Companion_API routes for settings, devices, and admin (10), and onboarding and settings sync in the app (12). New sub-tasks have the next free number in their group, so no existing number changes.
 
-Each of the 28 correctness properties is a property-based test (Kotest, at least 100 iterations, 500 for the policy, pacer, and PII guard), tagged `// Feature: cloud-call-agent, Property N: <title>`, and is placed right after the code it covers.
+Each of the 31 correctness properties is a property-based test (Kotest, at least 100 iterations, 500 for the policy, pacer, and PII guard), tagged `// Feature: cloud-call-agent, Property N: <title>`, and is placed right after the code it covers.
 
 Decisions used by the plan (see "Approved decisions, domain, and defaults" in design.md):
 - Domain `leadingdots.com`: `agent.leadingdots.com` for the Exotel stream and webhooks, `api.leadingdots.com` for the Companion_API, on the same ALB with host-based listener rules. One ACM certificate in ap-northeast-1 with DNS validation.
@@ -112,7 +112,8 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Build the Voicebot, then Connect (dynamic URL), then loop-back flow and test a User_Mobile answer, busy, no answer within the 15-second dial timeout, and the `resume=1` return to the Voicebot; test that no forwarding loop occurs
     - If the loop does not work, test alternative B (Legs and Bridge APIs)
     - Record go or no-go: the Caller hears the User_Mobile within 10 seconds of the tap and a failed dial returns to the Agent within 5 seconds
-    - _Requirements: 11.4, 11.5, 11.7, 11.10_
+    - Also test the ring-through loop: repeated Connect legs of 15 seconds on one call from a dynamic URL, the Caller hearing ringback during a leg and the Play applet between legs, the `DialCallStatus` values for answered and not answered, Passthru branching on a third outcome, and Airtel not forwarding a 15-second leg back
+    - _Requirements: 11.4, 11.5, 11.7, 11.10, 32.7, 32.8, 32.9_
 
   - [~] 1.8 Run spike C-7: forwarding hint and `To` behavior with two numbers
     - Forward two test phones (the User_Mobile of the owner and of a test User) to two different ExoPhones with `**61*`, `**67*`, and `**62*`
@@ -370,6 +371,31 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Greeting and notice order with the Disclosure_Setting on and off, `end_call` after the last `mark`, silence flows, a failed bridge returning to the Agent, and the fallback causes, all with fake ports
     - _Requirements: 6.1, 6.2, 6.3, 11.7, 15.9_
 
+  - [ ] 8.11 Implement `RingThroughPolicy`, `RedialSchedule`, and the ring-through settings in `:core`
+    - Add `RingThroughPolicy.isRepeat(record, callerE164, now, windowMinutes)` (false for hidden numbers and for SOLICITATION, true for UNKNOWN, window end inclusive) and the `RecentCall` model; add `RedialSchedule.next(state, now)` with the 17-second cadence, the 15-second leg timeout limited by the cap, the Ringback_Tone wait after an early end, and the final message after the cap; add the sealed `RouteDecision` (`Agent`, `Fallback(cause)`, `RingThrough`)
+    - Add the `Settings` fields `ringThroughEnabled` (default true), `ringThroughWindowMinutes` (1 to 60, default 15), and `ringThroughMaxSeconds` (30 to 600, default 180) with `SettingsValidator` rules and the `CallLogEntry` additions (`RING_THROUGH_ANSWERED`, `RING_THROUGH_UNANSWERED`, `dialLegs`), all with defaults so old documents still parse
+    - _Requirements: 32.2, 32.3, 32.4, 32.8, 32.9, 32.11, 32.13, 32.17_
+  - [ ]* 8.12 Write property test for the ring-through decision
+    - **Property 29: Ring-through decision**
+    - Generate numbers in many textual forms and hidden values, calls of several Users with random end times and the four intents, windows from 1 to 60 minutes, and instants on the window boundary
+    - **Validates: Requirements 32.1, 32.2, 32.3, 32.4, 32.5, 32.16, 33.6, 33.10**
+  - [ ]* 8.13 Write property test for the redial schedule
+    - **Property 30: Redial schedule**
+    - Generate caps from 30 to 600 seconds, leg outcomes (answered, busy, unreachable, no answer, Caller hangup), and early-end durations; assert no timeout of 20 seconds or more, the cap bound, no leg after an answer or hangup, and one final message
+    - **Validates: Requirements 32.8, 32.9, 32.10, 32.11, 32.14**
+  - [ ] 8.14 Extend `RouteDecider` with the RING_THROUGH decision
+    - Take the `RecentCall?` lookup result as input and evaluate in the order of the design: loop rejection, User gates (active, consent, Agent on, `ringThroughEnabled`), `isRepeat`, then the existing Agent gates; record the cause for each Fallback; keep the Agent and Fallback results of task 8.3 unchanged
+    - Treat a failed lookup as `null`; update the example tests of task 8.3 and note the precedence in the doc comment of Property 20
+    - _Requirements: 32.1, 32.4, 32.5, 32.15, 32.16, 1.5_
+  - [ ] 8.15 Implement the ring-through integration with Exotel
+    - Gated by spike C-1 (task 1.5) and spike C-3 (task 1.7), like task 8.9. Wire the `RecentCallStore` lookup into `/exotel/route` (task 8.7 wiring) and answer the ring-through outcome (or the Fallback branch with `/exotel/next?mode=fallback` returning the ring-through destination if C-1 shows that Passthru cannot branch)
+    - Add `/exotel/next?mode=ringthrough` with `RingThroughState` per `CallSid` (in memory plus the `OPEN#<callId>` marker): answer with the User_Mobile of the owning User and the 15-second timeout, the Ringback_Tone between legs, the final Hindi and English message in the Voice_Setting gender after the cap, no number after an answered leg, and the final message after a restart with no state; never start a Sonic_Session, a recording, the Voicemail applet, or the Fallback_Route
+    - Write the Call_Log entry with `RING_THROUGH_ANSWERED` or `RING_THROUGH_UNANSWERED`, `dialLegs`, and Exotel-only cost within 5 seconds of the end; stop dialing when the Caller hangs up; add the Ringback_Tone and final message audio to `:agent` resources
+    - Use the Legs and Bridge APIs instead if spike C-3 chose alternative B
+    - _Requirements: 32.1, 32.7, 32.8, 32.9, 32.10, 32.11, 32.12, 32.13, 32.14, 32.15_
+  - [ ]* 8.16 Write unit tests for the ring-through flow
+    - Fake Exotel and store ports: answered on the first and on a later Dial_Leg, busy and unreachable legs followed by the Ringback_Tone, the cap with the final message and no Agent handoff, the Caller hanging up, a missing state after a restart, a failed lookup falling to the Agent, a hidden number, a SOLICITATION earlier call, and a call from another User
+    - _Requirements: 32.1, 32.4, 32.5, 32.9, 32.10, 32.11, 32.12, 32.13, 32.14, 32.15_
 - [x] 9. Implement persistence, recordings, traces, and cost
   - [x] 9.1 Implement the data access layer for DynamoDB
     - Define an `ItemStore` port (get, put with condition, update, delete, query by key condition, transact) with a DynamoDB implementation and an in-memory fake that has the same conditional-write and key-condition semantics
@@ -449,6 +475,13 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `AdminCli` main class in `:agent` and `scripts/admin/callagent-admin` that run assign, unassign, list, and deactivate through `NumberAssignmentService` with `--profile ldots --region ap-northeast-1`; add a `bootstrap-user <sub>` command that creates the profile of a User before first sign-in
     - _Requirements: 26.2, 26.4, 26.5, 26.6_
 
+  - [ ] 9.18 Implement `RecentCallStore`
+    - Add `lastNonSolicitation` (consistent `GetItem` of `RECENT#<e164>` with the window check in code) and `recordEnded` (conditional `UpdateItem` `attribute_not_exists(endMs) OR endMs < :new`, ignoring SOLICITATION and hidden numbers, `ttl` of end time plus 2 hours) behind `UserScopedRepository`, plus a list by User for `GET /recent-callers`; add the key to `Keys` and to the isolation tests
+    - _Requirements: 32.2, 32.3, 32.4, 32.5, 32.6, 33.9_
+  - [ ]* 9.19 Write property test for the recent-call record
+    - **Property 31: Recent-call record keeps the latest non-solicitation call**
+    - Use a fake or local DynamoDB; generate call sequences for several Users with write-order permutations, number forms, and hidden numbers
+    - **Validates: Requirements 32.4, 32.5, 32.6**
 - [ ] 10. Implement the Companion_API and push notifications
   - [x] 10.1 Implement `JwtVerifier`, `RateLimiter`, and the route scaffold
     - Verify the Cognito token against the JWKS of the existing ap-south-1 pool (cache 1 hour; check `iss`, audience or client id, `exp`, and `token_use`), return the `sub` and the `cognito:groups` claim, 401 for an invalid token, and 429 above 60 requests per minute per `sub`
@@ -509,6 +542,15 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - [ ]* 10.14 Write unit tests for the `map-sms-result` route and the push-and-await
     - SENT, FAILED, NO_PERMISSION, no acknowledgment after 20 seconds (`SAY_VERBALLY`), hidden number (nothing sent), a foreign call identifier (404), and a duplicate result
     - _Requirements: 10.7, 10.8, 10.16_
+  - [ ] 10.15 Add the `GET /recent-callers` route
+    - Return the User's Recent_Call_Records for the last `minutes` (1 to 60, default 60) with normalized number, `endMs`, and intent; a foreign User never appears; 400 for an invalid `minutes`
+    - _Requirements: 33.9_
+  - [ ] 10.16 Record recent calls and push `recent_caller` at call end
+    - In the finalizer of an Agent-handled call, call `RecentCallStore.recordEnded` after the Call_Log write in a separate try block (3 retries at 1-second intervals, then a Call_Trace entry), and send the `recent_caller` FCM data message (number, `endMs`, intent) to the User's devices within 5 seconds; add the message type to `AlertService`
+    - _Requirements: 32.6, 33.8_
+  - [ ]* 10.17 Write unit tests for the recent-call route and push
+    - The route with a window filter and a foreign User, the finalizer writing no record for SOLICITATION and hidden numbers, the failure paths not blocking the Call_Log, and the push payload
+    - _Requirements: 32.4, 32.6, 33.8, 33.9_
 - [~] 11. Checkpoint - Server complete
   - Run `./gradlew :core:test :agent:test` and confirm that the server code and all property tests pass locally
   - Ensure all tests pass, ask the user if questions arise.
@@ -598,6 +640,31 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Fake `SmsManager` and `SubscriptionManager`: SENT and FAILED from the sent PendingIntent, NO_PERMISSION without `SEND_SMS`, multipart for a long text, the selected SIM and the default SIM, a repeated `callId` sends once, and the result report is queued when offline
     - Update the release manifest test of task 12.14 expectations: `SEND_SMS` is allowed, `RECORD_AUDIO`, call screening, and accessibility stay forbidden
     - _Requirements: 10.13, 10.14, 10.15_
+  - [ ] 12.19 Add the ring-through fields to the settings screen
+    - Switch for Ring_Through, Repeat_Window (1 to 60 minutes, default 15), and Ring_Through_Cap (30 to 600 seconds, default 180), validated with `SettingsValidator`, saved with `PUT /settings` and `expectedVersion`; add the strings to `strings_settings.xml`; add the call screening role row with its explanation (the role only reads the incoming number) and the request through `RoleManager`
+    - _Requirements: 32.17, 33.12_
+  - [ ] 12.20 Implement the Screening_Observer, the recent-call cache, and the matcher
+    - `RepeatCallerScreeningService` (`CallScreeningService`) that always calls `respondToCall` with the default `CallResponse` (no reject, silence, skip of the call log, or skip of the notification) and hands the number to `RepeatCallerAlerter`; declare it in the manifest with `BIND_SCREENING_SERVICE`
+    - `RecentCallCache` as a JSON `DataStore` (no Room migration) with a purge after 60 minutes; `RepeatCallerMatcher` that normalizes with `PhoneNumbers.normalize` and applies `RingThroughPolicy.isRepeat` with the cached window; no accessibility, no `RECORD_AUDIO`, no `READ_CALL_LOG`, no auto-answer
+    - _Requirements: 33.1, 33.2, 33.3, 33.6, 33.10, 33.11_
+  - [ ] 12.21 Implement the Ringing_Alert
+    - `REPEAT_CALLER_ALERT` channel (high importance), heads-up notification with a full-screen intent when allowed, text "Delivery caller from 5 min ago - pick up" built from the intent and the minutes since the earlier call, shown within 1 second, removed after 25 seconds or when the call ends
+    - _Requirements: 33.3, 33.4, 33.5, 33.7_
+  - [ ] 12.22 Sync the recent-call cache from the server
+    - Fetch `GET /recent-callers?minutes=60` at app start and when the call log opens, through the existing API client with the outbox rules unchanged, and replace the cache entries from the response
+    - _Requirements: 33.9_
+  - [ ] 12.23 Update the release manifest guard for the Screening_Observer
+    - Change the test of task 12.14 to allow exactly one service with `BIND_SCREENING_SERVICE`, `com.callanswer.app...RepeatCallerScreeningService`, and to fail for any other screening service, `RECORD_AUDIO`, `READ_CALL_LOG`, and every accessibility service; document in the test and in `README.md` that the role is held only to read the incoming number for the Ringing_Alert; amend the comment of task 12.18 expectations accordingly
+    - _Requirements: 24.4, 33.13_
+  - [ ]* 12.24 Write unit tests for the Screening_Observer and the matcher
+    - A fake `CallDetails`: the default `CallResponse` for every number, no alert for hidden, SOLICITATION, expired, and unknown numbers, matching across `+91`, `0`, and spaced forms, and the 60-minute purge
+    - _Requirements: 33.1, 33.3, 33.6, 33.10, 33.11_
+  - [ ]* 12.25 Write Compose and notification tests for the Ringing_Alert
+    - Heads-up and full-screen variants, the text for each intent, and the removal after 25 seconds and at call end
+    - _Requirements: 33.3, 33.4, 33.5, 33.7_
+  - [ ] 12.26 Handle the `recent_caller` push message
+    - Extend the Firebase Messaging service of task 12.7 to store the record in `RecentCallCache` without showing a notification
+    - _Requirements: 33.8_
 - [~] 13. Checkpoint - App complete
   - Run `./gradlew :core:test :agent:test :app:testReleaseUnitTest` and `scripts/check-16kb.sh`
   - Ensure all tests pass, ask the user if questions arise.
@@ -660,6 +727,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
 - Multi-user tasks added in this revision: 0.6, 1.8, 3.7, 9.12 to 9.17, 10.11, 10.12, 12.15, 12.16, and 14.7, plus changes to 0.1, 1.5, 3.2, 3.4, 4.8, 4.10, 6.1, 8.3, 8.7, 9.1, 9.3, 9.4, 9.6, 10.1 to 10.3, 10.8, 12.3, 12.5, 12.9, 14.3, and 14.4. Tasks 0.5 and 1.1 were already complete and are unchanged.
 - Revision for the User decision "SMS from the device only": task 1.2 (C-6) is obsolete and keeps its ID; tasks 6.8 and 10.8 to 10.10 are rewritten; new tasks are 10.13, 10.14, 12.17, and 12.18. Task 12.2 stays complete (the old on-device `SEND_SMS` entry was removed); task 12.17 declares `SEND_SMS` for the new sender.
 - The on-device audio path is archived in `:archive-ondevice` and not shipped.
+- Revision for the User decision "repeat caller ring-through" (Requirements 32 and 33): new tasks are 8.11 to 8.16, 9.18, 9.19, 10.15 to 10.17, and 12.19 to 12.26, plus an addition to spike 1.7. Property tests 29 to 31 are tasks 8.12, 8.13, and 9.19. Task 12.14 stays complete; task 12.23 relaxes its guard to allow exactly the Screening_Observer. The Phase A tasks are 8.11 to 8.14, 9.18, 9.19, 10.15, 12.19 to 12.25.
 
 ## Task Dependency Graph
 
@@ -676,23 +744,24 @@ Depends on (gated tasks):
 - 3.3 uses manual Cloudflare DNS records per `docs/cloud/dns.md`.
 - 3.3 and 3.4 write the same template, so they are in different waves.
 - 12.14 does not depend on 12.7 and stays in Phase A.
+- Ring-through: 8.15 depends on 1.5 (C-1), 1.7 (C-3), 8.7, 8.9, 8.14, and 9.18, and gates 8.16. 10.16 depends on 10.8 (FCM) and 9.18; 12.26 depends on 12.7 and 10.16's message type. 8.11 to 8.14, 9.18, 9.19, 10.15, and 12.19 to 12.25 have no spike dependency and run in Phase A. 12.22 depends on 10.15 and 12.20; 12.19 depends on 12.9 and 8.11.
 
 ```json
 {
   "waves": [
-    { "id": 0, "tasks": ["3.3", "3.5", "4.1", "4.3", "4.7", "4.8", "5.1", "5.3", "6.1", "6.12", "8.1", "8.3", "9.1", "9.8", "10.1", "12.2", "12.17"] },
-    { "id": 1, "tasks": ["3.4", "4.2", "4.4", "4.5", "4.9", "5.2", "5.4", "5.5", "6.2", "6.5", "6.10", "6.13", "8.2", "8.4", "8.5", "9.2", "9.3", "9.4", "9.9", "9.12", "9.14", "12.3", "12.18"] },
-    { "id": 2, "tasks": ["3.6", "4.6", "5.6", "6.3", "6.4", "6.6", "6.7", "6.11", "6.14", "8.6", "9.5", "9.6", "9.10", "9.13", "9.15", "9.17", "10.2", "10.3", "10.11", "12.4", "12.5", "12.8", "12.9", "12.10", "12.11"] },
-    { "id": 3, "tasks": ["5.7", "6.15", "9.7", "9.11", "9.16", "12.6", "12.12", "12.13", "12.14", "12.15", "12.16"] },
+    { "id": 0, "tasks": ["3.3", "3.5", "4.1", "4.3", "4.7", "4.8", "5.1", "5.3", "6.1", "6.12", "8.1", "8.3", "9.1", "9.8", "10.1", "12.2", "12.17", "8.11"] },
+    { "id": 1, "tasks": ["3.4", "4.2", "4.4", "4.5", "4.9", "5.2", "5.4", "5.5", "6.2", "6.5", "6.10", "6.13", "8.2", "8.4", "8.5", "9.2", "9.3", "9.4", "9.9", "9.12", "9.14", "12.3", "12.18", "8.12", "8.13", "8.14", "9.18", "12.20", "12.23"] },
+    { "id": 2, "tasks": ["3.6", "4.6", "5.6", "6.3", "6.4", "6.6", "6.7", "6.11", "6.14", "8.6", "9.5", "9.6", "9.10", "9.13", "9.15", "9.17", "10.2", "10.3", "10.11", "12.4", "12.5", "12.8", "12.9", "12.10", "12.11", "9.19", "10.15", "12.21", "12.24"] },
+    { "id": 3, "tasks": ["5.7", "6.15", "9.7", "9.11", "9.16", "12.6", "12.12", "12.13", "12.14", "12.15", "12.16", "12.19", "12.22", "12.25"] },
     { "id": 4, "tasks": ["0.1", "0.2", "0.3", "1.3"] },
     { "id": 5, "tasks": ["1.5", "10.8", "12.7"] },
-    { "id": 6, "tasks": ["1.6", "1.7", "1.8", "4.10", "4.11", "6.8", "10.10"] },
-    { "id": 7, "tasks": ["4.12", "5.8", "6.9", "10.6"] },
+    { "id": 6, "tasks": ["1.6", "1.7", "1.8", "4.10", "4.11", "6.8", "10.10", "10.16", "12.26"] },
+    { "id": 7, "tasks": ["4.12", "5.8", "6.9", "10.6", "10.17"] },
     { "id": 8, "tasks": ["8.7", "10.7", "10.13"] },
     { "id": 9, "tasks": ["8.8", "10.4", "10.9", "10.14"] },
     { "id": 10, "tasks": ["8.9", "10.5"] },
-    { "id": 11, "tasks": ["8.10", "10.12"] },
-    { "id": 12, "tasks": ["14.1", "14.4", "14.8"] },
+    { "id": 11, "tasks": ["8.10", "10.12", "8.15"] },
+    { "id": 12, "tasks": ["14.1", "14.4", "14.8", "8.16"] },
     { "id": 13, "tasks": ["14.2"] },
     { "id": 14, "tasks": ["14.3"] },
     { "id": 15, "tasks": ["14.7"] },

@@ -106,6 +106,15 @@ The product serves several Users, each with an own phone number, settings, call 
 - **Fallback_Message**: A pre-recorded audio message, in English and Hindi, in a female and a male voice, stored on the Agent_Server and played without Nova_Sonic.
 - **Number_Flow**: The Exotel flow (App) that is linked to exactly one assigned Virtual_Number. Its fallback branch is a Connect applet with the User_Mobile of the User who owns the Virtual_Number as a static number.
 - **Fallback_Route**: The Exotel flow behavior that applies when the Voice_Stream cannot be established or drops: take a voicemail message, or forward the call to the User_Mobile, as selected by the User.
+- **Repeat_Window**: The period, in minutes, before a call arrives during which an earlier call from the same Caller to the same User makes the Caller a Repeat_Caller. The default is 15 minutes and the User can change it from 1 to 60 minutes.
+- **Repeat_Caller**: A Caller whose normalized number is not hidden and equals the normalized number of an earlier call to the same User that ended within the Repeat_Window and whose final Intent_Category was DELIVERY, DOOR_NOT_OPENED, or UNKNOWN (that is, not SOLICITATION).
+- **Ring_Through**: The Route_Decision outcome in which the Agent_Server connects a forwarded call from a Repeat_Caller straight to the User_Mobile, without a Sonic_Session and without Agent audio.
+- **Dial_Leg**: One Exotel Connect attempt to the User_Mobile during a Ring_Through. Each Dial_Leg lasts at most 15 seconds.
+- **Ring_Through_Cap**: The maximum total time, from the start of a Ring_Through, during which the Agent_Server keeps dialing the User_Mobile. The default is 180 seconds and the User can change it from 30 to 600 seconds.
+- **Ringback_Tone**: A pre-recorded ringing tone that the Agent_Server plays to the Caller between Dial_Legs.
+- **Screening_Observer**: The `CallScreeningService` of the Companion_App that reads the incoming number and allows every call unchanged. It holds the call screening role and has no other function.
+- **Ringing_Alert**: A high-priority heads-up or full-screen notification of the Companion_App, shown while the User's phone rings, that tells the User a Repeat_Caller is calling.
+- **Recent_Call_Record**: The per-User, per-number record of the end time and Intent_Category of the latest non-SOLICITATION call from that number.
 - **Spam_Report**: A complaint about a Caller sent as one SMS to the TRAI_Report_Number.
 - **TRAI_Report_Number**: The SMS complaint number 1909 of the Telecom Regulatory Authority of India. The value is fixed.
 - **Spam_Report_Message**: The text "<Brief_Description>, <Sender_Number>, <DD/MM/YY>", at most 160 characters, built as defined in the earlier spec `ai-call-screening-agent` Requirement 14.
@@ -502,7 +511,7 @@ The product serves several Users, each with an own phone number, settings, call 
 1. THE Agent_Server SHALL reuse the `:core` Kotlin module, running on the JVM, for gate selection, Night_Window evaluation, Delivery_Steps rendering, the PII_Guard, settings validation, and Spam_Report_Message building, wherever the code in `:core` has no Android dependency.
 2. THE Companion_App SHALL keep its existing Amazon Cognito sign-in and SHALL use the Cognito token for the Companion_API.
 3. THE repository SHALL keep the on-device call audio code (accessibility service capture, AudioTrack Agent playback, on-device speech recognition and synthesis, and call screening role answering) in an archive location that is excluded from the Companion_App release build.
-4. THE Companion_App release build SHALL NOT request the call screening role, the accessibility service, or the microphone permission.
+4. THE Companion_App release build SHALL NOT request the accessibility service or the microphone permission, and SHALL request the call screening role only for the Screening_Observer of Requirement 33.
 5. THE repository SHALL keep the earlier spec `.kiro/specs/ai-call-screening-agent/` unchanged.
 6. THE Companion_App SHALL NOT call Amazon Polly for the Agent voice.
 7. WHEN `:core` code that the Agent_Server and the Companion_App share is changed, THE build SHALL run the existing `:core` JVM unit tests and property tests for that code before producing a release.
@@ -617,6 +626,52 @@ The product serves several Users, each with an own phone number, settings, call 
 6. THE Companion_App SHALL keep the Agent off until the User has accepted the Privacy_Consent, the Virtual_Number is assigned, and the User_Mobile is saved.
 7. WHEN the User reaches the settings step, THE Companion_App SHALL explain that the Map_SMS is sent from the User's own phone and SIM at the carrier rates of the User, SHALL request the SEND_SMS runtime permission, and SHALL keep the Agent usable without the Map_SMS when the User declines.
 
+### Requirement 32: Ring through repeat callers to the User
+
+**User Story:** As a User, I want a caller who spoke to my Agent a few minutes ago to ring my phone directly when the caller calls again, so that I can pick up a delivery or visitor call that the carrier would otherwise forward to the Agent again.
+
+Background: the carrier forwards a call to the Virtual_Number after about 20 seconds of ringing and the Agent_Server cannot stop that. After the forward, the User cannot answer the call any more.
+
+#### Acceptance Criteria
+
+1. WHERE the User has turned on Ring_Through in the settings, WHEN a call arrives on the User's Virtual_Number from a Repeat_Caller of that User, THE Agent_Server SHALL select the Ring_Through decision, SHALL NOT start a Sonic_Session, and SHALL NOT send Agent audio to the Caller.
+2. THE Agent_Server SHALL treat a Caller as a Repeat_Caller of a User only if a call from the same normalized number to that User ended at most Repeat_Window minutes before the arrival of the new call.
+3. THE Agent_Server SHALL count an earlier call with the final Intent_Category DELIVERY, DOOR_NOT_OPENED, or UNKNOWN as qualifying, and SHALL NOT count an earlier call with the final Intent_Category SOLICITATION.
+4. IF the Caller number is hidden or unavailable, THEN THE Agent_Server SHALL NOT select Ring_Through, SHALL NOT store a Recent_Call_Record, and SHALL handle the call under Requirement 1.
+5. THE Agent_Server SHALL consider only the Recent_Call_Records of the resolved User, so that a call from the same number to another User does not qualify.
+6. WHEN a call to a User ends with a final Intent_Category other than SOLICITATION and a Caller number that is not hidden, THE Agent_Server SHALL store or refresh the Recent_Call_Record of that User and that normalized number within 5 seconds of the call end.
+7. WHEN the Agent_Server selects Ring_Through, THE Agent_Server SHALL connect the Caller to the User_Mobile of the resolved User through the Exotel Connect applet with a dynamic URL, the same mechanism as the Bridge_Call, within 3 seconds of the call arrival.
+8. THE Agent_Server SHALL limit each Dial_Leg to a dial timeout of 15 seconds, which is shorter than the 20-second carrier ring time, so that the carrier does not forward the Dial_Leg back to the Virtual_Number.
+9. WHILE no Dial_Leg has been answered, the Caller is still connected, and less than the Ring_Through_Cap has elapsed since the start of the Ring_Through, THE Agent_Server SHALL start a new Dial_Leg 17 seconds after the start of the previous Dial_Leg and SHALL play the Ringback_Tone to the Caller between the end of a Dial_Leg and the start of the next one.
+10. WHEN a Dial_Leg is answered, THE Agent_Server SHALL leave the Caller connected to the User_Mobile until the call ends and SHALL start no further Dial_Leg.
+11. WHEN the Ring_Through_Cap is reached without an answered Dial_Leg, THE Agent_Server SHALL play the message "the person is not available, please call later" in Hindi and in English in the voice gender of the Voice_Setting, and SHALL end the call.
+12. THE Agent_Server SHALL NOT hand a Ring_Through call to the Agent, the Voicemail applet, or the Fallback_Route.
+13. WHEN a Ring_Through call ends, THE Agent_Server SHALL save a Call_Log entry within 5 seconds with the outcome RING_THROUGH_ANSWERED if a Dial_Leg was answered and RING_THROUGH_UNANSWERED otherwise (including a Caller who hangs up), with the Caller number, start time, duration, and number of Dial_Legs, and with no transcript, no Agent audio, no Call_Recording, and a Cost_Estimate of the Exotel minutes only.
+14. WHEN the Caller hangs up during a Ring_Through, THE Agent_Server SHALL start no further Dial_Leg.
+15. IF the lookup of the Recent_Call_Record fails, THEN THE Agent_Server SHALL treat the Caller as not a Repeat_Caller, SHALL handle the call under Requirement 1, and SHALL record the failure in the Call_Trace.
+16. IF the Caller number equals the User_Mobile of the resolved User or any assigned Virtual_Number, THEN THE Agent_Server SHALL apply the loop rejection of Requirement 1 criterion 5 before any Ring_Through decision.
+17. THE Companion_App SHALL let the User set Ring_Through on or off (default on), the Repeat_Window from 1 to 60 minutes (default 15), and the Ring_Through_Cap from 30 to 600 seconds (default 180), and THE Agent_Server SHALL validate the three values with the rules of Requirement 20 criteria 3 and 4 and SHALL apply them as Frozen_Settings under Requirement 20 criterion 5.
+
+### Requirement 33: Alert the User while the phone rings for a repeat caller
+
+**User Story:** As a User, I want my phone to show that a caller from a few minutes ago is calling again while the phone is still ringing, so that I pick up before the carrier forwards the call.
+
+#### Acceptance Criteria
+
+1. THE Screening_Observer SHALL allow every incoming call unchanged, and SHALL NOT reject, silence, answer, or hide the call, SHALL NOT skip the call log or the notification, and SHALL NOT change the ringing.
+2. THE Companion_App SHALL use the Screening_Observer only to read the incoming number, and SHALL NOT use an accessibility service, the microphone permission, the READ_CALL_LOG permission, or an auto-answer function for the Ringing_Alert.
+3. WHERE the User has turned on Ring_Through, WHEN the Screening_Observer receives an incoming call whose normalized number matches a locally cached Recent_Call_Record that ended at most Repeat_Window minutes ago, THE Companion_App SHALL show the Ringing_Alert within 1 second.
+4. THE Ringing_Alert SHALL show the Caller number, the minutes since the earlier call, the earlier Intent_Category, and the text of the form "Delivery caller from 5 min ago - pick up".
+5. THE Companion_App SHALL show the Ringing_Alert as a high-priority heads-up notification, and as a full-screen notification where the User has granted the full-screen permission.
+6. THE Companion_App SHALL NOT show a Ringing_Alert for a hidden number, for a number without a cached Recent_Call_Record, or for a Recent_Call_Record with the Intent_Category SOLICITATION.
+7. WHEN the incoming call ends or 25 seconds have passed since the Ringing_Alert was shown, THE Companion_App SHALL remove the Ringing_Alert.
+8. WHEN the Agent_Server saves a Recent_Call_Record, THE Agent_Server SHALL send a `recent_caller` push message to the devices of that User within 5 seconds, and THE Companion_App SHALL store the record in a local cache.
+9. WHEN the Companion_App starts or the User opens the call log, THE Companion_App SHALL refresh the local cache through the Companion_API with the Recent_Call_Records of the last 60 minutes.
+10. THE Companion_App SHALL match numbers locally after normalizing both numbers with `PhoneNumbers.normalize`, so that every textual form of the same number matches.
+11. THE Companion_App SHALL delete cached Recent_Call_Records that are older than 60 minutes.
+12. WHEN the User has not granted the call screening role, THE Companion_App SHALL explain in the settings that the role is used only to read the incoming number, and THE Companion_App SHALL keep working without the Ringing_Alert if the User declines.
+13. THE Companion_App release build SHALL contain exactly one call screening service, the Screening_Observer, and the release manifest test SHALL fail when the manifest contains the microphone permission, an accessibility service, or any other call screening service.
+
 ## Open Questions
 
 1. **Exotel Stream_Format.** Does the Voicebot applet stream 8 kHz or 16 kHz, linear PCM or mu-law, and what frame size does Exotel require? Requirement 3 reads the format from the start event, but the resampling cost and the audio quality for Hindi recognition depend on the answer (8 kHz telephone audio may reduce Sonic accuracy).
@@ -641,3 +696,7 @@ The product serves several Users, each with an own phone number, settings, call 
 20. **Shared SMS sender.** RESOLVED (User): not applicable. Each User sends the Map_SMS from the own phone, so no shared sender or DLT template exists.
 21. **Takeover alert without SMS fallback.** RESOLVED (default, User to confirm): the SMS to the User_Mobile is removed. The Takeover_Alert relies on high-priority FCM and the full-screen notification. If no device acknowledges within 10 seconds, the Agent takes the nobody-available path and offers to take a message. Future option: an Exotel outbound call to the User_Mobile as an alert.
 22. **Map_SMS on the device.** OPEN: (a) Will carrier spam filtering block links in SMS from the User's own SIM to unknown numbers? A device test is needed. (b) Which SIM does the User want to use on a dual-SIM phone (default SMS subscription unless chosen)? (c) What is the carrier SMS cost per message on the User's plan?
+23. **Ring_Through precedence.** OPEN (default used): Ring_Through needs the Agent on, Privacy_Consent accepted, and the User active, and it ignores the monthly cost limit and the call caps, because no Sonic_Session starts. Confirm.
+24. **Do Ring_Through calls renew the Repeat_Window?** OPEN (default used): no. Only calls handled by the Agent store a Recent_Call_Record, so a Caller who is rung through and not answered stays a Repeat_Caller only until the original window ends.
+25. **One setting for server and app.** OPEN (default used): the Ringing_Alert follows the same Ring_Through setting and Repeat_Window as the server. Confirm or add a separate switch.
+26. **Ring_Through mechanics.** OPEN: Passthru branching on a third outcome, the Ringback_Tone between Connect applets, and the `DialCallStatus` fields are confirmed by spikes C-1 and C-3 (task 1.7 adds the Ring_Through checks).

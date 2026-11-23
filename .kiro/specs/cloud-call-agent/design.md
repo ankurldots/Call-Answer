@@ -223,6 +223,43 @@ Output handling:
 
 **Server-to-model instructions.** The server needs to tell Sonic to say something (please wait, silence prompt, goodbye, corrective instruction, Quick_Reply, "nobody is available"). It sends cross-modal text with role `USER` that starts with a fixed marker and the exact sentence. The system prompt tells Sonic that such messages come from the system and must be obeyed and never read aloud as instructions.
 
+### Repeat caller ring-through
+Background: Airtel forwards an unanswered call to the Virtual_Number after about 20 seconds of ringing, and the server cannot stop that. After the forward the User cannot pick up. The product answers this in two ways that share one rule: the server rings the User through when the Caller is a Repeat_Caller (Requirement 32), and the app warns the User while the phone still rings (Requirement 33).
+
+**Rule (`:core`, pure).** `RingThroughPolicy.isRepeat(record, callerE164, now, windowMinutes)` is true when the Caller number is not hidden, the record exists, `now - record.endMs` is between 0 and `windowMinutes` minutes, and `record.intent != SOLICITATION`. The same function runs in the server and in the app, so the two sides cannot disagree. UNKNOWN counts as a repeat.
+
+**Decision.** `RouteDecider` returns a sealed `RouteDecision`: `Agent`, `Fallback(cause)`, or `RingThrough`. It receives the result of a `RecentCall?` lookup by normalized Caller number and User, loaded before the decision, and evaluates in this order: loop rejection (`From` is the User_Mobile or an assigned Virtual_Number, Fallback), then the User gates (active, consent accepted, Agent on, `ringThroughEnabled`), then `isRepeat` (RingThrough), then the existing Agent gates (cost limit, 3 calls per User, Global_Call_Cap). RingThrough therefore ignores the cost limit and the caps, because no Sonic_Session starts (open question 23 of the requirements). A failed lookup is passed as `null` and the failure goes to the Call_Trace (Requirement 32 criterion 15).
+
+**Recent-call store.** `RecentCallStore` (in `store`, behind `UserScopedRepository`) has `lastNonSolicitation(callerE164): RecentCall?` and `recordEnded(callerE164, endMs, intent)`. One item per User and number: `pk = USER#<sub>`, `sk = RECENT#<e164>`, attributes `endMs`, `intent`, `callId`, `ttl` (end time plus 2 hours). `recordEnded` ignores SOLICITATION and hidden numbers, and uses `UpdateItem` with the condition `attribute_not_exists(endMs) OR endMs < :new`, so the item always holds the latest non-SOLICITATION call whatever the write order. Reads use `GetItem` with `ConsistentRead`. DynamoDB TTL deletes expired items some hours late, so the window is checked in code on `endMs` and TTL only bounds storage. The window maximum of 60 minutes is below the TTL.
+
+**Exotel flow branch.**
+```mermaid
+stateDiagram-v2
+    [*] --> Route: forwarded call on Virtual_Number
+    Route --> RT_Next: RING_THROUGH decision
+    Route --> Stream: Agent decision
+    Route --> Fallback: Fallback decision
+    RT_Next: Connect applet /exotel/next?mode=ringthrough (dial timeout 15 s)
+    RT_Next --> Hangup: Dial_Leg answered and call ended
+    RT_Next --> Ringback: no answer, busy, or unreachable
+    Ringback: Play applet, Ringback_Tone until the next Dial_Leg time
+    Ringback --> RT_Next: elapsed below Ring_Through_Cap
+    Ringback --> Final: Ring_Through_Cap reached
+    Final: Play applet, not-available message (Hindi, then English)
+    Final --> Hangup
+    Hangup --> [*]
+```
+- `/exotel/route` answers the ring-through outcome so that the flow goes to the Connect applet and not to the Voicebot. Whether Passthru can branch on a third outcome is a C-1 item. If it cannot, `/exotel/route` answers as for the Fallback branch and `/exotel/next?mode=fallback` returns the ring-through destination, because the server already resolves the User there.
+- `/exotel/next?mode=ringthrough` reads the `RingThroughState` of the `CallSid` (start time, number of Dial_Legs, last leg start) and returns the User_Mobile of the owning User with a 15-second timeout, never a value from a request parameter. The state is kept in memory with an `OPEN#<callId>` marker. If the state is missing after a restart, the server plays the final message and ends the call.
+- `/exotel/next` is called again after each Dial_Leg. If the Connect applet reports a completed (answered) leg, the server returns no number and the call ends. Otherwise the server runs `RedialSchedule.next(state, now)`, which returns one of: dial now, play the Ringback_Tone until a given time, or play the final message.
+- **Redial schedule (`:core`, pure).** Cadence 17 seconds: Dial_Leg `k` (from 0) starts at `17 * k` seconds after the start, with the timeout `min(15, cap - 17 * k)` seconds. A leg is started only when `17 * k < cap` and its timeout is at least 5 seconds; otherwise the final message follows. A leg that ends early (busy or unreachable) is followed by the Ringback_Tone until the next cadence time, so a busy phone is not dialed in a tight loop. No Dial_Leg timeout reaches 20 seconds, and the last Dial_Leg ends at or before the cap. With the default cap of 180 seconds the schedule has 11 legs. The 2-second gap between legs is the Ringback_Tone and the Connect hop; the real gap is checked in spike C-3.
+- **Loop safety.** Every Dial_Leg of at most 15 seconds ends before the 20-second carrier ring time, so Airtel does not forward the leg back. A busy or unreachable User_Mobile forwards the leg immediately back to the Virtual_Number as a new call whose `From` is the Virtual_Number or the User_Mobile, which `/exotel/route` already rejects (Requirement 32 criterion 16).
+- **Call_Log.** The finalizer writes an entry with `outcome = RING_THROUGH_ANSWERED` or `RING_THROUGH_UNANSWERED`, `dialLegs`, the Caller number, start time, duration, and no intent. It has no transcript, no recording, and no `sonicSessions`, and the Cost_Estimate holds Exotel minutes only. The finalizer runs when the server returns the terminal action (call ended after an answered leg, final message played, or hangup callback). It does not store a Recent_Call_Record.
+- **Recent-call writes.** The finalizer of an Agent-handled call calls `recordEnded` after the Call_Log write (separate try, so a failure does not block the log) and then sends the `recent_caller` push.
+- **Spike C-3 additions.** The spike checks: a Connect dynamic URL that returns a number with a 15-second timeout for repeated legs on one call, the Caller hearing ringback during a leg and the Play applet between legs, the `DialCallStatus` values that tell answered from not answered, and Airtel not forwarding a 15-second leg back.
+
+**App side.** `RepeatCallerScreeningService` (a `CallScreeningService`) implements `onScreenCall` by reading `callDetails.handle`, passing the number to `RepeatCallerAlerter`, and always calling `respondToCall(callDetails, CallResponse.Builder().build())`, a default response with no reject, no silence, no skip of the call log, and no skip of the notification. The role is requested through `RoleManager.ROLE_CALL_SCREENING` from the settings with an explanation. `RecentCallCache` (Room table `recent_caller`, keyed by normalized number) is filled by the `recent_caller` FCM message and by `GET /recent-callers?minutes=60`, and purged after 60 minutes. `RepeatCallerAlerter` normalizes the incoming number with `PhoneNumbers.normalize`, applies `RingThroughPolicy.isRepeat` with the window from the cached settings, and posts a `REPEAT_CALLER_ALERT` notification (high importance, heads-up, full-screen intent when allowed) that is removed after 25 seconds or when the call ends. No call log or microphone permission is used. The role holder can see every incoming number, which is why the service does nothing else and the release manifest test allows exactly this one service.
+
 ## Multi-user design
 
 ### Key finding: the dialed number is the only reliable tenant key
@@ -422,6 +459,7 @@ Base path `/api/v1`, TLS at the ALB, `Authorization: Bearer <Cognito ID token>`.
 | `POST /calls/{id}/takeover`, `/end`, `/quick-reply`, `/alert-ack` | Live call actions and alert acknowledgment. |
 | `POST /calls/{id}/report-status` | Store the spam Report_Status. |
 | `POST /forwarding/test`, `GET /forwarding/test` | Arm and read the 10-minute test call. |
+| `GET /recent-callers?minutes=n` | Recent_Call_Records of the User for the last `n` minutes (1 to 60): normalized number, `endMs`, `intent`. Used by the app cache (Requirement 33 criterion 9). |
 | `GET /usage/month` | Month total of the Cost_Estimate and the limit. |
 | `GET /live` (WebSocket) | Live events: `call_started`, `transcript`, `intent`, `language`, `state`, `takeover_status`, `call_ended`. The token is sent as the first message, not in the URL, so it does not reach access logs. |
 
@@ -477,6 +515,7 @@ The Map_SMS is sent by the Companion_App, never by the server (User decision: SM
 | `USER#<sub>` | `DEVICE#<deviceId>` | FCM token, update time (up to 5 items per User). |
 | `USER#<sub>` | `CALL#<startEpochMs>#<callId>` | `CallLogEntry` JSON, plus `intent`, `outcome`, `startMs`, `settingsVersion`, `recordingKey`, `ttl`. |
 | `USER#<sub>` | `TRACE#<callId>` | Trace events, latency report, `ttl` of 30 days. |
+| `USER#<sub>` | `RECENT#<e164>` | `endMs`, `intent`, `callId`, `ttl` (end time plus 2 hours). Latest non-SOLICITATION call from that number, kept by a monotonic conditional update. |
 | `USER#<sub>` | `COST#<yyyy-MM>` | Month total in paise (atomic `ADD`), `notified80`, `notified100`. |
 | `USER#<sub>` | `FWDTEST` | Armed time, result call identifier. |
 | `USER#<sub>` | `OPEN#<callId>` | Marker for a call in progress, deleted by the finalizer. `gsi1pk = OPENCALLS`, `gsi1sk = <startEpochMs>#<sub>#<callId>`. |
@@ -498,13 +537,16 @@ Access patterns:
 | 9 | Admin list of Users and numbers | `Query gsi1 gsi1pk = USERS`, `Query gsi1 gsi1pk = ASSIGNMENTS`. |
 | 10 | Retention sweeper | `Query gsi1 gsi1pk = USERS` for the User list, then per User `Query pk = USER#<sub>, sk begins_with CALL#` with a key condition on the start time. |
 | 11 | Calls open at server start | `Query gsi1 gsi1pk = OPENCALLS`. |
+| 12 | Last non-SOLICITATION call from this number for this User in the last N minutes | `GetItem USER#<sub> / RECENT#<e164>` (consistent), then the window check on `endMs` in code. |
+| 13 | Record an ended call for the repeat rule | `UpdateItem` with `attribute_not_exists(endMs) OR endMs < :new`. |
+| 14 | Recent callers for the app cache | `Query pk = USER#<sub>, sk begins_with RECENT#`, filter on `endMs` in code (one item per number). |
 
 Design notes. The number lookup uses the base table key and not a GSI, because a conditional write on the base key is the only way to guarantee that a number belongs to at most one User (a GSI key is not unique). `gsi1` serves listings (Users, assignments, open calls); these partitions are small (one item per User or number), so a hot partition is not a concern at the expected scale of tens of Users. The sort key puts calls in time order, so the call list is one `Query`. A call entry is stored as one JSON string and is read back through the same serializer. A transcript larger than 300 KB goes to S3 under `users/<sub>/transcripts/<callId>.json` with a pointer in the item.
 
 #### `:core` model additions (all with defaults)
 
-- `Settings`: `userMobile` (the Take_Over destination, E.164), `voiceGender`, `voiceId` (optional override), `version` (set by the server, not edited by the client), `agentEnabled`, `fallbackRoute` (`VOICEMAIL`, `FORWARD_TO_MOBILE`), `retentionDays` (1 to 365, default 30), `recordingEnabled` (default true), `disclosureEnabled` (default true), `greetingName`, `defaultLanguage`, `maxStallingMinutes` (1 to 60, default 5), `silenceTimeoutSec` (default 8), `quickReplies`, `costRates` (Exotel per minute, Sonic input and output per minute, in paise), `monthlyLimitInr`, `consentVersion`.
-- `CallLogEntry`: `costEstimatePaise`, `latency` (`ttfaMs`, `medianReplyMs`, `maxReplyMs`), `sonicSessions` (start, end, reason), `fallbackCause`, `recordingKey`, `isTestCall`, `voiceId`, `endReason`.
+- `Settings`: `userMobile` (the Take_Over destination, E.164), `voiceGender`, `voiceId` (optional override), `version` (set by the server, not edited by the client), `agentEnabled`, `fallbackRoute` (`VOICEMAIL`, `FORWARD_TO_MOBILE`), `retentionDays` (1 to 365, default 30), `recordingEnabled` (default true), `disclosureEnabled` (default true), `greetingName`, `defaultLanguage`, `maxStallingMinutes` (1 to 60, default 5), `silenceTimeoutSec` (default 8), `quickReplies`, `costRates` (Exotel per minute, Sonic input and output per minute, in paise), `monthlyLimitInr`, `consentVersion`, `ringThroughEnabled` (default true), `ringThroughWindowMinutes` (1 to 60, default 15), `ringThroughMaxSeconds` (30 to 600, default 180).
+- `CallLogEntry`: `outcome` values `RING_THROUGH_ANSWERED` and `RING_THROUGH_UNANSWERED`, `dialLegs`, `costEstimatePaise`, `latency` (`ttfaMs`, `medianReplyMs`, `maxReplyMs`), `sonicSessions` (start, end, reason), `fallbackCause`, `recordingKey`, `isTestCall`, `voiceId`, `endReason`.
 - `cloud.ForwardingCodes`: builds the set, clear, ring-time, and unconditional codes for a validated number. `cloud.CostEstimator`, `cloud.RetentionPolicy`, `cloud.CallPolicy`.
 
 Time handling: the server clock is read through a `Clock` interface so tests can supply instants. `Household_Time` is `ZonedDateTime.now(clock.withZone(Asia/Kolkata))` truncated to the minute and mapped to `LocalTimeHm`.
@@ -522,12 +564,13 @@ A `RetentionSweeper` coroutine runs at start and every 6 hours. For each active 
 | Area | Decision |
 | --- | --- |
 | Kept | Cognito sign-in (`auth/`), Room settings and call log as a local cache (`data/`) with the existing outbox for offline retry (Requirement 20 criterion 6), the spam report flow (`report/`, `core.report`), notification channels, and the Compose UI in `ui/`. |
-| Archived | `a11y/`, `audio/`, `asr/`, `tts/`, `translate/`, `cloudtts/` (Polly), `nlg/`, `telecom/` (CallScreener), `recording/` (folder linking), `service/` (on-device call pipeline, overlay), and `sms/` (on-device Map_SMS). They move to a Gradle module `:archive-ondevice` that is not a dependency of `:app`, so the release build does not include them. The on-device Map_SMS code is archived, and a new `MapSmsSender` is added to `:app`. The `RECORD_AUDIO`, `ANSWER_PHONE_CALLS`, `SYSTEM_ALERT_WINDOW`, microphone foreground-service permissions, the accessibility service, and the call screening service entries are removed from the manifest (Requirement 24 criteria 3 and 4). `SEND_SMS` is declared again for the new `MapSmsSender` (Requirement 10 criteria 13 to 15); `READ_PHONE_STATE` is requested at runtime only for the SIM picker. Packages are archived by moving, after a dependency scan shows what `ui/` still uses (`ui` screens that referenced the on-device pipeline are adapted). |
+| Archived | `a11y/`, `audio/`, `asr/`, `tts/`, `translate/`, `cloudtts/` (Polly), `nlg/`, `telecom/` (CallScreener; the new `RepeatCallerScreeningService` is a separate minimal class), `recording/` (folder linking), `service/` (on-device call pipeline, overlay), and `sms/` (on-device Map_SMS). They move to a Gradle module `:archive-ondevice` that is not a dependency of `:app`, so the release build does not include them. The on-device Map_SMS code is archived, and a new `MapSmsSender` is added to `:app`. The `RECORD_AUDIO`, `ANSWER_PHONE_CALLS`, `SYSTEM_ALERT_WINDOW`, microphone foreground-service permissions, the accessibility service, and the call screening service entries are removed from the manifest (Requirement 24 criteria 3 and 4). `SEND_SMS` is declared again for the new `MapSmsSender` (Requirement 10 criteria 13 to 15); `READ_PHONE_STATE` is requested at runtime only for the SIM picker. Packages are archived by moving, after a dependency scan shows what `ui/` still uses (`ui` screens that referenced the on-device pipeline are adapted). |
 | New: consent | Privacy_Consent screen after first sign-in; the Agent stays off and the forwarding codes stay hidden until accepted (Requirement 17). |
 | New: forwarding setup | Screen built from `ForwardingCodes`, showing `**61*<number>**20#` (no answer with a 20-second ring), `**67*<number>#`, and `**62*<number>#`, each with a button that opens the dialer (`ACTION_DIAL`, with `#` encoded as `%23`) and never dials by itself. A turn-off screen with `##61#`, `##67#`, `##62#`, and `##002#`. The unconditional option `**21*` with a warning. A "Send test call" button with a 10-minute countdown and a result. Text that Airtel may charge for forwarded calls and that Wi-Fi calling can change the behavior (to be firmed up by spike C-4). |
 | New: live call | A high-priority notification for `TAKEOVER_ALERT` with a "Take over" action that calls `POST /calls/{id}/takeover` from a short-lived worker, and a full-screen live call screen (Caller number, intent, language, elapsed time, live transcript from the `/live` WebSocket, "Take over", "End call", Quick_Replies, bridge status). The screen shows an ended call as ended and disables Take over (Requirement 19 criterion 9). |
 | New: call detail | Latency report, trace events, cost, recording playback through the presigned URL with the system media player. |
 | New: settings | Fields of Requirement 20 criterion 1 and the cost rates and limit, saved with `PUT /settings` and `expectedVersion`. The Room cache holds the last server document and the pending edit; sync and merge follow "Settings storage, version, and sync". |
+| New: repeat-caller alert | `RepeatCallerScreeningService` (always allows the call unchanged), `RecentCallCache`, `RepeatCallerAlerter`, the `REPEAT_CALLER_ALERT` channel, the role request in the settings, and the `recent_caller` push handler (Requirement 33). The release manifest test allows exactly this one call screening service and still fails on `RECORD_AUDIO`, accessibility services, and any other screening service. |
 | New: onboarding | Guided steps after sign-in: consent, "waiting for your number" screen that polls `GET /me` every 60 seconds and then shows the assigned number, the User_Mobile entry, the forwarding setup with that number, and the settings. The first upload of the cached local settings uses `expectedVersion` 0. |
 | Push | Firebase Messaging service that handles the data message types above. This adds the Firebase configuration file (`google-services.json`) to the app project. |
 
@@ -652,7 +695,7 @@ For any call durations and rates, the Cost_Estimate is non-negative, is monotoni
 
 ### Property 20: Route decision
 
-For any combination of Agent on or off, Privacy_Consent accepted or not, User active or deactivated, month total versus the User's limit, number of active calls of the User, number of active calls overall, the Global_Call_Cap, and `From` value, the route decision selects the Agent if and only if the Agent is on, consent is accepted, the User is active, the month total is below the limit, fewer than 3 calls of that User are active, fewer than the Global_Call_Cap calls are active overall, and `From` is neither the User_Mobile of the resolved User nor any assigned Virtual_Number; otherwise it selects the Fallback_Route with a recorded cause.
+For any combination of Agent on or off, Privacy_Consent accepted or not, User active or deactivated, month total versus the User's limit, number of active calls of the User, number of active calls overall, the Global_Call_Cap, and `From` value, the route decision selects the Agent if and only if the Agent is on, consent is accepted, the User is active, the month total is below the limit, fewer than 3 calls of that User are active, fewer than the Global_Call_Cap calls are active overall, and `From` is neither the User_Mobile of the resolved User nor any assigned Virtual_Number; otherwise it selects the Fallback_Route with a recorded cause, except that the ring-through decision of Property 29 takes precedence when it applies.
 
 **Validates: Requirements 1.5, 1.7, 17.2, 17.4, 20.7, 22.5, 25.8, 29.1, 29.2, 29.3**
 
@@ -704,6 +747,24 @@ For any set of Users and any set of stored records owned by those Users (call lo
 
 **Validates: Requirements 28.1, 28.2, 28.3, 28.4, 28.5, 28.7, 28.9, 30.2**
 
+### Property 29: Ring-through decision
+
+For any User, Caller number in any textual form (including hidden), set of earlier calls of any Users with their end times and Intent_Categories, current time, and Repeat_Window, `RingThroughPolicy` reports a Repeat_Caller if and only if the number is not hidden and some earlier call of the same User from the same normalized number ended no more than the Repeat_Window before now and had an Intent_Category other than SOLICITATION. For any settings and gates, `RouteDecider` returns RING_THROUGH if and only if the loop rejection does not apply, the User is active, consent is accepted, the Agent is on, Ring_Through is on, and the Caller is a Repeat_Caller.
+
+**Validates: Requirements 32.1, 32.2, 32.3, 32.4, 32.5, 32.16, 33.6, 33.10**
+
+### Property 30: Redial schedule
+
+For any Ring_Through_Cap from 30 to 600 seconds and any sequence of Dial_Leg outcomes (answered, busy, unreachable, no answer, Caller hangup) with any leg durations, `RedialSchedule` yields Dial_Legs whose timeouts are all at most 15 seconds (so below 20 seconds), whose start times are `17 * k` seconds, whose last end time is at most the cap, and which do not overlap; it yields no Dial_Leg after an answered leg or a Caller hangup; and when no leg is answered it ends with exactly one final message after the last Dial_Leg.
+
+**Validates: Requirements 32.8, 32.9, 32.10, 32.11, 32.14**
+
+### Property 31: Recent-call record keeps the latest non-solicitation call
+
+For any sequence of ended calls (any User, number form, end time, Intent_Category, and write order), after applying `recordEnded` for every call, the record of each User and normalized number holds the maximum `endMs` among its non-SOLICITATION calls and holds no record when none exists, and hidden numbers have no record.
+
+**Validates: Requirements 32.4, 32.5, 32.6**
+
 ## Error Handling
 
 | Failure | Detection | Response |
@@ -733,6 +794,10 @@ For any set of Users and any set of stored records owned by those Users (call lo
 | Non-admin on the Admin_API | Group claim missing | HTTP 403. |
 | Request names another User's call, recording, or device | Key not found under the caller's partition | HTTP 404, no information about existence. |
 | FCM reports an unregistered token | FCM response | Remove that device item; other devices still receive the alert. |
+| Recent-call lookup fails (DynamoDB error) | SDK exception | Treat as not a Repeat_Caller, handle the call with the Agent, record the failure in the Call_Trace. |
+| Ring_Through state missing after a restart | `/exotel/next?mode=ringthrough` for an unknown `CallSid` | Play the final message and end the call. |
+| Recent-call write or `recent_caller` push fails | Exception or FCM error | Retry 3 times at 1-second intervals, then record in the Call_Trace; the call log is unaffected. |
+| Screening role not granted or revoked | `RoleManager.isRoleHeld` false | No Ringing_Alert; the server ring-through still works. |
 | Shared flow when the server is down | Exotel cannot reach the server | Generic "try later" message and voicemail, or the per-number static forward if the Admin set it up. |
 
 ## Testing Strategy
@@ -741,7 +806,7 @@ Property-based testing applies to this feature because the deterministic parts (
 
 **Property tests.**
 - Library: `kotest-property` (already used by `:core`), run on the JVM with JUnit 5.
-- Each of the 28 properties is one property test with at least 100 iterations (500 for the policy, pacer, and PII guard properties).
+- Each of the 31 properties is one property test with at least 100 iterations (500 for the policy, pacer, and PII guard properties).
 - Each test carries the tag comment `Feature: cloud-call-agent, Property N: <title>`.
 - Generators: instants across a full year including daylight-free Asia/Kolkata minute boundaries; settings with random Delivery_Steps (English only, Hindi only, both), random gates, and Protected_Terms with digits and mixed case; PCM buffers of random length and content including silence and clipping amplitude; event sequences for the policy built from a weighted event alphabet; arbitrary chunk splits for the guard.
 - Multi-user generators: sets of Users with random UUID `sub` values (including values that share long prefixes), numbers in many textual forms (`+91`, `91`, `0`, spaces, hyphens, garbage), call identifiers that contain `#`, and interleaved update attempts for Property 26. Properties 26 and 28 run against an in-memory `ItemStore` fake that implements the conditional-write and key-condition semantics of DynamoDB, and the same tests run once against DynamoDB Local in the integration suite.
@@ -763,6 +828,7 @@ Property-based testing applies to this feature because the deterministic parts (
 
 **On-device tests.** Compose UI tests for the forwarding setup screen (codes shown, dialer opened with the code prepared and not dialed), the live call screen (Take over action, ended-call state), and the consent gate.
 
+**Ring-through and alert tests.** Unit tests: the `RouteDecider` order of gates with a repeat caller and a cost limit reached, the `/exotel/next?mode=ringthrough` answers per `DialCallStatus`, the missing-state path, the Call_Log outcomes with no recording and no Sonic session, and `RecentCallStore` against a test table (monotonic conditional update). On-device tests: `RepeatCallerScreeningService` always responds with the default `CallResponse`, the alert for a match, none for hidden, solicitation, or unknown numbers, removal after 25 seconds, and the release manifest test (one screening service allowed, `RECORD_AUDIO` and accessibility forbidden). The ring-through flow itself is verified in spike C-3 with real calls.
 **Voice quality acceptance.** Spike C-2 is a manual acceptance by the User. The 30-utterance corpus is replayed for any change of voice, endpointing sensitivity, or system prompt.
 
 ## Approved decisions, domain, and defaults
@@ -799,6 +865,8 @@ Changes this design makes to the requirements, for the User to approve:
 2. **Takeover dial timeout of 15 seconds**, not 30 seconds, to stay below the carrier's 20-second ring time and prevent a forwarding loop (Requirement 11 criterion 7). The 30-second alert wait of Requirement 11 criterion 6 is unchanged.
 3. **S3 lifecycle backstop at 366 days**, with the 30-day default enforced by the sweeper, because the retention period is user-configurable.
 4. **`get_stalling_persona`** is added as a seventh tool.
+
+5. **Repeat caller ring-through** (Requirements 32 and 33): the call screening role returns to the app for reading the incoming number only. Requirement 24 criterion 4 is amended, and the release manifest test of task 12.14 is relaxed by task 12.23 to allow exactly this service.
 
 Open questions:
 

@@ -15,12 +15,24 @@ import androidx.navigation.compose.rememberNavController
  * [resumeTick] changes on every activity resume so grants made in system settings are re-read.
  */
 @Composable
-fun AppNavGraph(model: SetupModel, resumeTick: Int) {
+fun AppNavGraph(
+    model: SetupModel,
+    resumeTick: Int,
+    liveRequest: com.callanswer.app.push.LiveCallRequest? = null,
+    onLiveRequestHandled: () -> Unit = {},
+) {
     val navController = rememberNavController()
     val actions = rememberSetupActions(model)
     val auth = (LocalContext.current.applicationContext as CallAnswerApp).authRepository
     val authState by auth.state.collectAsState()
     LaunchedEffect(resumeTick, authState) { model.refresh() }
+    // A Takeover_Alert or live-call notification opens the live call screen.
+    LaunchedEffect(liveRequest) {
+        if (liveRequest != null) {
+            navController.navigate(Routes.liveCall(liveRequest.callId)) { launchSingleTop = true }
+            onLiveRequestHandled()
+        }
+    }
 
     NavHost(
         navController = navController,

@@ -469,6 +469,23 @@ Rate limit: 60 requests per minute per identity, HTTP 429 beyond that (the WebSo
 
 Decision: Firebase Cloud Messaging through the HTTP v1 API, with the service account key in Secrets Manager. Amazon SNS mobile push also sends through FCM and adds a platform application and a topic hop for one device, so it has no benefit here (open question 2). Messages are data messages with high priority so that the app builds the notification and its sound. Types: `CALL_STARTED`, `TAKEOVER_ALERT`, `CALL_ENDED`, `UNKNOWN_CALLER_SUMMARY`, `SILENT_CALLER`, `send_map_sms` (the Map_SMS_Request: `callId`, Caller number, text), `MAP_SMS_FAILED`, `MAP_LOCATION_MISSING`, `PII_EVENT`, `NOT_LOGGED`, `COST_80`, `COST_100`.
 
+**Data message contract (exact).** Each message is an FCM HTTP v1 message to one device token with `android.priority = HIGH`, a `data` map of string values only, and no `notification` block. `data.type` is always present. Keys by type (implemented in `agent/.../notify/PushMessage.kt`, which is the source of truth):
+
+| `type` | other keys |
+| --- | --- |
+| `CALL_STARTED` | `callId`, `number` (E.164, empty if hidden), `startedAtMs` |
+| `TAKEOVER_ALERT` | `callId`, `number`, `intent`, `requestedAtMs`; the app answers with `POST /calls/{id}/alert-ack` |
+| `CALL_ENDED` | `callId`, `outcome`, `endMs` |
+| `UNKNOWN_CALLER_SUMMARY` | `callId`, `number`, `summary` |
+| `SILENT_CALLER` | `callId`, `number` |
+| `send_map_sms` | `callId`, `number` (Caller, E.164), `text` (ready to send); silent, the app sends the SMS from its SIM and posts `map-sms-result` |
+| `MAP_SMS_FAILED` | `callId`, `reason` |
+| `MAP_LOCATION_MISSING`, `PII_EVENT`, `NOT_LOGGED` | `callId` |
+| `COST_80`, `COST_100` | `yearMonth` (`YYYY-MM`), `totalPaise` |
+| `recent_caller` | `number` (E.164), `endMs`, `intent` (IntentCategory name), `callId` (omitted when none); silent, stored in `RecentCallCache` |
+
+Numbers are decimal strings. Absent values are omitted. The server deletes a device item when FCM answers 404 `UNREGISTERED` or 400 `INVALID_ARGUMENT`; it retries once with a fresh access token on 401. Access tokens come from a JWT bearer grant of the service account and are cached until 60 seconds before expiry.
+
 FCM reports acceptance, not delivery to the device. For the Takeover_Alert the app answers with `POST /calls/{id}/alert-ack`. If the token is missing, FCM rejects the message, or no device acknowledges within 10 seconds, `AlertService` records the failure in the trace and the Agent takes the nobody-available path and offers to take a message (Requirement 11 criterion 8, Requirement 19 criterion 8). No SMS fallback exists (resolved decision). The full-screen notification of the app plus high-priority FCM is the only alert channel. Future option: an Exotel outbound call to the User_Mobile as an alert.
 
 #### Map_SMS from the device

@@ -80,7 +80,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Add `docs/cloud-spikes.md` with one results table per spike (C-4, C-5, C-1, C-2, C-3)
     - _Requirements: 24.1_
 
-  - [~] 1.2 Run spike C-6: Obsolete: SMS is sent from the device
+  - [x] 1.2 Run spike C-6: Obsolete: SMS is sent from the device
     - Obsolete: SMS is sent from the device. No Exotel SMS and no DLT registration are needed; nothing to run. The ID is kept so that numbering stays stable (the device sender is task 12.17)
     - _Requirements: 10.12_
   - [~] 1.3 Run spike C-4: Airtel forwarding behavior (manual, on the User's phone)
@@ -514,7 +514,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 23: Test call window**
     - **Validates: Requirements 2.6, 2.7**
 
-  - [~] 10.8 Implement `FcmClient` and `AlertService`
+  - [x] 10.8 Implement `FcmClient` and `AlertService`
     - FCM HTTP v1 with the service account from Secrets Manager and high-priority data messages for the types of the design, including `send_map_sms`
     - Send each notification to every stored device of the User who owns the call and to no other device; remove a device token that FCM reports as unregistered
     - Takeover_Alert acknowledgment wait of 10 seconds; on a missing token, an FCM rejection, or no acknowledgment from any device, write the failure to the trace and return `ALERT_UNDELIVERED` so that the Agent takes the nobody-available path and offers to take a message; send no SMS
@@ -586,7 +586,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 22: Forwarding codes**
     - **Validates: Requirements 2.1, 2.3, 2.4, 2.5**
 
-  - [~] 12.7 Add push handling and the Takeover_Alert
+  - [x] 12.7 Add push handling and the Takeover_Alert
     - Firebase Messaging service for the data message types of the design, the notification channels (high importance for `TAKEOVER_ALERT` with sound), the "Take over" action that calls `POST /calls/{id}/takeover` from a short-lived worker, and the `alert-ack` call within 5 seconds; route the `send_map_sms` data message to `MapSmsSender` (task 12.17)
     - Add `google-services.json` from task 0.3 to the app project and to `.gitignore`
     - _Requirements: 11.2, 11.4, 19.8_

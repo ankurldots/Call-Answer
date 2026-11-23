@@ -47,6 +47,14 @@
                 <action android:name="android.telecom.CallScreeningService" />
             </intent-filter>
         </service>
+        <!-- FCM data messages of the Agent_Server: Takeover_Alert, call start and end, Map_SMS request, recent caller. -->
+        <service
+            android:name=".push.CallAnswerMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         <receiver
             android:name=".sms.MapSmsResultReceiver"
             android:exported="false" />

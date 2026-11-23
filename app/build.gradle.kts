@@ -7,6 +7,14 @@ plugins {
 }
 
 
+// The google-services plugin turns app/google-services.json (git-ignored; download it from the Firebase console, project
+// call-answer-f43ef) into resources. A checkout without the file still builds and passes the tests: the plugin is then
+// not applied, FirebaseApp stays uninitialised, and the app skips push (see PushRegistration).
+if (file("google-services.json").exists()) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
+} else {
+    logger.lifecycle("app/google-services.json not found: building without Firebase push (add the file to enable it)")
+}
 // Public identifiers of the deployed lambda/polly_tts stack (SAM outputs). Set them in ~/.gradle/gradle.properties
 // or with -P; blank values leave the account feature switched off. None of them is a secret.
 fun awsProp(name: String): String = (project.findProperty(name) as String?).orEmpty()
@@ -88,6 +96,8 @@ dependencies {
 
 
     implementation(libs.okhttp)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)

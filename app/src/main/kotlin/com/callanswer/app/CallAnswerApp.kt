@@ -4,7 +4,9 @@ import android.util.Log
 import com.callanswer.app.api.ApiConfig
 import com.callanswer.app.api.CompanionApi
 import com.callanswer.app.api.LiveSocket
+import com.callanswer.app.api.alertAck
 import com.callanswer.app.api.asTokenSource
+import com.callanswer.app.api.registerDevice
 import com.callanswer.app.auth.AuthConfig
 import com.callanswer.app.auth.AuthRepository
 import com.callanswer.app.auth.AuthState
@@ -72,6 +74,18 @@ class CallAnswerApp : Application() {
             sink = mapSmsReporter,
         )
     }
+    val pushRegistration: com.callanswer.app.push.PushRegistration by lazy {
+        com.callanswer.app.push.PushRegistration(this) { id, token -> companionApi.registerDevice(id, token) }
+    }
+    val pushNotifier: com.callanswer.app.push.AndroidPushNotifier by lazy { com.callanswer.app.push.AndroidPushNotifier(this) }
+    /** Acts on the FCM data messages (task 12.7). The `recent_caller` hook is filled by task 12.26. */
+    val pushHandler: com.callanswer.app.push.PushHandler by lazy {
+        com.callanswer.app.push.PushHandler(
+            notifier = pushNotifier,
+            alertAck = { companionApi.alertAck(it) },
+            sendMapSms = { callId, number, text -> mapSmsSender.onSendMapSms(callId, number, text) },
+        )
+    }
     /** Recent calls for the Screening_Observer (tasks 12.20, 12.22, 12.26). */
     val recentCallCache: RecentCallCache by lazy { RecentCallCache.create(this) }
 
@@ -111,7 +125,11 @@ class CallAnswerApp : Application() {
         appScope.launch { runCatching { mapSmsReporter.flush() } }
         if (authConfig.isConfigured) {
             appScope.launch { runCatching { recentCallSync.sync() } }
-            appScope.launch { authRepository.state.collect { Log.i("CallAnswer", "Auth state: ${if (it is AuthState.SignedIn) "SignedIn" else "SignedOut"}") } }
+            appScope.launch { authRepository.state.collect {
+                Log.i("CallAnswer", "Auth state: ${if (it is AuthState.SignedIn) "SignedIn" else "SignedOut"}")
+                // The FCM token is registered after every sign-in (and at app start while signed in).
+                if (it is AuthState.SignedIn) runCatching { pushRegistration.registerCurrent() }
+            } }
         }
     }
 }

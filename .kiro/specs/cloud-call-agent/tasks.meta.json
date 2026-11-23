@@ -872,6 +872,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372695794
+      },
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410321633
+      },
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410669356
       }
     ],
     "10.9 Wire the notification types into the call flow": [
@@ -995,6 +1005,16 @@
         "executionId": "ab21d9fd-173d-421d-b65f-85ae50198d6c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795372696112
+      },
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410322056
+      },
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410669809
       }
     ],
     "12.8 Add the live call screen": [
@@ -1301,6 +1321,13 @@
         "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795404348871
+      }
+    ],
+    "1.2 Run spike C-6: Obsolete: SMS is sent from the device": [
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410320708
       }
     ]
   }

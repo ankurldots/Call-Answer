@@ -16,6 +16,8 @@ When you don't pick up (or are busy or unreachable), your carrier forwards the c
 - **Directions:** Gate names, open times, the map location and the delivery steps are settings you configure for your own address. The defaults (Gate 3 from 22:30 to 05:30, Gate 1 otherwise) come from the original household and are only examples. Gate info and directions come from server code, not from the AI model.
 - **Companion app:** live alert with Take over, ringing alert for repeat callers, live transcript, call log with cost, settings (gates, ring-through, SMS SIM), and spam reports to 1909 (TRAI).
 
+For setup and daily use of the app, see the [User Guide](docs/user-guide.md).
+
 ## Status and scope
 This project started for one household and is now meant for anyone to run. It is being re-architected.
 

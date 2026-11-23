@@ -7,6 +7,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Sends the Map_SMS from the User's own SIM when the server asks for it (Requirement 10.13). Requested at runtime. -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <!-- Requested only when the User opens the SIM picker on a phone with more than one SIM, to list the active SIMs. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <!-- Only used to remove the old accessibility service entry on devices that ran the archived on-device build. This build never enables it. -->
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
@@ -34,6 +38,9 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.CallAnswer.Dialog" />
+        <receiver
+            android:name=".sms.MapSmsResultReceiver"
+            android:exported="false" />
         <receiver
             android:name=".legacy.LegacyA11yBootReceiver"
             android:exported="false">

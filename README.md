@@ -57,7 +57,7 @@ The cloud Agent service (`agent` module) and its infrastructure are planned in `
 Or open the project in Android Studio and run the `app` configuration.
 
 ### 2. Sign in and allow notifications
-On the device, open the app and follow onboarding (sign-in, then notifications). The app needs no call, microphone or SMS permission; the on-device call path is archived (see `archive-ondevice/ARCHIVE.md`).
+On the device, open the app and follow onboarding (sign-in, then notifications). The app asks for the SMS permission (`SEND_SMS`) so that it can send the map to delivery callers from your own SIM; it needs no call or microphone permission. The app is sideloaded, not distributed through Google Play, so the Google Play SMS permission policy does not block `SEND_SMS`; the on-device call path is archived (see `archive-ondevice/ARCHIVE.md`).
 
 ### Tests
 ```

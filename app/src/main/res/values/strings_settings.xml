@@ -12,6 +12,15 @@
     <string name="settings_section_gates">Gates and night window</string>
     <string name="settings_section_call">Voice, disclosure and replies</string>
     <string name="settings_section_recording">Recording folder</string>
+    <string name="settings_section_sms">Map text message</string>
+    <string name="settings_sms_intro">The map text goes out from this phone, from your own SIM. Carrier rates apply.</string>
+    <string name="settings_sms_single_sim">This phone sends from its only SIM.</string>
+    <string name="settings_sms_default_sim">Default SMS SIM</string>
+    <string name="settings_sms_choose_sim">Choose a SIM</string>
+    <string name="settings_sms_sim_selected">Selected: %1$s</string>
+    <string name="settings_sms_sim_permission">To list your SIMs, Android asks for permission to read the phone state. It is used only to show the names of the SIMs.</string>
+    <string name="settings_sms_sim_permission_denied">The SIMs cannot be listed without that permission. The default SMS SIM is used.</string>
+    <string name="settings_sms_sim_only_one">Only one SIM is active, so there is nothing to choose.</string>
     <string name="settings_section_spam">Spam reporting</string>
 
     <string name="settings_map_location">Location URL (texted to a delivery caller who needs directions)</string>

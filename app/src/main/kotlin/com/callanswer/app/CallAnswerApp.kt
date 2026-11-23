@@ -16,6 +16,11 @@ import com.callanswer.app.data.SettingsStore
 import com.callanswer.app.legacy.LegacyA11yCleanup
 import com.callanswer.app.report.AndroidSmsIntentLauncher
 import com.callanswer.app.report.SpamReporter
+import com.callanswer.app.sms.AndroidSubscriptionSource
+import com.callanswer.app.sms.LocalSmsSettings
+import com.callanswer.app.sms.MapSmsReporter
+import com.callanswer.app.sms.MapSmsSender
+import com.callanswer.app.sms.SmsManagerTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,11 +48,29 @@ class CallAnswerApp : Application() {
             syncStatus = { id, status -> companionApi.reportStatus(id, status) },
         )
     }
+    /** SMS settings that stay on this device: the SIM choice and the handled call ids. */
+    val localSmsSettings: LocalSmsSettings by lazy { LocalSmsSettings(this) }
+    val mapSmsReporter: MapSmsReporter by lazy {
+        MapSmsReporter(post = { id, result -> companionApi.mapSmsResult(id, result) }, outbox = database.outboxDao())
+    }
+    /** Called by the push handler for a `send_map_sms` message (task 12.7): `mapSmsSender.onSendMapSms(callId, number, text)`. */
+    val mapSmsSender: MapSmsSender by lazy {
+        MapSmsSender(
+            permissionGranted = { checkSelfPermission(android.Manifest.permission.SEND_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED },
+            transport = SmsManagerTransport(this),
+            subscriptions = AndroidSubscriptionSource(this),
+            selectedSubscriptionId = { localSmsSettings.selectedSubscriptionId },
+            claim = localSmsSettings::claim,
+            sink = mapSmsReporter,
+        )
+    }
     override fun onCreate() {
         super.onCreate()
         // Devices that ran the archived on-device build may still have its accessibility service enabled.
         LegacyA11yCleanup.run(this, "app start")
         Log.i("CallAnswer", "Auth configured=${authConfig.isConfigured}")
+        // Results that could not be reported before (offline) go out now.
+        appScope.launch { runCatching { mapSmsReporter.flush() } }
         if (authConfig.isConfigured) {
             appScope.launch { authRepository.state.collect { Log.i("CallAnswer", "Auth state: ${if (it is AuthState.SignedIn) "SignedIn" else "SignedOut"}") } }
         }

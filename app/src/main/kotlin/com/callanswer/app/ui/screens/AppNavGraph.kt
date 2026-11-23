@@ -73,6 +73,7 @@ fun AppNavGraph(model: SetupModel, resumeTick: Int) {
             CallDetailScreen(id, resumeTick, back)
         }
         composable(Routes.SETTINGS_SPAM) { SpamSettingsScreen(back) }
+        composable(Routes.SETTINGS_SMS) { SmsSettingsScreen(back) }
         composable(Routes.FORWARDING_SETUP) {
             ForwardingSetupScreen(
                 (LocalContext.current.applicationContext as CallAnswerApp).companionApi, back,

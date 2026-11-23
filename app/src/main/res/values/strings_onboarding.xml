@@ -33,6 +33,10 @@
 
 
 
+    <string name="setup_sms_title">Map text message</string>
+    <string name="setup_sms_purpose">When a delivery person calls, the Agent can send them the map to your home as a text message. The text is sent from this phone, from your own SIM, and your carrier\'s normal SMS rates apply. If you do not allow this, the Agent still answers calls but sends no map text.</string>
+    <string name="feature_map_sms">Sending the map by text message</string>
+    <string name="perm_send_sms">Send SMS (SEND_SMS)</string>
     <!-- Home -->
     <string name="home_denied_heading">Needs your attention</string>
     <!-- Guided start (Requirement 31) -->

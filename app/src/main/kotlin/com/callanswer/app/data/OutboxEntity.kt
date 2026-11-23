@@ -25,4 +25,7 @@ data class OutboxEntity(
 
 object OutboxKinds {
     const val SETTINGS_EDIT = "settings_edit"
+
+    /** A Map_SMS result that could not be reported yet. Payload: `{"callId":"...","status":"SENT"}`. */
+    const val MAP_SMS_RESULT = "map_sms_result"
 }

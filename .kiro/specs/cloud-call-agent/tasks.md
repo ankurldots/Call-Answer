@@ -587,7 +587,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `SettingsMerge.threeWay` for unchanged fields, fields changed on one side only, and fields changed on both sides; the 409 retry bound; the cache replaced by the server document
     - _Requirements: 27.9, 27.10, 27.11_
 
-  - [ ] 12.17 Add `MapSmsSender`, the SEND_SMS permission flow, and the SIM setting
+  - [x] 12.17 Add `MapSmsSender`, the SEND_SMS permission flow, and the SIM setting
     - Add `MapSmsSender` to `:app` with `SmsManager` (`divideMessage` and `sendMultipartTextMessage` for long texts), sent and delivered PendingIntents, a result of SENT, FAILED, or NO_PERMISSION, and ignore a repeated `callId`; the delivery result goes to the local log only
     - Use the default SMS subscription (`SubscriptionManager.getDefaultSmsSubscriptionId()`) without extra permission; add a SIM picker in the settings that lists the active subscriptions when more than one SIM is active and requests `READ_PHONE_STATE` only then; store the choice in the local settings and not in the server settings
     - Declare `SEND_SMS` in the manifest again and request it at runtime in onboarding (task 12.15 flow) with a plain explanation (own phone, own SIM, carrier rates); the Agent stays usable when the User declines

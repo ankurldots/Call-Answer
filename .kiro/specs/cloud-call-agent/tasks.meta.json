@@ -1167,6 +1167,18 @@
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795378040858
       }
+    ],
+    "12.17 Add `MapSmsSender`, the SEND_SMS permission flow, and the SIM setting": [
+      {
+        "executionId": "79d34458-032d-4543-9223-57ca8d953fde",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795398773402
+      },
+      {
+        "executionId": "79d34458-032d-4543-9223-57ca8d953fde",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795399065059
+      }
     ]
   }
 }

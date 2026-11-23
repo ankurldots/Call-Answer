@@ -64,6 +64,11 @@ class CompanionApi(
         send("POST", "/calls/${enc(id)}/report-status", "{\"status\":\"${status.name}\"}")
     }
 
+    /** `POST /calls/{id}/map-sms-result`: the server stores the result of the Map_SMS the device sent (Requirement 10.16). */
+    suspend fun mapSmsResult(id: String, status: com.callanswer.app.sms.MapSmsResult) {
+        send("POST", "/calls/${enc(id)}/map-sms-result", "{\"status\":\"${status.name}\"}")
+    }
+
     /** `POST /consent`: the server stores the acceptance with the version of the consent text and the time. */
     suspend fun acceptConsent(version: String) {
         send("POST", "/consent", CoreJson.encodeToString(ConsentBody.serializer(), ConsentBody(version)))

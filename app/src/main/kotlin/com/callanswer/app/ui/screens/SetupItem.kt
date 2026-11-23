@@ -29,6 +29,11 @@ enum class SetupItem(
         R.string.setup_fsi_title, R.string.setup_fsi_purpose, R.string.feature_takeover_alert,
         R.string.perm_fsi,
     ),
+    SEND_SMS(
+        R.string.setup_sms_title, R.string.setup_sms_purpose, R.string.feature_map_sms,
+        R.string.perm_send_sms,
+        listOf(Manifest.permission.SEND_SMS),
+    ),
 }
 /** Snapshot of which items are granted. Re-read on every resume. */
 data class SetupStatus(val granted: Map<SetupItem, Boolean>) {

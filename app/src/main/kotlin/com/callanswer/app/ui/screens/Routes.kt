@@ -14,6 +14,7 @@ object Routes {
     const val SETTINGS_GATES = "settings/gates"
     const val SETTINGS_CALL = "settings/call"
     const val SETTINGS_SPAM = "settings/spam"
+    const val SETTINGS_SMS = "settings/sms"
     const val SETTINGS_STEPS = "settings/steps"
     const val SETTINGS_ACCOUNT = "settings/account"
     /** Cloud Agent settings of Requirement 20 (User_Mobile, voice, retention, cost rates, limit). */

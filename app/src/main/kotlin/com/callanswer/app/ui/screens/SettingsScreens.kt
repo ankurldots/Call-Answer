@@ -152,6 +152,7 @@ fun SettingsHubScreen(onOpen: (String) -> Unit, onBack: () -> Unit) {
             Triple(Routes.SETTINGS_GATES, R.string.settings_section_gates, Icons.Filled.Lock),
             Triple(Routes.SETTINGS_CALL, R.string.settings_section_call, Icons.Filled.Call),
             Triple(Routes.SETTINGS_STEPS, R.string.settings_section_steps, Icons.Filled.Send),
+            Triple(Routes.SETTINGS_SMS, R.string.settings_section_sms, Icons.Filled.Send),
             Triple(Routes.SETTINGS_SPAM, R.string.settings_section_spam, Icons.Filled.Warning),
             Triple(Routes.SETTINGS_ACCOUNT, R.string.settings_section_account, Icons.Filled.Person),
         ).forEach { (route, label, icon) ->

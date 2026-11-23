@@ -141,7 +141,13 @@ class ExotelStreamHandler(
                     utterance++
                     offered = false
                 }
-                is SonicEvent.UserSpeechStarted, is SonicEvent.Interrupted -> {
+                is SonicEvent.UserSpeechStarted -> {
+                    // Keep the id: Agent audio that is still in flight belongs to the interrupted utterance and must
+                    // stay dropped until its transcript or the Interrupted event. Without audio in flight only
+                    // the audio already queued or buffered at Exotel is cleared.
+                    if (offered) pacer.interrupt("u$utterance") else pacer.interrupt()
+                }
+                is SonicEvent.Interrupted -> {
                     pacer.interrupt("u$utterance")
                     utterance++
                     offered = false

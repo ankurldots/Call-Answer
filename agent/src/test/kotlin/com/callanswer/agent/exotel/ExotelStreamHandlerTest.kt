@@ -79,6 +79,27 @@ class ExotelStreamHandlerTest : FunSpec({
         }
     }
 
+    test("stale Agent audio after UserSpeechStarted is not sent, and a new utterance after Interrupted still plays") {
+        val calls = FakeCalls()
+        withStreamApp(calls) { env ->
+            wsClient().webSocket(env.path(env.token()), request = { header(HttpHeaders.Authorization, env.basic) }) {
+                sendEvent(startEvent())
+                calls.call.channel.send(SonicEvent.AgentAudio(ByteArray(60_000)))
+                kotlinx.coroutines.delay(50)
+                calls.call.channel.send(SonicEvent.UserSpeechStarted)
+                calls.call.channel.send(SonicEvent.AgentAudio(ByteArray(60_000)))
+                calls.call.channel.send(SonicEvent.AgentAudio(ByteArray(60_000)))
+                calls.call.channel.send(SonicEvent.Interrupted)
+                calls.call.channel.send(SonicEvent.AgentAudio(ByteArray(9_600)))
+                calls.call.channel.send(SonicEvent.AgentTranscript("new"))
+                val frames = collectFor(700)
+                frames.filterIsInstance<ExotelEvent.Clear>() shouldHaveSize 1
+                val afterClear = frames.dropWhile { it !is ExotelEvent.Clear }.drop(1)
+                afterClear.filterIsInstance<ExotelEvent.Media>() shouldHaveSize 1
+                afterClear.filterIsInstance<ExotelEvent.Mark>() shouldHaveSize 1
+            }
+        }
+    }
     test("no media for the media timeout ends the call as AUDIO_INTERRUPTED") {
         val calls = FakeCalls()
         withStreamApp(calls, mediaTimeoutMs = 300) { env ->

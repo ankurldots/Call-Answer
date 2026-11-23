@@ -7,6 +7,12 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.ApplicationCallPipeline
+import io.ktor.server.application.call
+import io.ktor.server.routing.intercept
+import io.ktor.server.routing.route
+import io.ktor.server.websocket.webSocket
+import io.ktor.util.AttributeKey
 import io.ktor.server.request.header
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.receiveParameters
@@ -34,6 +40,33 @@ class ExotelRouteDeps(
 fun Route.exotelResolveRoute(deps: ExotelRouteDeps) {
     get("/exotel/resolve") { resolve(call, deps) }
     post("/exotel/resolve") { resolve(call, deps) }
+}
+
+private val CLAIMS_KEY = AttributeKey<CallTokenClaims>("exotel.callTokenClaims")
+
+/**
+ * `/stream/{token}`: the media WebSocket. Before the upgrade, Basic auth and the call token (MAC, expiry) are
+ * checked and a failure answers 401, so a refused handshake never reaches [handler]. Tokens are never logged.
+ */
+fun Route.exotelStreamRoute(auth: ExotelAuth, handler: ExotelStreamHandler) {
+    route("/stream/{token}") {
+        intercept(ApplicationCallPipeline.Plugins) {
+            val claims = if (auth.checkBasic(call.request.header(HttpHeaders.Authorization))) {
+                call.parameters["token"]?.let { auth.inspectCallToken(it) }
+            } else {
+                null
+            }
+            if (claims == null) {
+                call.respond(HttpStatusCode.Unauthorized)
+                finish()
+            } else {
+                call.attributes.put(CLAIMS_KEY, claims)
+            }
+        }
+        webSocket {
+            handler.run(this, call.attributes[CLAIMS_KEY])
+        }
+    }
 }
 
 private suspend fun resolve(call: ApplicationCall, deps: ExotelRouteDeps) {

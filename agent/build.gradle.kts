@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.ktor.server.websockets)
     implementation(libs.slf4j.simple)
     testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.ktor.client.websockets)
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.property)
     testImplementation(libs.kotlinx.coroutines.test)

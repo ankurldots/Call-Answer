@@ -104,6 +104,10 @@ class InMemoryItemStore : ItemStore {
             Condition.NotExists -> existing == null
             Condition.Exists -> existing != null
             is Condition.AttrEquals -> existing?.attrs?.get(condition.name) == condition.value
+            is Condition.AttrAbsentOrLess -> {
+                val cur = (existing?.attrs?.get(condition.name) as? AttrValue.N)?.value
+                cur == null || cur < condition.value
+            }
         }
         if (!ok) throw ConditionFailedException()
     }

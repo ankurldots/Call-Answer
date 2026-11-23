@@ -38,6 +38,15 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.CallAnswer.Dialog" />
+        <!-- Screening_Observer (Requirement 33): the call screening role is held only to read the incoming number for the Ringing_Alert. It always allows the call unchanged. -->
+        <service
+            android:name=".screening.RepeatCallerScreeningService"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
         <receiver
             android:name=".sms.MapSmsResultReceiver"
             android:exported="false" />

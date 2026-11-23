@@ -38,6 +38,7 @@ object TableKeys {
     const val TRACE_PREFIX: String = "TRACE#"
     const val COST_PREFIX: String = "COST#"
     const val OPEN_PREFIX: String = "OPEN#"
+    const val RECENT_PREFIX: String = "RECENT#"
     const val GSI_USERS: String = "USERS"
     const val GSI_ASSIGNMENTS: String = "ASSIGNMENTS"
     const val GSI_OPEN_CALLS: String = "OPENCALLS"
@@ -71,6 +72,9 @@ object TableKeys {
     }
     fun openSk(callId: String): String = "$OPEN_PREFIX${Keys.call(callId).removePrefix(CALL_PREFIX)}"
     fun deviceSk(deviceId: String): String = Keys.device(deviceId)
+    fun recentSk(e164: E164): String = "$RECENT_PREFIX${e164.value}"
+    fun parseRecentSk(sk: String): E164? =
+        if (sk.startsWith(RECENT_PREFIX)) runCatching { E164(sk.removePrefix(RECENT_PREFIX)) }.getOrNull() else null
 
     fun userGsiSk(userId: UserId): String = Keys.user(userId)
     fun openGsiSk(startEpochMs: Long, userId: UserId, callId: String): String =

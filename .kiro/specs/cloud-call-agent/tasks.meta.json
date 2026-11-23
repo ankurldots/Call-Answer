@@ -1179,6 +1179,66 @@
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795399065059
       }
+    ],
+    "8.11 Implement `RingThroughPolicy`, `RedialSchedule`, and the ring-through settings in `:core`": [
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795403827511
+      },
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795403937158
+      }
+    ],
+    "8.14 Extend `RouteDecider` with the RING_THROUGH decision": [
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795403943339
+      },
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404075721
+      }
+    ],
+    "9.18 Implement `RecentCallStore`": [
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795403944365
+      },
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404078253
+      }
+    ],
+    "12.20 Implement the Screening_Observer, the recent-call cache, and the matcher": [
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795403945834
+      },
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404076710
+      }
+    ],
+    "12.23 Update the release manifest guard for the Screening_Observer": [
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795403946395
+      },
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404077664
+      }
     ]
   }
 }

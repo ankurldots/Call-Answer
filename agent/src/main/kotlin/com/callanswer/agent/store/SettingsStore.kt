@@ -65,6 +65,8 @@ class SettingsStore(private val store: ItemStore, private val directory: Directo
         if (!SettingsValidator.validateGate(g.gate1).isValid) return "gates.gate1"
         if (!SettingsValidator.validateGate(g.gate3).isValid) return "gates.gate3"
         if (!SettingsValidator.validateSteps(c.deliverySteps).isAccepted) return "deliverySteps"
+        if (!SettingsValidator.validateRingThroughWindow(c.ringThroughWindowMinutes).isValid) return "ringThroughWindowMinutes"
+        if (!SettingsValidator.validateRingThroughMax(c.ringThroughMaxSeconds).isValid) return "ringThroughMaxSeconds"
         c.userMobile?.let { mobile ->
             if (!SettingsValidator.validateUserMobile(mobile).isValid) return "userMobile"
             // Cross-record rule: the number must not be an assigned Virtual_Number.

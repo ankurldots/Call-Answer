@@ -172,6 +172,8 @@ class DynamoItemStore(private val client: DynamoDbClient, private val table: Str
                 Condition.NotExists -> ConditionParts("attribute_not_exists(pk)", emptyMap())
                 Condition.Exists -> ConditionParts("attribute_exists(pk)", emptyMap())
                 is Condition.AttrEquals -> ConditionParts("#cond = :cond", mapOf(":cond" to attr(c.value)), mapOf("#cond" to c.name))
+                is Condition.AttrAbsentOrLess ->
+                    ConditionParts("attribute_not_exists(#cond) OR #cond < :cond", mapOf(":cond" to AttributeValue.fromN(c.value.toString())), mapOf("#cond" to c.name))
             }
         }
     }

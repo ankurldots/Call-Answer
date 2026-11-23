@@ -25,6 +25,8 @@ sealed interface Condition {
     /** The item exists (`attribute_exists(pk)`). */
     data object Exists : Condition
     data class AttrEquals(val name: String, val value: AttrValue) : Condition
+    /** `attribute_not_exists(name) OR name < value` for a numeric attribute. */
+    data class AttrAbsentOrLess(val name: String, val value: Long) : Condition
 }
 
 /** `SET`, `ADD` (numeric, creates the attribute at 0), and `REMOVE` actions. An update creates a missing item. */

@@ -22,6 +22,10 @@ sealed class SettingsError(val message: String) {
     data object NightWindowStartEqualsEnd :
         SettingsError("Night window start and end must be different times")
 
+    data object InvalidRingThroughWindow :
+        SettingsError("Enter a whole number of minutes from 1 to 60")
+    data object InvalidRingThroughMax :
+        SettingsError("Enter a whole number of seconds from 30 to 600")
     data object InvalidUserMobile :
         SettingsError("Enter the mobile number in international format, for example +919876543210")
 
@@ -89,6 +93,12 @@ object SettingsValidator {
         if (!format.isValid) return format
         return if (isAssignedVirtualNumber(s)) invalid(SettingsError.UserMobileIsVirtualNumber) else ValidationResult.Valid
     }
+
+    fun validateRingThroughWindow(minutes: Int): ValidationResult =
+        if (minutes in 1..60) ValidationResult.Valid else invalid(SettingsError.InvalidRingThroughWindow)
+
+    fun validateRingThroughMax(seconds: Int): ValidationResult =
+        if (seconds in 30..600) ValidationResult.Valid else invalid(SettingsError.InvalidRingThroughMax)
 
     fun validateSteps(steps: List<DeliveryStep>): StepListResult = StepListValidator.validate(steps)
 

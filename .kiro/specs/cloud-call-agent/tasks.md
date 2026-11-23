@@ -371,7 +371,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Greeting and notice order with the Disclosure_Setting on and off, `end_call` after the last `mark`, silence flows, a failed bridge returning to the Agent, and the fallback causes, all with fake ports
     - _Requirements: 6.1, 6.2, 6.3, 11.7, 15.9_
 
-  - [ ] 8.11 Implement `RingThroughPolicy`, `RedialSchedule`, and the ring-through settings in `:core`
+  - [x] 8.11 Implement `RingThroughPolicy`, `RedialSchedule`, and the ring-through settings in `:core`
     - Add `RingThroughPolicy.isRepeat(record, callerE164, now, windowMinutes)` (false for hidden numbers and for SOLICITATION, true for UNKNOWN, window end inclusive) and the `RecentCall` model; add `RedialSchedule.next(state, now)` with the 17-second cadence, the 15-second leg timeout limited by the cap, the Ringback_Tone wait after an early end, and the final message after the cap; add the sealed `RouteDecision` (`Agent`, `Fallback(cause)`, `RingThrough`)
     - Add the `Settings` fields `ringThroughEnabled` (default true), `ringThroughWindowMinutes` (1 to 60, default 15), and `ringThroughMaxSeconds` (30 to 600, default 180) with `SettingsValidator` rules and the `CallLogEntry` additions (`RING_THROUGH_ANSWERED`, `RING_THROUGH_UNANSWERED`, `dialLegs`), all with defaults so old documents still parse
     - _Requirements: 32.2, 32.3, 32.4, 32.8, 32.9, 32.11, 32.13, 32.17_
@@ -383,7 +383,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 30: Redial schedule**
     - Generate caps from 30 to 600 seconds, leg outcomes (answered, busy, unreachable, no answer, Caller hangup), and early-end durations; assert no timeout of 20 seconds or more, the cap bound, no leg after an answer or hangup, and one final message
     - **Validates: Requirements 32.8, 32.9, 32.10, 32.11, 32.14**
-  - [ ] 8.14 Extend `RouteDecider` with the RING_THROUGH decision
+  - [x] 8.14 Extend `RouteDecider` with the RING_THROUGH decision
     - Take the `RecentCall?` lookup result as input and evaluate in the order of the design: loop rejection, User gates (active, consent, Agent on, `ringThroughEnabled`), `isRepeat`, then the existing Agent gates; record the cause for each Fallback; keep the Agent and Fallback results of task 8.3 unchanged
     - Treat a failed lookup as `null`; update the example tests of task 8.3 and note the precedence in the doc comment of Property 20
     - _Requirements: 32.1, 32.4, 32.5, 32.15, 32.16, 1.5_
@@ -475,7 +475,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `AdminCli` main class in `:agent` and `scripts/admin/callagent-admin` that run assign, unassign, list, and deactivate through `NumberAssignmentService` with `--profile ldots --region ap-northeast-1`; add a `bootstrap-user <sub>` command that creates the profile of a User before first sign-in
     - _Requirements: 26.2, 26.4, 26.5, 26.6_
 
-  - [ ] 9.18 Implement `RecentCallStore`
+  - [x] 9.18 Implement `RecentCallStore`
     - Add `lastNonSolicitation` (consistent `GetItem` of `RECENT#<e164>` with the window check in code) and `recordEnded` (conditional `UpdateItem` `attribute_not_exists(endMs) OR endMs < :new`, ignoring SOLICITATION and hidden numbers, `ttl` of end time plus 2 hours) behind `UserScopedRepository`, plus a list by User for `GET /recent-callers`; add the key to `Keys` and to the isolation tests
     - _Requirements: 32.2, 32.3, 32.4, 32.5, 32.6, 33.9_
   - [ ]* 9.19 Write property test for the recent-call record
@@ -643,7 +643,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - [ ] 12.19 Add the ring-through fields to the settings screen
     - Switch for Ring_Through, Repeat_Window (1 to 60 minutes, default 15), and Ring_Through_Cap (30 to 600 seconds, default 180), validated with `SettingsValidator`, saved with `PUT /settings` and `expectedVersion`; add the strings to `strings_settings.xml`; add the call screening role row with its explanation (the role only reads the incoming number) and the request through `RoleManager`
     - _Requirements: 32.17, 33.12_
-  - [ ] 12.20 Implement the Screening_Observer, the recent-call cache, and the matcher
+  - [x] 12.20 Implement the Screening_Observer, the recent-call cache, and the matcher
     - `RepeatCallerScreeningService` (`CallScreeningService`) that always calls `respondToCall` with the default `CallResponse` (no reject, silence, skip of the call log, or skip of the notification) and hands the number to `RepeatCallerAlerter`; declare it in the manifest with `BIND_SCREENING_SERVICE`
     - `RecentCallCache` as a JSON `DataStore` (no Room migration) with a purge after 60 minutes; `RepeatCallerMatcher` that normalizes with `PhoneNumbers.normalize` and applies `RingThroughPolicy.isRepeat` with the cached window; no accessibility, no `RECORD_AUDIO`, no `READ_CALL_LOG`, no auto-answer
     - _Requirements: 33.1, 33.2, 33.3, 33.6, 33.10, 33.11_
@@ -653,7 +653,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - [ ] 12.22 Sync the recent-call cache from the server
     - Fetch `GET /recent-callers?minutes=60` at app start and when the call log opens, through the existing API client with the outbox rules unchanged, and replace the cache entries from the response
     - _Requirements: 33.9_
-  - [ ] 12.23 Update the release manifest guard for the Screening_Observer
+  - [x] 12.23 Update the release manifest guard for the Screening_Observer
     - Change the test of task 12.14 to allow exactly one service with `BIND_SCREENING_SERVICE`, `com.callanswer.app...RepeatCallerScreeningService`, and to fail for any other screening service, `RECORD_AUDIO`, `READ_CALL_LOG`, and every accessibility service; document in the test and in `README.md` that the role is held only to read the incoming number for the Ringing_Alert; amend the comment of task 12.18 expectations accordingly
     - _Requirements: 24.4, 33.13_
   - [ ]* 12.24 Write unit tests for the Screening_Observer and the matcher

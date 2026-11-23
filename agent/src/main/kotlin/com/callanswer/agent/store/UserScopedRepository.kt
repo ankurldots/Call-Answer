@@ -1,6 +1,10 @@
 package com.callanswer.agent.store
 
+import com.callanswer.core.cloud.RecentCall
+import com.callanswer.core.cloud.RingThroughPolicy
 import com.callanswer.core.model.CallLogEntry
+import com.callanswer.core.model.IntentCategory
+import com.callanswer.core.tenant.E164
 import com.callanswer.core.model.CoreJson
 import com.callanswer.core.model.Utterance
 import com.callanswer.core.tenant.Keys
@@ -214,6 +218,57 @@ class UserScopedRepository(
     )
     suspend fun deleteOpenMarker(callId: String) = store.delete(key(TableKeys.openSk(callId)))
 
+    // RECENT#
+
+    /**
+     * The latest non-SOLICITATION call of [callerE164] when it ended within [windowMinutes] before [nowMs]
+     * (both ends inclusive), else null. A consistent read; the window is checked here on `endMs`, not by TTL.
+     */
+    suspend fun lastNonSolicitation(callerE164: E164?, nowMs: Long, windowMinutes: Int): RecentCall? {
+        if (callerE164 == null) return null
+        val record = readRecent(store.get(key(TableKeys.recentSk(callerE164)), consistent = true)) ?: return null
+        return record.takeIf { RingThroughPolicy.isRepeat(it, callerE164, nowMs, windowMinutes) }
+    }
+
+    /**
+     * Records the end of a call. SOLICITATION calls and hidden numbers (null) are ignored. The conditional update
+     * `attribute_not_exists(endMs) OR endMs < :new` keeps the latest call. Returns true when the record was written.
+     */
+    suspend fun recordEnded(callerE164: E164?, endMs: Long, intent: IntentCategory, callId: String?): Boolean {
+        if (callerE164 == null || intent == IntentCategory.SOLICITATION) return false
+        val set = LinkedHashMap<String, AttrValue>()
+        set["endMs"] = AttrValue.N(endMs)
+        set["intent"] = AttrValue.S(intent.name)
+        set["ttl"] = AttrValue.N(endMs / 1000 + RECENT_TTL_SECONDS)
+        if (callId != null) set["callId"] = AttrValue.S(callId)
+        return try {
+            store.update(
+                key(TableKeys.recentSk(callerE164)),
+                ItemUpdate(set = set, remove = if (callId == null) setOf("callId") else emptySet()),
+                Condition.AttrAbsentOrLess("endMs", endMs),
+            )
+            true
+        } catch (e: ConditionFailedException) {
+            false
+        }
+    }
+
+    /** Every recent-caller record of this User, newest call first, for `GET /recent-callers`. */
+    suspend fun listRecentCallers(): List<Pair<E164, RecentCall>> =
+        store.queryAll(StoreQuery(pk, SortCondition.BeginsWith(TableKeys.RECENT_PREFIX), consistent = true))
+            .mapNotNull { item ->
+                val e = TableKeys.parseRecentSk(item.sk) ?: return@mapNotNull null
+                readRecent(item)?.let { e to it }
+            }
+            .sortedByDescending { it.second.endMs }
+
+    private fun readRecent(item: StoreItem?): RecentCall? {
+        item ?: return null
+        val end = item.num("endMs") ?: return null
+        val intent = item.str("intent")?.let { runCatching { IntentCategory.valueOf(it) }.getOrNull() } ?: return null
+        return RecentCall(end, intent, item.str("callId"))
+    }
+
     // internals
 
     private suspend fun json(k: ItemKey): String? = store.get(k)?.str("json")
@@ -257,6 +312,7 @@ class UserScopedRepository(
         const val TRANSCRIPT_LIMIT_BYTES: Int = 300 * 1024
         const val RETRIES: Int = 3
         const val RETRY_INTERVAL_MS: Long = 1000
+        const val RECENT_TTL_SECONDS: Long = 2 * 60 * 60
         const val MAX_DEVICES: Int = 5
         const val MAX_PAGE: Int = 200
     }

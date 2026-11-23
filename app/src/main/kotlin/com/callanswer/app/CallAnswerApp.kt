@@ -21,6 +21,13 @@ import com.callanswer.app.sms.LocalSmsSettings
 import com.callanswer.app.sms.MapSmsReporter
 import com.callanswer.app.sms.MapSmsSender
 import com.callanswer.app.sms.SmsManagerTransport
+import com.callanswer.app.screening.RecentCallCache
+import com.callanswer.app.screening.RepeatCallerAlerter
+import com.callanswer.app.screening.RepeatCallerMatcher
+import com.callanswer.app.screening.ScreeningObserver
+import com.callanswer.core.cloud.RingThroughPolicy
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -64,6 +71,25 @@ class CallAnswerApp : Application() {
             sink = mapSmsReporter,
         )
     }
+    /** Recent calls for the Screening_Observer (tasks 12.20, 12.22, 12.26). */
+    val recentCallCache: RecentCallCache by lazy { RecentCallCache.create(this) }
+
+    /** Replaced by the Ringing_Alert notification in task 12.21; until then a match is only logged. */
+    var repeatCallerAlerter: RepeatCallerAlerter = RepeatCallerAlerter { Log.i("CallAnswer", "repeat caller matched") }
+
+    val screeningObserver: ScreeningObserver by lazy {
+        ScreeningObserver(
+            RepeatCallerMatcher(
+                cache = recentCallCache,
+                windowMinutes = {
+                    runCatching { settingsRepository.effective() }.getOrNull()
+                        ?.get("ringThroughWindowMinutes")?.jsonPrimitive?.intOrNull
+                        ?: RingThroughPolicy.DEFAULT_WINDOW_MINUTES
+                },
+            ),
+        ) { repeatCallerAlerter.onRepeatCaller(it) }
+    }
+
     override fun onCreate() {
         super.onCreate()
         // Devices that ran the archived on-device build may still have its accessibility service enabled.

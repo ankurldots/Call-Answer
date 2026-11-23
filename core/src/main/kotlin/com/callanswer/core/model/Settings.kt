@@ -64,6 +64,11 @@ data class Settings(
     val costRates: CostRates = CostRates(),
     val monthlyLimitInr: Int? = null,
     val consentVersion: String? = null,
+    val ringThroughEnabled: Boolean = true,
+    /** Repeat_Caller window, 1 to 60 minutes. */
+    val ringThroughWindowMinutes: Int = 15,
+    /** Ring_Through_Cap, 30 to 600 seconds. */
+    val ringThroughMaxSeconds: Int = 180,
 ) {
     /** Snapshot taken at call start. */
     fun freeze(): FrozenSettings = FrozenSettings(

@@ -85,4 +85,6 @@ data class CallLogEntry(
     val voiceId: String? = null,
     /** Version of the settings the call was frozen from. */
     val settingsVersion: Long? = null,
+    /** Dial_Legs started by a ring-through call; null for other calls. */
+    val dialLegs: Int? = null,
 )

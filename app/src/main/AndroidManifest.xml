@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.SEND_SMS" />
     <!-- Requested only when the User opens the SIM picker on a phone with more than one SIM, to list the active SIMs. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Requested at runtime when the User turns on "silence calls from numbers not in my contacts" (Requirement 34). Contacts are read on this device only and never sent to the server. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- Only used to remove the old accessibility service entry on devices that ran the archived on-device build. This build never enables it. -->
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
@@ -38,7 +40,7 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.CallAnswer.Dialog" />
-        <!-- Screening_Observer (Requirement 33): the call screening role is held only to read the incoming number for the Ringing_Alert. It always allows the call unchanged. -->
+        <!-- Screening_Observer (Requirement 33): the call screening role is held to read the incoming number for the Ringing_Alert and, when the User turns it on, to silence the ringer for a non-contact (Requirement 34). It never rejects or answers a call. -->
         <service
             android:name=".screening.RepeatCallerScreeningService"
             android:exported="true"

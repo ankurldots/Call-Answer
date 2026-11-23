@@ -112,7 +112,9 @@ The product serves several Users, each with an own phone number, settings, call 
 - **Dial_Leg**: One Exotel Connect attempt to the User_Mobile during a Ring_Through. Each Dial_Leg lasts at most 15 seconds.
 - **Ring_Through_Cap**: The maximum total time, from the start of a Ring_Through, during which the Agent_Server keeps dialing the User_Mobile. The default is 180 seconds and the User can change it from 30 to 600 seconds.
 - **Ringback_Tone**: A pre-recorded ringing tone that the Agent_Server plays to the Caller between Dial_Legs.
-- **Screening_Observer**: The `CallScreeningService` of the Companion_App that reads the incoming number and allows every call unchanged. It holds the call screening role and has no other function.
+- **Screening_Observer**: The `CallScreeningService` of the Companion_App that reads the incoming number, allows every call unchanged, and, only where the User has turned on Silence_Non_Contacts and the number qualifies under Requirement 34, mutes the ringer of that call. It holds the call screening role and has no other function.
+- **Known_Caller**: A Caller whose number, after normalization with `PhoneNumbers.normalize`, equals the normalized number of an entry in the contacts of the User's phone. A hidden number is never a Known_Caller.
+- **Silence_Non_Contacts**: The Companion_App setting, default off and stored only on the User's phone, that mutes the ringer of an incoming call from a Caller who is not a Known_Caller and not a Repeat_Caller. The call keeps ringing silently, and the carrier forwarding is not changed.
 - **Ringing_Alert**: A high-priority heads-up or full-screen notification of the Companion_App, shown while the User's phone rings, that tells the User a Repeat_Caller is calling.
 - **Recent_Call_Record**: The per-User, per-number record of the end time and Intent_Category of the latest non-SOLICITATION call from that number.
 - **Spam_Report**: A complaint about a Caller sent as one SMS to the TRAI_Report_Number.
@@ -511,7 +513,7 @@ The product serves several Users, each with an own phone number, settings, call 
 1. THE Agent_Server SHALL reuse the `:core` Kotlin module, running on the JVM, for gate selection, Night_Window evaluation, Delivery_Steps rendering, the PII_Guard, settings validation, and Spam_Report_Message building, wherever the code in `:core` has no Android dependency.
 2. THE Companion_App SHALL keep its existing Amazon Cognito sign-in and SHALL use the Cognito token for the Companion_API.
 3. THE repository SHALL keep the on-device call audio code (accessibility service capture, AudioTrack Agent playback, on-device speech recognition and synthesis, and call screening role answering) in an archive location that is excluded from the Companion_App release build.
-4. THE Companion_App release build SHALL NOT request the accessibility service or the microphone permission, and SHALL request the call screening role only for the Screening_Observer of Requirement 33.
+4. THE Companion_App release build SHALL NOT request the accessibility service or the microphone permission, and SHALL request the call screening role only for the Screening_Observer of Requirements 33 and 34, and SHALL request the READ_CONTACTS permission only for Silence_Non_Contacts of Requirement 34.
 5. THE repository SHALL keep the earlier spec `.kiro/specs/ai-call-screening-agent/` unchanged.
 6. THE Companion_App SHALL NOT call Amazon Polly for the Agent voice.
 7. WHEN `:core` code that the Agent_Server and the Companion_App share is changed, THE build SHALL run the existing `:core` JVM unit tests and property tests for that code before producing a release.
@@ -658,8 +660,8 @@ Background: the carrier forwards a call to the Virtual_Number after about 20 sec
 
 #### Acceptance Criteria
 
-1. THE Screening_Observer SHALL allow every incoming call unchanged, and SHALL NOT reject, silence, answer, or hide the call, SHALL NOT skip the call log or the notification, and SHALL NOT change the ringing.
-2. THE Companion_App SHALL use the Screening_Observer only to read the incoming number, and SHALL NOT use an accessibility service, the microphone permission, the READ_CALL_LOG permission, or an auto-answer function for the Ringing_Alert.
+1. THE Screening_Observer SHALL allow every incoming call unchanged, except that it MAY mute the ringer of a call under Requirement 34. THE Screening_Observer SHALL NOT reject, answer, or hide any call, SHALL NOT skip the call log or the notification, and SHALL NOT change the ringing of a call to which Requirement 34 does not apply.
+2. THE Companion_App SHALL use the Screening_Observer only to read the incoming number and, under Requirement 34, to mute the ringer, and SHALL NOT use an accessibility service, the microphone permission, the READ_CALL_LOG permission, or an auto-answer function for the Ringing_Alert.
 3. WHERE the User has turned on Ring_Through, WHEN the Screening_Observer receives an incoming call whose normalized number matches a locally cached Recent_Call_Record that ended at most Repeat_Window minutes ago, THE Companion_App SHALL show the Ringing_Alert within 1 second.
 4. THE Ringing_Alert SHALL show the Caller number, the minutes since the earlier call, the earlier Intent_Category, and the text of the form "Delivery caller from 5 min ago - pick up".
 5. THE Companion_App SHALL show the Ringing_Alert as a high-priority heads-up notification, and as a full-screen notification where the User has granted the full-screen permission.
@@ -669,8 +671,28 @@ Background: the carrier forwards a call to the Virtual_Number after about 20 sec
 9. WHEN the Companion_App starts or the User opens the call log, THE Companion_App SHALL refresh the local cache through the Companion_API with the Recent_Call_Records of the last 60 minutes.
 10. THE Companion_App SHALL match numbers locally after normalizing both numbers with `PhoneNumbers.normalize`, so that every textual form of the same number matches.
 11. THE Companion_App SHALL delete cached Recent_Call_Records that are older than 60 minutes.
-12. WHEN the User has not granted the call screening role, THE Companion_App SHALL explain in the settings that the role is used only to read the incoming number, and THE Companion_App SHALL keep working without the Ringing_Alert if the User declines.
+12. WHEN the User has not granted the call screening role, THE Companion_App SHALL explain in the settings that the role is used only to read the incoming number and, where the User turns on Silence_Non_Contacts, to mute the ringer, and THE Companion_App SHALL keep working without the Ringing_Alert if the User declines.
 13. THE Companion_App release build SHALL contain exactly one call screening service, the Screening_Observer, and the release manifest test SHALL fail when the manifest contains the microphone permission, an accessibility service, or any other call screening service.
+
+### Requirement 34: Silence the ringer for callers who are not in the contacts
+
+**User Story:** As a User, I want my phone to ring silently when a number that is not in my contacts calls, so that unknown callers do not disturb me, while the call still reaches the Agent when I do not answer.
+
+#### Acceptance Criteria
+
+1. THE Companion_App SHALL let the User turn Silence_Non_Contacts on or off in the settings, with the default off, and SHALL store the value only on the User's phone and SHALL NOT send it, or any contact, to the Agent_Server.
+2. WHERE Silence_Non_Contacts is on, WHEN the Screening_Observer receives an incoming call whose Caller is not a Known_Caller and not a Repeat_Caller, THE Screening_Observer SHALL respond with a call response that mutes the ringer, and the call SHALL keep ringing silently until the User answers it, the Caller hangs up, or the carrier forwards it.
+3. WHEN the Screening_Observer mutes the ringer, THE Screening_Observer SHALL NOT reject, answer, or hide the call, SHALL NOT skip the call log or the notification, and the Companion_App SHALL NOT change the Exotel ring time, any dial timeout, or any forwarding code.
+4. WHERE Silence_Non_Contacts is off, THE Screening_Observer SHALL respond with the default call response and SHALL NOT read the contacts.
+5. THE Screening_Observer SHALL NOT mute the ringer of a call from a Known_Caller.
+6. THE Screening_Observer SHALL NOT mute the ringer of a call from a Repeat_Caller to which the Ringing_Alert applies under Requirement 33 criterion 3, so that the User picks up the repeat call.
+7. THE Companion_App SHALL decide whether a Caller is a Known_Caller by normalizing both the incoming number and each contact number with `PhoneNumbers.normalize`, so that numbers that differ only in country code, a leading zero, a leading plus, or spaces, hyphens, parentheses, and periods match.
+8. IF the incoming number is hidden or unavailable, THEN THE Screening_Observer SHALL treat the Caller as not a Known_Caller and, where Silence_Non_Contacts is on and the contacts can be read, SHALL mute the ringer.
+9. IF a number cannot be normalized, THEN THE Companion_App SHALL treat it as a Known_Caller only when the digits of a contact number equal its digits.
+10. IF the READ_CONTACTS permission is not granted, the contacts cannot be read, or the lookup takes longer than 3 seconds, THEN THE Screening_Observer SHALL NOT mute the ringer, SHALL respond with the default call response, and, when the contacts cannot be read, THE Companion_App SHALL show the notification that contacts access is required and the settings banner "Contacts permission is missing".
+11. WHEN the User turns on Silence_Non_Contacts without the READ_CONTACTS permission, THE Companion_App SHALL explain that the permission is used only on the phone to tell contacts from other numbers, and SHALL then request it, and SHALL keep the call ringing normally if the User declines.
+12. THE Companion_App SHALL read the contacts only while handling an incoming call and SHALL NOT store, log, or transmit any contact.
+13. THE Companion_App release build SHALL declare READ_CONTACTS, and the release manifest test SHALL continue to fail on RECORD_AUDIO, READ_CALL_LOG, an accessibility service, and any call screening service other than the Screening_Observer.
 
 ## Open Questions
 

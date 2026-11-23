@@ -665,6 +665,12 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - [x] 12.26 Handle the `recent_caller` push message
     - Extend the Firebase Messaging service of task 12.7 to store the record in `RecentCallCache` without showing a notification
     - _Requirements: 33.8_
+  - [x] 12.27 Implement Silence_Non_Contacts
+    - `NonContactSilencer` with `ContactMatcher` (both numbers through `PhoneNumbers.normalize`; unparsable numbers match on equal digits), `AndroidContactNumbers` (`READ_CONTACTS`, null on missing permission or failure), `LocalScreeningSettings` (device-only, default off), and `ContactsAccessNotifier`; `RepeatCallerScreeningService` answers with `setSilenceCall(true)` only for a non-contact that is not a Repeat_Caller (hidden numbers count as non-contacts), with a 3-second lookup bound, and with the default response when the setting is off or the contacts cannot be read; declare `READ_CONTACTS`; add the switch with the purpose text and the permission request to the Agent settings; no change to ring time, dial timeouts, or forwarding codes
+    - _Requirements: 34.1, 34.2, 34.3, 34.4, 34.5, 34.6, 34.7, 34.8, 34.9, 34.10, 34.11, 34.12, 34.13_
+  - [x] 12.28 Write unit tests for Silence_Non_Contacts
+    - Matching across `+91`, `0`, spaced, and bracketed forms, setting off and on, a contact and a Repeat_Caller never silenced, a hidden number silenced, and `READ_CONTACTS` missing or the lookup failing leaves the ringer on and notifies
+    - _Requirements: 34.1, 34.2, 34.4, 34.5, 34.6, 34.7, 34.8, 34.9, 34.10_
 - [~] 13. Checkpoint - App complete
   - Run `./gradlew :core:test :agent:test :app:testReleaseUnitTest` and `scripts/check-16kb.sh`
   - Ensure all tests pass, ask the user if questions arise.
@@ -752,7 +758,7 @@ Depends on (gated tasks):
   "waves": [
     { "id": 0, "tasks": ["1.2", "3.6", "4.2", "4.4", "4.6", "4.9", "5.2", "5.4", "5.7", "6.3", "6.4", "6.6", "6.7", "6.11", "6.13", "6.15", "8.2", "8.4", "8.6", "8.12", "8.13", "9.2", "9.5", "9.7", "9.9", "9.11", "9.13", "9.15", "9.16", "9.19", "10.8", "12.6", "12.7", "12.12", "12.13", "12.16", "12.18", "12.24", "12.25"] },
     { "id": 1, "tasks": ["6.8", "10.16"] },
-    { "id": 2, "tasks": ["6.9", "10.10", "10.13", "10.17", "12.26"] },
+    { "id": 2, "tasks": ["6.9", "10.10", "10.13", "10.17", "12.26", "12.27", "12.28"] },
     { "id": 3, "tasks": ["10.14"] },
     { "id": 4, "tasks": ["0.1", "0.2", "1.3"] },
     { "id": 5, "tasks": ["1.5"] },

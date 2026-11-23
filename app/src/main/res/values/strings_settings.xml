@@ -133,8 +133,13 @@
     <string name="ring_through_window">Repeat window in minutes (1 to 60)</string>
     <string name="ring_through_max">Longest ring time in seconds (30 to 600)</string>
     <string name="screening_role_title">Call screening role</string>
-    <string name="screening_role_explanation">Android gives the app the incoming number only if it holds the call screening role. The app only reads the number to warn you about a repeat caller. It never blocks, silences or answers a call.</string>
+    <string name="screening_role_explanation">Android gives the app the incoming number only if it holds the call screening role. The app reads the number to warn you about a repeat caller and, if you turn it on below, to silence the ringer for numbers not in your contacts. It never blocks or answers a call.</string>
     <string name="screening_role_granted">The role is granted.</string>
     <string name="screening_role_missing">The role is not granted, so repeat caller alerts are off.</string>
     <string name="screening_role_request">Allow call screening role</string>
+    <string name="silence_non_contacts_enabled">Silence the ringer for numbers not in my contacts</string>
+    <string name="silence_non_contacts_explanation">The phone still rings silently, the call stays in your call log and you still see its notification. Calls from your contacts and repeat callers ring normally. Your contacts are checked on this phone only and are never sent anywhere. This needs the call screening role.</string>
+    <string name="silence_non_contacts_permission">To tell contacts from other numbers, Android asks for permission to read your contacts.</string>
+    <string name="silence_non_contacts_permission_denied">Contacts permission is missing, so the ringer is not silenced.</string>
+    <string name="silence_non_contacts_allow">Allow contacts access</string>
 </resources>

@@ -13,8 +13,8 @@ import org.w3c.dom.Element
  *
  * Why exactly one screening service is allowed: the app holds the call screening role only to read the
  * incoming number for the Ringing_Alert (repeat-caller alert, Requirement 33). `RepeatCallerScreeningService`
- * always answers with the default CallResponse (no reject, silence, or skipped call log/notification). It
- * never touches call audio, so RECORD_AUDIO, READ_CALL_LOG and accessibility services stay forbidden.
+ * never rejects or answers a call and never skips the call log or notification; it only silences the ringer for a
+ * non-contact when the User turned that on (Requirement 34). It never touches call audio, so RECORD_AUDIO, READ_CALL_LOG and accessibility services stay forbidden.
  */
 class ReleaseManifestTest {
     private val ns = "http://schemas.android.com/apk/res/android"

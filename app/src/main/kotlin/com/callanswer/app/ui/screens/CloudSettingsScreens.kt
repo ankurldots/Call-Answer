@@ -160,6 +160,7 @@ private fun AgentForm(state: CloudSettingsState, initial: Settings, consent: Con
         errorMessage = errors[AgentField.RING_THROUGH_MAX],
     )
     ScreeningRoleRow()
+    SilenceNonContactsRow()
     SaveStatus(outcome, toggleFailed)
     AppButton(stringResource(R.string.settings_save), onClick = {
         scope.launch {

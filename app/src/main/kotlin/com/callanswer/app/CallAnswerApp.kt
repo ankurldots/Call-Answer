@@ -26,6 +26,10 @@ import com.callanswer.app.sms.SmsManagerTransport
 import com.callanswer.app.screening.RecentCallCache
 import com.callanswer.app.screening.RingingAlert
 import com.callanswer.app.screening.RepeatCallerMatcher
+import com.callanswer.app.screening.AndroidContactNumbers
+import com.callanswer.app.screening.ContactsAccessNotifier
+import com.callanswer.app.screening.LocalScreeningSettings
+import com.callanswer.app.screening.NonContactSilencer
 import com.callanswer.app.screening.ScreeningObserver
 import com.callanswer.core.cloud.RingThroughPolicy
 import kotlinx.serialization.json.booleanOrNull
@@ -117,6 +121,16 @@ class CallAnswerApp : Application() {
         )
     }
 
+    /** Local setting "silence calls from numbers not in my contacts" (Requirement 34); stays on this device. */
+    val localScreeningSettings: LocalScreeningSettings by lazy { LocalScreeningSettings(this) }
+    val nonContactSilencer: NonContactSilencer by lazy {
+        NonContactSilencer(
+            enabled = { localScreeningSettings.silenceNonContacts },
+            contacts = AndroidContactNumbers(this),
+            isRepeatCaller = screeningObserver::isRepeatCaller,
+            onContactsUnavailable = ContactsAccessNotifier(this)::notifyAccessRequired,
+        )
+    }
     override fun onCreate() {
         super.onCreate()
         // Devices that ran the archived on-device build may still have its accessibility service enabled.

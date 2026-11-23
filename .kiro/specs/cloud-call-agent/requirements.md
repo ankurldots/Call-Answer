@@ -21,7 +21,7 @@ Device tests on a Samsung Galaxy M34 5G (Android 16, One UI, Wi-Fi calling) show
 
 ### Domain rules carried over from the earlier spec
 
-Greeting with an optional AI disclosure. Four intents: delivery, door not opened, solicitation or sales, and unknown. Delivery callers receive the Colony_Gate_Info (Gate 1 by day, Gate 3 during the Night_Window), the Delivery_Steps, and the Map_Location by SMS. Door not opened callers hear "please wait" while the User receives a Takeover_Alert, and the User can take over by bridging the call to the User's mobile, with a nobody-available message after 30 seconds. Solicitation callers are stalled politely with fictitious replies up to a maximum stalling duration, without revealing personal data. Unknown callers are asked for the reason, within clarification limits, and then asked to leave a message. Silence and repetition limits apply. The Agent replies in the Caller's language (Hindi, English, or Hinglish) in a female or male voice. Each call produces a Call_Log entry with transcript, outcome, and recording link, and the User can report spam to 1909.
+Greeting with an optional AI disclosure. Four intents: delivery, door not opened, solicitation or sales, and unknown. Delivery callers receive the Colony_Gate_Info (Gate 1 by day, Gate 3 during the Night_Window), the Delivery_Steps, and the Map_Location by SMS that the Companion_App sends from the User's own phone. Door not opened callers hear "please wait" while the User receives a Takeover_Alert, and the User can take over by bridging the call to the User's mobile, with a nobody-available message after 30 seconds. Solicitation callers are stalled politely with fictitious replies up to a maximum stalling duration, without revealing personal data. Unknown callers are asked for the reason, within clarification limits, and then asked to leave a message. Silence and repetition limits apply. The Agent replies in the Caller's language (Hindi, English, or Hinglish) in a female or male voice. Each call produces a Call_Log entry with transcript, outcome, and recording link, and the User can report spam to 1909.
 
 ### Multi-user model
 
@@ -83,7 +83,10 @@ The product serves several Users, each with an own phone number, settings, call 
 - **Household_Time**: The current time of day (24-hour clock) in the time zone Asia/Kolkata, evaluated by the Agent_Server clock.
 - **Delivery_Steps**: The User-configurable ordered list of 1 to 10 steps, each with an English text and a Hindi text of 1 to 200 characters, spoken to a delivery Caller. The default steps instruct the Caller to go to the Map_Location, take the stairs in the middle of the house, go to the second floor, and ring the bell. A step text may contain the placeholder {map_location}.
 - **Map_Location**: The address or map link of the User's home, configured by the User and sent to the Caller as the Map_SMS.
-- **Map_SMS**: The text message containing the Map_Location link that the Agent_Server sends to the Caller through Exotel SMS.
+- **Map_SMS**: The text message containing the Map_Location link that the Companion_App sends to the Caller from the User's own phone and SIM with the Android SmsManager. The Agent_Server never sends SMS and no Exotel SMS is used.
+- **Map_SMS_Request**: The high-priority FCM data message of type `send_map_sms` that the Agent_Server sends to the devices of the call owner, with the call identifier, the Caller number, and the Map_SMS text.
+- **Map_SMS_Result**: The status SENT, FAILED, or NO_PERMISSION that the Companion_App reports to the Agent_Server through `POST /calls/{id}/map-sms-result`.
+- **Map_SMS_Ack_Window**: The 20 seconds that the Agent_Server waits for a Map_SMS_Result after sending a Map_SMS_Request.
 - **Takeover_Alert**: A high-priority push notification on the User's phone, with sound and a "Take over" action, that tells the User a Caller is waiting.
 - **Take_Over**: The state in which the Agent stops speaking and the Caller is bridged to the User_Mobile so that the User talks to the Caller directly.
 - **Bridge_Call**: The Exotel operation that connects the live Caller leg to the User_Mobile for a Take_Over.
@@ -258,13 +261,18 @@ The product serves several Users, each with an own phone number, settings, call 
 2. WHEN the Agent calls `get_delivery_directions`, THE Agent_Server SHALL return the Colony_Gate_Info first, then the configured Delivery_Steps in the configured order, with the placeholder {map_location} replaced by the Map_Location.
 3. WHEN the Caller asks for the directions to be repeated, THE Agent SHALL repeat the complete directions by calling `get_delivery_directions` again, up to 3 repetitions per call.
 4. IF the Caller asks for the directions to be repeated after 3 repetitions, THEN THE Agent SHALL tell the Caller that no further repetitions are available and SHALL end the call.
-5. WHERE the User has configured a Map_Location, WHEN the Agent finishes the Delivery_Steps, THE Agent SHALL call `send_map_sms`, and THE Agent_Server SHALL send the Map_SMS to the Caller number through Exotel SMS within 30 seconds.
+5. WHERE the User has configured a Map_Location, WHEN the Agent finishes the Delivery_Steps, THE Agent SHALL call `send_map_sms`, and THE Agent_Server SHALL send a Map_SMS_Request to every registered device of the call owner within 3 seconds, with the call identifier, the Caller number, and the Map_SMS text rendered on the server from the Map_Location and a fixed template in the Caller's language (Hindi or English; the default language setting for any other language).
 6. IF the Map_Location is not configured, THEN THE Agent_Server SHALL return the directions without a location reference and SHALL send a push notification to the Companion_App within 60 seconds stating that the Map_Location is missing.
-7. IF the Caller number is unknown or not a mobile number, THEN THE Agent_Server SHALL NOT send the Map_SMS and SHALL record the reason in the Call_Log.
-8. IF Exotel reports that the Map_SMS was not delivered or Exotel rejects the request, THEN THE Agent_Server SHALL send a push notification to the Companion_App within 60 seconds stating that the text message failed and SHALL keep the call open.
+7. IF the Caller number is unknown (hidden) or not a mobile number, THEN THE Agent_Server SHALL NOT send a Map_SMS_Request, SHALL record the reason in the Call_Log, and SHALL tell the Agent in the tool result to say the location verbally.
+8. IF the Map_SMS_Result is FAILED or NO_PERMISSION, or no Map_SMS_Result arrives within the Map_SMS_Ack_Window, THEN THE Agent_Server SHALL tell the Agent in the tool result to say the Map_Location verbally, SHALL send a push notification to the Companion_App within 60 seconds stating that the text message was not sent, and SHALL keep the call open.
 9. WHEN the Agent has spoken the directions and the Caller has acknowledged, ended the call, or been silent for 10 seconds, THE Agent SHALL call `end_call` with the reason delivery directions given.
-10. THE Agent_Server SHALL send the Map_SMS at most once per call.
+10. THE Agent_Server SHALL send the Map_SMS_Request at most once per call.
 11. IF the Caller language is not Hindi or English, THEN THE Agent SHALL speak the directions in the default language set by the User.
+12. THE Agent_Server SHALL NOT send any SMS itself and SHALL NOT use Exotel SMS or any SMS gateway.
+13. WHEN the Companion_App receives a Map_SMS_Request, THE Companion_App SHALL send the Map_SMS text to the Caller number with the Android SmsManager from the User's SIM and SHALL report the Map_SMS_Result to the Agent_Server within 5 seconds of the sent or failed result of SmsManager.
+14. IF the Companion_App does not hold the SEND_SMS permission when it receives a Map_SMS_Request, THEN THE Companion_App SHALL NOT send the text and SHALL report the Map_SMS_Result NO_PERMISSION.
+15. WHILE the device has more than one active SIM, THE Companion_App SHALL send the Map_SMS from the SIM selected in the settings, and from the default SMS subscription when the User has selected none.
+16. WHEN a Map_SMS_Result is received for a call, THE Agent_Server SHALL store it in the Call_Log entry and the Call_Trace.
 
 ### Requirement 11: Hand the call to the User when the door is not opened
 
@@ -279,7 +287,7 @@ The product serves several Users, each with an own phone number, settings, call 
 5. WHEN the Bridge_Call connects the Caller to the User_Mobile, THE Agent_Server SHALL close the Sonic_Session and SHALL stop sending Agent audio.
 6. IF the User does not take over within 30 seconds of the Takeover_Alert, THEN THE Agent SHALL tell the Caller, in the Caller's language, that nobody is available and ask the Caller to call again shortly, and THE Agent_Server SHALL keep the Caller connected to the Agent.
 7. IF the Bridge_Call cannot reach the User_Mobile because the User_Mobile is busy, unreachable, or does not answer within 30 seconds, THEN THE Agent_Server SHALL return the Caller to the Agent, SHALL tell the Caller in the Caller's language that the person could not be reached, and SHALL record the failure in the Call_Log.
-8. IF the Takeover_Alert cannot be delivered to the Companion_App, THEN THE Agent_Server SHALL send an SMS with the Caller number to the User_Mobile through Exotel SMS and SHALL record the failure in the Call_Log.
+8. IF the Takeover_Alert cannot be delivered to the Companion_App (no registered device, FCM rejection, or no acknowledgment from any device within 10 seconds), THEN THE Agent_Server SHALL record the failure in the Call_Log, SHALL tell the Caller in the Caller's language that nobody is available, and SHALL offer to take a message. THE Agent_Server SHALL NOT send an SMS to the User_Mobile.
 9. WHEN a call ends in which the User took over, THE Agent_Server SHALL record in the Call_Log that the User took over, the Take_Over start time, and the Take_Over duration in whole seconds, within 5 seconds of call end.
 10. THE Agent_Server SHALL accept at most one Take_Over request per call at a time and SHALL ignore a second "Take over" action while a Bridge_Call is in progress.
 11. WHILE the call is in Take_Over, THE Agent_Server SHALL NOT start a new Sonic_Session for that call.
@@ -387,6 +395,7 @@ The product serves several Users, each with an own phone number, settings, call 
 9. THE Companion_App SHALL provide a setting that turns Call_Recording on or off, with a default of on.
 10. THE Agent_Server SHALL NOT send call audio, transcripts, or the Call_Log to any service other than Exotel, Amazon Bedrock Nova_Sonic, and the Agent_Server's own storage and push notification service.
 11. THE Agent_Server SHALL NOT keep the Caller's audio after the call, other than the Call_Recording, and SHALL NOT use call data to train a model.
+12. THE Agent_Server SHALL send the Caller number in a Map_SMS_Request only to the registered devices of the User who owns the call, who already sees the Caller number in the Companion_App, and SHALL NOT send the Caller number to any SMS gateway.
 
 ### Requirement 18: Keep a call log with transcript and recording
 
@@ -468,6 +477,7 @@ The product serves several Users, each with an own phone number, settings, call 
 6. THE Agent_Server SHALL cap the duration of a single call at 60 minutes, and SHALL end a call that reaches the cap after a polite closing statement.
 7. THE Companion_App SHALL label the Cost_Estimate as an estimate and SHALL NOT present it as a bill.
 8. THE Agent_Server SHALL keep the Cost_Estimate of each call and the month total separately for each User_Id, and SHALL NOT issue invoices or charge Users in this release.
+9. THE Agent_Server SHALL exclude SMS charges from the Cost_Estimate, because the Map_SMS is sent from the User's phone and billed by the carrier plan of the User, and no Exotel SMS charge arises.
 
 ### Requirement 23: Trace each call
 
@@ -605,20 +615,21 @@ The product serves several Users, each with an own phone number, settings, call 
 4. IF the User has not entered a valid User_Mobile, THEN THE Companion_App SHALL ask for the User_Mobile before the Forwarding_Codes are shown.
 5. WHEN the Companion_App starts and the server holds no settings document for the User, THE Companion_App SHALL offer to upload the settings cached on the device as the first document with the expected Settings_Version 0.
 6. THE Companion_App SHALL keep the Agent off until the User has accepted the Privacy_Consent, the Virtual_Number is assigned, and the User_Mobile is saved.
+7. WHEN the User reaches the settings step, THE Companion_App SHALL explain that the Map_SMS is sent from the User's own phone and SIM at the carrier rates of the User, SHALL request the SEND_SMS runtime permission, and SHALL keep the Agent usable without the Map_SMS when the User declines.
 
 ## Open Questions
 
 1. **Exotel Stream_Format.** Does the Voicebot applet stream 8 kHz or 16 kHz, linear PCM or mu-law, and what frame size does Exotel require? Requirement 3 reads the format from the start event, but the resampling cost and the audio quality for Hindi recognition depend on the answer (8 kHz telephone audio may reduce Sonic accuracy).
 2. **Exotel Take_Over operation.** Which Exotel API connects a live Caller leg to the User_Mobile while the Voice_Stream is open (call transfer, connect applet, or a new outbound leg that is bridged)? Does the Voice_Stream close on transfer, and can the Caller be returned to the Agent if the User_Mobile does not answer (Requirement 11 criterion 7)?
 3. **Exotel stream control and authentication.** Does Exotel support a clear or flush command for buffered audio (Requirement 5 criterion 2), and which authentication does Exotel support for the Voice_Stream and webhooks (Requirement 16 criterion 2)?
-4. **Exotel SMS to the Caller.** Do Indian DLT registration rules (sender ID and template) apply to the Map_SMS, and does Exotel require a registered template before the first SMS?
+4. **Exotel SMS to the Caller.** RESOLVED (User): the SMS is sent from the device only, with the Android SmsManager from the User's SIM. No Exotel SMS, no DLT registration, and no sender ID are needed (Requirement 10 criterion 12). Carrier or SIM-side filtering of promotional links on the User's own number is a residual risk to observe in the device tests. Play Store SMS policy does not block the app, because it is sideloaded and not distributed through Google Play.
 5. **Sonic Hindi and Hinglish quality.** How well does Nova 2 Sonic recognize and speak Hindi and Hinglish over 8 kHz telephone audio, and is the Indian-English voice acceptable? A spike with recorded test calls is needed before the language rules of Requirement 7 are final.
 6. **Sonic session limits.** What are the current session duration and idle limits and the tool-use constraints of Nova 2 Sonic, and does the replacement session of Requirement 14 keep the conversation context? The limits must be confirmed in the Amazon documentation during design.
 7. **Data residency acceptance.** RESOLVED (User, approved): processing call audio in AWS Tokyo (ap-northeast-1), outside India, is accepted. The Privacy_Consent screen of Requirement 17 still records the acceptance.
 8. **Call recording and consent law.** RESOLVED (User, approved): a spoken Recording_Notice is sufficient and no legal review is requested. Call_Recording and the Disclosure_Setting stay on by default.
 9. **Forwarding behavior of the carrier.** PARTLY RESOLVED: the carrier is Airtel postpaid (India). Whether Airtel accepts the `**61*`, `**67*`, `**62*` codes with a ring time, including while the User_Mobile is on Wi-Fi calling (VoWiFi), is still to be confirmed with a test call (Requirement 2 criterion 6). This remains a spike item in the design.
 10. **Push channel.** OPEN: the Takeover_Alert uses Firebase Cloud Messaging or Amazon SNS (SNS mobile push uses FCM underneath). The design proposes a choice for the User to confirm.
-11. **Defaults to confirm.** RESOLVED (User, approved): all listed defaults are confirmed: forward on no answer after 20 seconds, busy, and unreachable; Call_Recording and Disclosure_Setting on; Retention_Period 30 days; maximum stalling duration 5 minutes; maximum call duration 15 minutes for a call that is not in Stalling_Mode or Take_Over and an absolute cap of 60 minutes; up to 3 concurrent calls; Take_Over bridges the Caller to the User_Mobile and a failed Bridge_Call returns the Caller to the Agent; an SMS fallback alert when the push notification cannot be delivered; monthly cost limit configurable.
+11. **Defaults to confirm.** RESOLVED (User, approved): all listed defaults are confirmed: forward on no answer after 20 seconds, busy, and unreachable; Call_Recording and Disclosure_Setting on; Retention_Period 30 days; maximum stalling duration 5 minutes; maximum call duration 15 minutes for a call that is not in Stalling_Mode or Take_Over and an absolute cap of 60 minutes; up to 3 concurrent calls; Take_Over bridges the Caller to the User_Mobile and a failed Bridge_Call returns the Caller to the Agent; when the push notification cannot be delivered the Agent takes a message (the earlier SMS fallback alert is removed; see question 21); monthly cost limit configurable.
 12. **Gate rules and Night_Window time zone.** RESOLVED (User, approved): Household_Time is Asia/Kolkata.
 13. **Multi-user decisions (User request).** DECIDED: one Virtual_Number per User as the primary model; the dialed `To` number identifies the User; the Cognito `sub` is the User_Id; the Admin (owner) assigns numbers by hand through an `admins` group API or a CLI script; settings are versioned in DynamoDB; up to 3 concurrent calls per User plus a Global_Call_Cap; no billing system.
 14. **ForwardedFrom or diversion hint.** OPEN: does Airtel plus Exotel pass any forwarding information (`ForwardedFrom`, a SIP Diversion or History-Info header)? The design adds spike C-7. The value is a hint only (Requirement 25 criteria 5 to 7), so the answer does not change the primary model.
@@ -627,4 +638,6 @@ The product serves several Users, each with an own phone number, settings, call 
 17. **Sign-up policy.** RESOLVED (default): accounts are created by the Admin only, with no public self sign-up. Self sign-up is disabled for the app client if the user pool allows it.
 18. **Global_Call_Cap default and fairness.** OPEN: the default of 10 depends on the task size from the C-1 load test. When the cap is reached, new calls of every User fall back; a per-User reserved share is not planned.
 19. **Account deletion and data export.** RESOLVED (default): self-service account deletion and data export are out of scope for this release. A User can delete single calls and set the Retention_Period.
-20. **Shared SMS sender.** OPEN: all Users share one Exotel account and one DLT sender and template for the Map_SMS. Confirm that a shared sender is acceptable.
+20. **Shared SMS sender.** RESOLVED (User): not applicable. Each User sends the Map_SMS from the own phone, so no shared sender or DLT template exists.
+21. **Takeover alert without SMS fallback.** RESOLVED (default, User to confirm): the SMS to the User_Mobile is removed. The Takeover_Alert relies on high-priority FCM and the full-screen notification. If no device acknowledges within 10 seconds, the Agent takes the nobody-available path and offers to take a message. Future option: an Exotel outbound call to the User_Mobile as an alert.
+22. **Map_SMS on the device.** OPEN: (a) Will carrier spam filtering block links in SMS from the User's own SIM to unknown numbers? A device test is needed. (b) Which SIM does the User want to use on a dual-SIM phone (default SMS subscription unless chosen)? (c) What is the carrier SMS cost per message on the User's plan?

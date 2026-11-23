@@ -4,15 +4,15 @@
 
 The plan is in Kotlin (JVM for the server, Android for the Companion_App) and AWS SAM for infrastructure, as in the design. It runs in these stages:
 
-0. Tasks the User must do. They are marked **USER** and have long lead times (Exotel KYC, DLT approval, DNS), so they start first.
-1. Seven spikes (C-6, C-4, C-5, C-1, C-7, C-2, C-3) that settle the facts the design depends on, followed by a go/no-go checkpoint. No production code is written before the checkpoint passes.
+0. Tasks the User must do. They are marked **USER** and have long lead times (Exotel KYC, DNS), so they start first.
+1. Six spikes (C-4, C-5, C-1, C-7, C-2, C-3; C-6 is obsolete because SMS is sent from the device) that settle the facts the design depends on, followed by a go/no-go checkpoint. No production code is written before the checkpoint passes.
 2. The new Gradle module `:agent` (reusing `:core`), the SAM template in `infra/cloud-agent/`, secrets, and IAM.
 3. The Exotel stream handler, codec, resampler, pacer, and `clear` handling.
 4. The Nova 2 Sonic client: bidirectional stream, tools, interruption, and session renewal.
 5. The seven Agent_Tools on the `:core` rules.
 6. The call policy, the takeover state machine, and the fallbacks.
 7. Persistence (DynamoDB, S3 recordings, retention sweeper), traces, and cost.
-8. The Companion_API, FCM push, and the SMS fallback.
+8. The Companion_API and FCM push, including the `send_map_sms` push and the `map-sms-result` route (no SMS fallback and no server SMS).
 9. The Companion_App changes, including the 16 KB page-size compatibility that the app keeps.
 10. Deployment to ap-northeast-1 and end-to-end validation with real calls.
 
@@ -22,7 +22,7 @@ Each of the 28 correctness properties is a property-based test (Kotest, at least
 
 Decisions used by the plan (see "Approved decisions, domain, and defaults" in design.md):
 - Domain `leadingdots.com`: `agent.leadingdots.com` for the Exotel stream and webhooks, `api.leadingdots.com` for the Companion_API, on the same ALB with host-based listener rules. One ACM certificate in ap-northeast-1 with DNS validation.
-- Defaults the User can change: FCM direct, Exotel feature enablement to be confirmed with Exotel support, an Exotel-provided DLT template, voices `kiara` and `arjun` (alternatives `tiffany` and `matthew`), and the existing Cognito pool in ap-south-1.
+- Defaults the User can change: FCM direct, Exotel feature enablement to be confirmed with Exotel support, SMS from the device only (no DLT, no Exotel SMS), voices `kiara` and `arjun` (alternatives `tiffany` and `matthew`), and the existing Cognito pool in ap-south-1.
 - Server-side recording starts after the spoken notice and the Take_Over segment is not recorded. The takeover dial timeout is 15 seconds, and calls from the Virtual_Number or the User_Mobile are rejected. Retention is enforced by the sweeper with a 366-day S3 lifecycle backstop.
 
 Tasks marked **USER** are done by the User, not by a coding agent. A coding agent should skip them and ask the User for the result.
@@ -34,8 +34,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Complete Exotel KYC and obtain Indian Virtual_Numbers: at least two (one for the owner, one for a test User) so that the multi-user tests can run
     - Ask Exotel for the monthly price per ExoPhone, the KYC effort per extra number, and any limit on numbers or concurrent streams per account (requirements open question 15)
     - Record the account SID, API key, API token, subdomain, and the plan and trial limits in a private note (not in the repository)
-    - Ask Exotel to start the DLT process for the Map_SMS and alert SMS (see 1.2)
-    - _Requirements: 1.1, 10.5, 11.8_
+    - _Requirements: 1.1_
 
   - [~] 0.2 **USER** Confirm Exotel feature enablement with Exotel support
     - Ask for the Voicebot (AgentStream) applet, the Passthru and Connect applets with dynamic URLs, and the Legs and Bridge APIs to be enabled on the account
@@ -78,15 +77,12 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - [x] 1.1 Create the `:spike-cloud` JVM module and the shared spike harness
     - Add a Gradle JVM module `:spike-cloud` (not a dependency of `:app` or `:agent`) with the AWS SDK for Java v2 `bedrockruntime`, Ktor server and client with WebSockets, and Kotest
     - Add a `SpikeLog` that writes timestamped JSON lines to `spike-cloud/results/` and a `Frames` recorder that stores raw Exotel and Sonic frames as fixtures for later contract tests
-    - Add `docs/cloud-spikes.md` with one results table per spike (C-6, C-4, C-5, C-1, C-2, C-3)
+    - Add `docs/cloud-spikes.md` with one results table per spike (C-4, C-5, C-1, C-2, C-3)
     - _Requirements: 24.1_
 
-  - [~] 1.2 Run spike C-6: Exotel SMS and the DLT template
-    - Request the DLT entity, sender ID, and template approval through Exotel (template with a link variable for the Map_SMS and a second one for the Takeover alert SMS)
-    - Send a test SMS with the link as a template variable to an Indian mobile through the Exotel SMS API with a small script in `:spike-cloud`
-    - Record go or no-go: an approved template delivers the SMS within 30 seconds; no-go removes Map_SMS and leaves a User decision on Requirement 10 criterion 5
-    - _Requirements: 10.5, 10.8, 11.8_
-
+  - [~] 1.2 Run spike C-6: Obsolete: SMS is sent from the device
+    - Obsolete: SMS is sent from the device. No Exotel SMS and no DLT registration are needed; nothing to run. The ID is kept so that numbering stays stable (the device sender is task 12.17)
+    - _Requirements: 10.12_
   - [~] 1.3 Run spike C-4: Airtel forwarding behavior (manual, on the User's phone)
     - Set `**61*<Virtual_Number>**20#`, `**67*<Virtual_Number>#`, and `**62*<Virtual_Number>#` on the User_Mobile
     - From another phone, call the User_Mobile with the phone unanswered, busy, and in airplane mode, each with mobile data and with Wi-Fi calling
@@ -126,7 +122,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
 
 - [~] 2. Checkpoint - Spike go/no-go
   - Review `docs/cloud-spikes.md` with the User and copy each result into a new "Spike results" subsection of design.md
-  - Apply the no-go consequences of the design table: no Map_SMS (C-6), extended Wi-Fi calling text (C-4), small chunks and 100 ms send-ahead (C-1), fixed-audio prompts or look-ahead PII buffer (C-5), English-only Agent (C-2), Bridge APIs or fixed failure message (C-3)
+  - Apply the no-go consequences of the design table: extended Wi-Fi calling text (C-4), small chunks and 100 ms send-ahead (C-1), fixed-audio prompts or look-ahead PII buffer (C-5), English-only Agent (C-2), Bridge APIs or fixed failure message (C-3)
   - If a no-go changes a requirement, ask the User to approve the change before task 3 starts
   - Ensure all tests pass, ask the user if questions arise.
 
@@ -292,14 +288,13 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 5: Directions repetition limit**
     - **Validates: Requirements 10.3, 10.4**
 
-  - [~] 6.8 Implement `ExotelClient` SMS and `send_map_sms`
-    - Exotel SMS API with Basic auth and the DLT template variable; send at most once per call, never to an unknown or non-mobile number (record the reason), return `ALREADY_SENT` afterwards, and raise a `MAP_SMS_FAILED` alert on rejection or non-delivery while the call stays open
-    - _Requirements: 10.5, 10.7, 10.8, 10.10_
-
+  - [~] 6.8 Implement `MapSmsService` and `send_map_sms` (push-and-await)
+    - Render the Map_SMS text server-side from the User's Map_Location and a fixed template in the Caller's language (`hi`, `en`, default language otherwise); send the high-priority FCM data message `send_map_sms` (`callId`, Caller number, text) through `FcmClient` to every device of the call owner; wait up to 20 seconds for the Map_SMS_Result from the route of task 10.13
+    - Send at most once per call and never for an unknown (hidden) or non-mobile number (record the reason); return `ALREADY_SENT` afterwards; return `SENT`, or `SAY_VERBALLY` with the reason (`FAILED`, `NO_PERMISSION`, `NO_ACK`, `NO_DEVICE`, skipped reasons) so that Sonic says the location verbally; raise a `MAP_SMS_FAILED` alert on failure while the call stays open; the server sends no SMS and uses no Exotel SMS
+    - _Requirements: 10.5, 10.7, 10.8, 10.10, 10.12, 10.16_
   - [ ]* 6.9 Write property test for the single Map_SMS
     - **Property 6: Map SMS is sent at most once to an eligible number**
     - **Validates: Requirements 10.5, 10.7, 10.10**
-
   - [x] 6.10 Implement `log_note`
     - Accept intent values only from DELIVERY, DOOR_NOT_OPENED, SOLICITATION, and UNKNOWN; reject others with `REJECTED` and the current category; store accepted values in the call state within 2 seconds; support the other note kinds of the design
     - _Requirements: 8.2, 8.10_
@@ -454,7 +449,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `AdminCli` main class in `:agent` and `scripts/admin/callagent-admin` that run assign, unassign, list, and deactivate through `NumberAssignmentService` with `--profile ldots --region ap-northeast-1`; add a `bootstrap-user <sub>` command that creates the profile of a User before first sign-in
     - _Requirements: 26.2, 26.4, 26.5, 26.6_
 
-- [ ] 10. Implement the Companion_API, push notifications, and the SMS fallback
+- [ ] 10. Implement the Companion_API and push notifications
   - [x] 10.1 Implement `JwtVerifier`, `RateLimiter`, and the route scaffold
     - Verify the Cognito token against the JWKS of the existing ap-south-1 pool (cache 1 hour; check `iss`, audience or client id, `exp`, and `token_use`), return the `sub` and the `cognito:groups` claim, 401 for an invalid token, and 429 above 60 requests per minute per `sub`
     - Make the verified `sub` the only source of the User_Id for every handler (never the path, query, or body) and answer 403 for a deactivated User
@@ -487,17 +482,17 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Validates: Requirements 2.6, 2.7**
 
   - [~] 10.8 Implement `FcmClient` and `AlertService`
-    - FCM HTTP v1 with the service account from Secrets Manager and high-priority data messages for the types of the design
+    - FCM HTTP v1 with the service account from Secrets Manager and high-priority data messages for the types of the design, including `send_map_sms`
     - Send each notification to every stored device of the User who owns the call and to no other device; remove a device token that FCM reports as unregistered
-    - Takeover_Alert acknowledgment wait of 5 seconds; on a missing token, an FCM rejection, or no acknowledgment, send an SMS with the Caller number to the User_Mobile of that User through Exotel and write the failure to the trace
+    - Takeover_Alert acknowledgment wait of 10 seconds; on a missing token, an FCM rejection, or no acknowledgment from any device, write the failure to the trace and return `ALERT_UNDELIVERED` so that the Agent takes the nobody-available path and offers to take a message; send no SMS
     - _Requirements: 11.2, 11.8, 19.8, 30.2, 30.3_
 
   - [~] 10.9 Wire the notification types into the call flow
-    - Send `CALL_STARTED`, `TAKEOVER_ALERT` within 3 seconds, `CALL_ENDED`, `UNKNOWN_CALLER_SUMMARY`, `SILENT_CALLER`, `MAP_SMS_FAILED`, `MAP_LOCATION_MISSING`, `PII_EVENT`, `NOT_LOGGED`, `COST_80`, and `COST_100` from the session and the finalizer
-    - _Requirements: 10.6, 10.8, 11.2, 12.9, 22.4_
+    - Send `CALL_STARTED`, `TAKEOVER_ALERT` within 3 seconds, `CALL_ENDED`, `UNKNOWN_CALLER_SUMMARY`, `SILENT_CALLER`, `send_map_sms` (from `send_map_sms` of task 6.8), `MAP_SMS_FAILED`, `MAP_LOCATION_MISSING`, `PII_EVENT`, `NOT_LOGGED`, `COST_80`, and `COST_100` from the session and the finalizer
+    - _Requirements: 10.5, 10.6, 10.8, 11.2, 12.9, 22.4_
 
   - [ ]* 10.10 Write unit tests for the API and the alerts
-    - Expired and wrong-audience tokens, the 429 response, and the alert fallback to SMS when no acknowledgment arrives
+    - Expired and wrong-audience tokens, the 429 response, and the `ALERT_UNDELIVERED` result (nobody-available path, no SMS) when no acknowledgment arrives
     - _Requirements: 16.6, 16.7, 11.8_
 
   - [x] 10.11 Implement the Admin_API routes
@@ -508,6 +503,12 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `PUT /settings` returns 200, 400 with the field name, and 409 with the stored document; the Admin_API returns 403 without the group and 409 on a duplicate; a foreign call identifier returns 404 on every call route and on takeover, end, quick-reply, and recording; a Take_Over request accepts no destination number; `/live` delivers only the events of the authenticated User
     - _Requirements: 26.3, 26.7, 27.3, 27.4, 27.6, 28.3, 28.6, 30.5, 30.6_
 
+  - [ ] 10.13 Implement the `map-sms-result` route
+    - `POST /calls/{id}/map-sms-result` with `{status: SENT|FAILED|NO_PERMISSION}` through `UserScopedRepository` of the token's `sub`: a foreign call identifier answers 404, an invalid status 400, a second result for the same call is ignored; store the result in the call state, the Call_Log, and the trace, and complete the wait of `MapSmsService` (task 6.8)
+    - _Requirements: 10.8, 10.16, 28.3_
+  - [ ]* 10.14 Write unit tests for the `map-sms-result` route and the push-and-await
+    - SENT, FAILED, NO_PERMISSION, no acknowledgment after 20 seconds (`SAY_VERBALLY`), hidden number (nothing sent), a foreign call identifier (404), and a duplicate result
+    - _Requirements: 10.7, 10.8, 10.16_
 - [~] 11. Checkpoint - Server complete
   - Run `./gradlew :core:test :agent:test` and confirm that the server code and all property tests pass locally
   - Ensure all tests pass, ask the user if questions arise.
@@ -544,7 +545,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Validates: Requirements 2.1, 2.3, 2.4, 2.5**
 
   - [~] 12.7 Add push handling and the Takeover_Alert
-    - Firebase Messaging service for the data message types of the design, the notification channels (high importance for `TAKEOVER_ALERT` with sound), the "Take over" action that calls `POST /calls/{id}/takeover` from a short-lived worker, and the `alert-ack` call within 5 seconds
+    - Firebase Messaging service for the data message types of the design, the notification channels (high importance for `TAKEOVER_ALERT` with sound), the "Take over" action that calls `POST /calls/{id}/takeover` from a short-lived worker, and the `alert-ack` call within 5 seconds; route the `send_map_sms` data message to `MapSmsSender` (task 12.17)
     - Add `google-services.json` from task 0.3 to the app project and to `.gitignore`
     - _Requirements: 11.2, 11.4, 19.8_
 
@@ -586,6 +587,17 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `SettingsMerge.threeWay` for unchanged fields, fields changed on one side only, and fields changed on both sides; the 409 retry bound; the cache replaced by the server document
     - _Requirements: 27.9, 27.10, 27.11_
 
+  - [ ] 12.17 Add `MapSmsSender`, the SEND_SMS permission flow, and the SIM setting
+    - Add `MapSmsSender` to `:app` with `SmsManager` (`divideMessage` and `sendMultipartTextMessage` for long texts), sent and delivered PendingIntents, a result of SENT, FAILED, or NO_PERMISSION, and ignore a repeated `callId`; the delivery result goes to the local log only
+    - Use the default SMS subscription (`SubscriptionManager.getDefaultSmsSubscriptionId()`) without extra permission; add a SIM picker in the settings that lists the active subscriptions when more than one SIM is active and requests `READ_PHONE_STATE` only then; store the choice in the local settings and not in the server settings
+    - Declare `SEND_SMS` in the manifest again and request it at runtime in onboarding (task 12.15 flow) with a plain explanation (own phone, own SIM, carrier rates); the Agent stays usable when the User declines
+    - Add `MapSmsReporter` that calls `POST /calls/{id}/map-sms-result` (through the outbox on a network error) within 5 seconds of the result; the FCM routing in task 12.7 calls `MapSmsSender`
+    - Note in `README.md` that the app is sideloaded, so the Google Play SMS permission policy does not block `SEND_SMS`
+    - _Requirements: 10.13, 10.14, 10.15, 31.7_
+  - [ ]* 12.18 Write unit tests for `MapSmsSender`
+    - Fake `SmsManager` and `SubscriptionManager`: SENT and FAILED from the sent PendingIntent, NO_PERMISSION without `SEND_SMS`, multipart for a long text, the selected SIM and the default SIM, a repeated `callId` sends once, and the result report is queued when offline
+    - Update the release manifest test of task 12.14 expectations: `SEND_SMS` is allowed, `RECORD_AUDIO`, call screening, and accessibility stay forbidden
+    - _Requirements: 10.13, 10.14, 10.15_
 - [~] 13. Checkpoint - App complete
   - Run `./gradlew :core:test :agent:test :app:testReleaseUnitTest` and `scripts/check-16kb.sh`
   - Ensure all tests pass, ask the user if questions arise.
@@ -646,6 +658,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
 - Checkpoints ensure incremental validation; the first checkpoint (task 2) is a go/no-go gate for all production work.
 - Property tests validate universal correctness properties; unit, contract, and integration tests validate examples, recorded fixtures, and AWS behavior.
 - Multi-user tasks added in this revision: 0.6, 1.8, 3.7, 9.12 to 9.17, 10.11, 10.12, 12.15, 12.16, and 14.7, plus changes to 0.1, 1.5, 3.2, 3.4, 4.8, 4.10, 6.1, 8.3, 8.7, 9.1, 9.3, 9.4, 9.6, 10.1 to 10.3, 10.8, 12.3, 12.5, 12.9, 14.3, and 14.4. Tasks 0.5 and 1.1 were already complete and are unchanged.
+- Revision for the User decision "SMS from the device only": task 1.2 (C-6) is obsolete and keeps its ID; tasks 6.8 and 10.8 to 10.10 are rewritten; new tasks are 10.13, 10.14, 12.17, and 12.18. Task 12.2 stays complete (the old on-device `SEND_SMS` entry was removed); task 12.17 declares `SEND_SMS` for the new sender.
 - The on-device audio path is archived in `:archive-ondevice` and not shipped.
 
 ## Task Dependency Graph
@@ -653,10 +666,11 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
 Waves are ordered by prerequisites, not by checkpoint. Phase A (waves 0 to 3) holds only spike-independent code and its tests, so it can run while the User waits on Exotel, DLT, and Firebase. Phase B (waves 4 to 17) holds every USER task, the spikes, and everything gated by them. Completed tasks (0.4 to 0.7, 1.1, 1.4, 3.1, 3.2, 3.7, 12.1) are omitted. Checkpoints 2, 7, 11, 13, and 15 are not in the graph.
 
 Depends on (gated tasks):
-- 0.1, 0.2: gate the Exotel spikes 1.2, 1.5 and deployment 14.1.
+- 0.1, 0.2: gate the Exotel spike 1.5 and deployment 14.1.
 - 0.3 (Firebase): gates 10.8 and 12.7 (and through 10.8 also 10.9, 10.10) and 14.3.
 - 1.5 (C-1 stream format): gates 4.10, 4.11, 4.12, 5.8, and through them 8.7, 8.8, 8.9, 10.4, 10.5, 10.6.
-- 1.2 (C-6 SMS): gates 6.8, 6.9, and through 6.8 also 8.7 and 10.9.
+- 1.2 (C-6) is obsolete and gates nothing. 6.8 depends on 10.8 (FCM), which depends on 0.3 (Firebase); 6.9 depends on 6.8; 10.13 depends on 10.8 and 6.8; 12.17 has no external dependency and runs in Phase A.
+- 6.8 gates 8.7 and 10.9.
 - 1.7 (C-3 takeover): gates 8.9 and through it 8.10.
 - Checkpoint 2 (after 1.2, 1.3, 1.5, 1.6, 1.7, 1.8) must pass before 14.1; checkpoint 11 (after all of tasks 3 to 10) before all of task 14; checkpoint 13 (after task 12) before 14.6.
 - 3.3 uses manual Cloudflare DNS records per `docs/cloud/dns.md`.
@@ -666,16 +680,16 @@ Depends on (gated tasks):
 ```json
 {
   "waves": [
-    { "id": 0, "tasks": ["3.3", "3.5", "4.1", "4.3", "4.7", "4.8", "5.1", "5.3", "6.1", "6.12", "8.1", "8.3", "9.1", "9.8", "10.1", "12.2"] },
-    { "id": 1, "tasks": ["3.4", "4.2", "4.4", "4.5", "4.9", "5.2", "5.4", "5.5", "6.2", "6.5", "6.10", "6.13", "8.2", "8.4", "8.5", "9.2", "9.3", "9.4", "9.9", "9.12", "9.14", "12.3"] },
+    { "id": 0, "tasks": ["3.3", "3.5", "4.1", "4.3", "4.7", "4.8", "5.1", "5.3", "6.1", "6.12", "8.1", "8.3", "9.1", "9.8", "10.1", "12.2", "12.17"] },
+    { "id": 1, "tasks": ["3.4", "4.2", "4.4", "4.5", "4.9", "5.2", "5.4", "5.5", "6.2", "6.5", "6.10", "6.13", "8.2", "8.4", "8.5", "9.2", "9.3", "9.4", "9.9", "9.12", "9.14", "12.3", "12.18"] },
     { "id": 2, "tasks": ["3.6", "4.6", "5.6", "6.3", "6.4", "6.6", "6.7", "6.11", "6.14", "8.6", "9.5", "9.6", "9.10", "9.13", "9.15", "9.17", "10.2", "10.3", "10.11", "12.4", "12.5", "12.8", "12.9", "12.10", "12.11"] },
     { "id": 3, "tasks": ["5.7", "6.15", "9.7", "9.11", "9.16", "12.6", "12.12", "12.13", "12.14", "12.15", "12.16"] },
     { "id": 4, "tasks": ["0.1", "0.2", "0.3", "1.3"] },
-    { "id": 5, "tasks": ["1.2", "1.5", "10.8", "12.7"] },
+    { "id": 5, "tasks": ["1.5", "10.8", "12.7"] },
     { "id": 6, "tasks": ["1.6", "1.7", "1.8", "4.10", "4.11", "6.8", "10.10"] },
     { "id": 7, "tasks": ["4.12", "5.8", "6.9", "10.6"] },
-    { "id": 8, "tasks": ["8.7", "10.7"] },
-    { "id": 9, "tasks": ["8.8", "10.4", "10.9"] },
+    { "id": 8, "tasks": ["8.7", "10.7", "10.13"] },
+    { "id": 9, "tasks": ["8.8", "10.4", "10.9", "10.14"] },
     { "id": 10, "tasks": ["8.9", "10.5"] },
     { "id": 11, "tasks": ["8.10", "10.12"] },
     { "id": 12, "tasks": ["14.1", "14.4", "14.8"] },

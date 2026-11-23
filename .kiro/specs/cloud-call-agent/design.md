@@ -14,19 +14,19 @@ The design rests on five decisions.
 
 ### Spike plan (run first)
 
-The design depends on facts that the documentation does not settle. Each spike has a go/no-go rule. Spikes C-4 and C-6 have long lead times (carrier behavior and DLT template approval) and start first.
+The design depends on facts that the documentation does not settle. Each spike has a go/no-go rule. Spike C-4 has a long lead time (carrier behavior) and starts first. Spike C-6 is obsolete because SMS is sent from the device.
 
 | ID | Question | Method | Go | No-go consequence |
 | --- | --- | --- | --- | --- |
-| C-6 | Does Exotel send SMS from the User's account (Map_SMS to the Caller, alert to the User_Mobile) and which DLT entity, sender ID, and template does it need? | Request DLT entity and template approval through Exotel; send test SMS with the link as a template variable. | An approved template delivers an SMS with a link to an Indian mobile within 30 s. | No Map_SMS. Fallback: the Agent speaks the directions only and the Companion_App notifies the User; Requirement 10 criterion 5 is removed after User approval. |
-| C-4 | Does Airtel postpaid accept `**61*`, `**67*`, `**62*` with a ring time, also while the phone is on Wi-Fi calling (VoWiFi), and does the forwarded call keep the Caller number? | Set the codes on the User_Mobile, call it from another phone with the phone on mobile data and on Wi-Fi calling, with the phone unanswered, busy, and in airplane mode. | All three conditions forward in both modes, ring time is honored, Exotel `From` equals the Caller number. | If VoWiFi does not forward, the setup screen tells the User to disable Wi-Fi calling, and Requirement 2 criterion 8 text is extended. If the Caller number is lost, Requirement 1 criterion 3 applies to every call and Map_SMS is disabled. |
+| C-6 | Obsolete: SMS is sent from the device. | Not run. | Not applicable. | Not applicable. The Map_SMS is sent by the Companion_App with SmsManager (see Map_SMS from the device). |
+| C-4 | Does Airtel postpaid accept `**61*`, `**67*`, `**62*` with a ring time, also while the phone is on Wi-Fi calling (VoWiFi), and does the forwarded call keep the Caller number? | Set the codes on the User_Mobile, call it from another phone with the phone on mobile data and on Wi-Fi calling, with the phone unanswered, busy, and in airplane mode. | All three conditions forward in both modes, ring time is honored, Exotel `From` equals the Caller number. | If VoWiFi does not forward, the setup screen tells the User to disable Wi-Fi calling, and Requirement 2 criterion 8 text is extended. If the Caller number is lost, Requirement 1 criterion 3 applies to every call and the Map_SMS is disabled. |
 | C-1 | What exactly does the Voicebot applet send and accept (start event fields, sample rate, chunk sizes, mark, clear, DTMF, record, applet transitions on failure, Basic auth header, hidden Caller number)? | A minimal echo WebSocket server behind the ALB, logging every frame, tested with `sample-rate=8000`, `16000`, and `24000`. | Start event carries `from`, `to`, `call_sid`, `media_format`; `clear` removes buffered audio within 200 ms; an unreachable URL takes the failure transition. | If `clear` does not work, barge-in uses small chunks and a send-ahead of 100 ms (Requirement 5 criterion 2 is best effort). If the failure transition does not exist, the flow is gated with a Passthru applet (see Exotel flow). |
 | C-5 | How does Sonic behave in Tokyo for session length, renewal with history, tool calls, interruption signal, text-before-audio ordering, injected text during a call, and idle timeout? | A scripted session driven from recorded audio. | 8-minute limit confirmed, replacement with history keeps context, `INTERRUPTED` arrives within 200 ms of Caller speech, speculative text arrives before the matching audio, injected text instructions are followed in at least 9 of 10 trials. | If injected text is unreliable, "please wait", silence prompts, and goodbyes play from the stored Fallback_Message audio. If speculative text arrives after audio, the PII_Guard runs on a 300 ms look-ahead buffer. |
 | C-2 | Is Sonic good enough for Hindi, English, and Hinglish over telephone audio? | The 30-utterance corpus of `spike/` (`src/main/assets/s7/wav`), resampled to 8 kHz and sent as 8 kHz and as upsampled 16 kHz input, with voices `kiara`, `arjun`, `tiffany`, `matthew`. Plus 10 live calls through Exotel. | Intent accuracy at least 90 percent, usable Hindi transcripts, Reply_Latency p90 at most 1.5 s, and the User accepts the voice by listening. | If Hindi quality fails, the Agent speaks English only and Hindi callers are asked to leave a message; Requirement 7 is reduced after User approval. |
 | C-7 | Does Airtel plus Exotel pass any forwarding information (`ForwardedFrom`, a Diversion or History-Info header) for a forwarded call, and does `To` always equal the ExoPhone that the User forwards to? | Forward two test phones to two ExoPhones; log every Passthru and Voicebot start parameter and any SIP header that Exotel exposes, for unanswered, busy, and unreachable forwarding. | `To` equals the ExoPhone in 10 of 10 calls. A hint, if present, equals the forwarding phone's number. | No change to the model: `To` is the only key (Requirement 25 criterion 6). If no hint exists, the mismatch trace of criterion 7 stays empty and the hint is not used. |
 | C-3 | How is the live Caller connected to the User_Mobile, and how does the Caller return to the Agent when the User_Mobile does not answer? | Flow with Voicebot, then Connect applet with a dynamic URL, then a loop back to the Voicebot. Alternative B: the Legs and Bridge APIs (needs account enablement). | Caller hears the User_Mobile within 10 s of the tap, a failed dial returns to the Agent within 5 s, and no forwarding loop occurs. | If the loop back is impossible, a failed Bridge_Call plays the Fallback_Message and applies the Fallback_Route. |
 
-C-1, C-3, and C-6 need the Exotel account. C-4 needs only the phone. C-5 and C-2 need only AWS. C-7 needs the Exotel account and the phone, and runs together with C-1 and C-4 results. The order is C-6 (start), C-4, C-5, C-1, C-7, C-2, C-3.
+C-1 and C-3 need the Exotel account. C-4 needs only the phone. C-5 and C-2 need only AWS. C-7 needs the Exotel account and the phone, and runs together with C-1 and C-4 results. The order is C-4 (start), C-5, C-1, C-7, C-2, C-3.
 
 ## Architecture
 
@@ -43,7 +43,6 @@ flowchart LR
     Srv --> DDB[(DynamoDB)]
     Srv --> S3[(S3 recordings)]
     Srv --> SM[Secrets Manager]
-    Srv -->|SMS API| Exo
     Srv -->|FCM HTTP v1| FCM[Firebase Cloud Messaging]
     FCM --> App[Companion_App]
     App -->|"HTTPS and WSS, Cognito JWT"| ALB
@@ -131,7 +130,10 @@ sequenceDiagram
     S->>B: toolResult (exact text)
     B-->>S: audioOutput (directions)
     S-->>X: media
-    S->>B: toolUse(send_map_sms) result
+    B-->>S: toolUse(send_map_sms)
+    S->>A: FCM send_map_sms (callId, Caller number, text)
+    A->>S: POST /calls/{id}/map-sms-result (SENT)
+    S->>B: toolResult (SENT)
     S-->>X: stop or Caller hangs up
     S->>S: finalize Call_Log, Cost_Estimate, recording
     S->>A: FCM CALL_ENDED
@@ -365,14 +367,14 @@ New code in `:core` has default values for every added field, so existing serial
 
 | Package | Responsibility |
 | --- | --- |
-| `exotel` | `ExotelRoutes` (`/exotel/route`, `/exotel/resolve`, `/exotel/next`, `/exotel/passthru`), `ExotelStreamHandler` (WebSocket), `ExotelMessages` (JSON codec for connected, start, media, mark, clear, dtmf, stop), `ExotelClient` (SMS API with Basic auth), `ExotelAuth`. |
+| `exotel` | `ExotelRoutes` (`/exotel/route`, `/exotel/resolve`, `/exotel/next`, `/exotel/passthru`), `ExotelStreamHandler` (WebSocket), `ExotelMessages` (JSON codec for connected, start, media, mark, clear, dtmf, stop), `ExotelClient` (call-control calls only; no SMS), `ExotelAuth`. |
 | `audio` | `PcmCodec` (base64 and PCM16 conversion), `Resampler` (x2 up, ÷3 down, generic integer ratios), `Chunker`, `OutboundPacer` (queue, pacing, clear), `SilenceDetector`, `CallRecorder` (mix, S3 multipart). |
 | `sonic` | `SonicEvents` (builders and parser for every event above), `SonicClient` (SDK stream wrapper), `SonicSession`, `SessionRenewer`, `SystemPrompt`, `ToolSpecs`, `HistoryBuilder`. |
 | `tools` | `ToolRegistry` and the seven tools below. |
 | `call` | `CallSession` (one coroutine per call that handles events from one channel in order), `CallPolicy` (pure reducer, lives in `:core`), `CallRegistry` (at most 3), `TranscriptBuffer`, `CallFinalizer`. |
 | `api` | `CompanionRoutes`, `AdminRoutes` (group `admins`), `LiveStream` (WebSocket, subscriptions keyed by User_Id), `JwtVerifier` (Cognito JWKS, `iss`, `aud`/`client_id`, `exp`, `token_use`; returns `sub` and `cognito:groups`), `RateLimiter` (60 requests per minute per `sub`). |
 | `tenant` | `TenantResolver` (normalize `To`, number lookup with a 30-second cache, active-user check), `NumberAssignmentService` (transactional assign and unassign), `UnassignedCallLog`, `AdminCli` (main class). |
-| `notify` | `FcmClient` (HTTP v1, service account in Secrets Manager), `AlertService` (push, acknowledgment wait, SMS fallback). |
+| `notify` | `FcmClient` (HTTP v1, service account in Secrets Manager), `AlertService` (push, acknowledgment wait, no SMS fallback), `MapSmsService` (push-and-await of the Map_SMS_Request and Map_SMS_Result). |
 | `store` | `UserScopedRepository` (requires a `UserId`; call log, traces, devices, cost, consent), `SettingsStore` (versioned settings), `DirectoryRepository` (number lookup, user listing, open-call markers), `RecordingStore` (S3 under `users/<sub>/`, presigned URLs), `Secrets`, `RetentionSweeper`. The only package that touches the DynamoDB and S3 clients. |
 | `obs` | `CallTrace`, `Metrics` (CloudWatch embedded metric format), `StructuredLog` (no personal content). |
 
@@ -384,8 +386,8 @@ All seven tools are registered in `promptStart`. Inputs are validated against th
 | --- | --- | --- | --- |
 | `get_gate_info` | `{ "language": "hi"\|"en" (optional), "include_window_times": boolean (optional) }` | `{ "status": "OK", "gate_number", "location", "landmark", "speak_exactly": "<text>" }`; on a clock failure both gates and the window times and `"clock": "UNAVAILABLE"` | `GateSelector.selectGate(now, config)` with `now` taken from the server clock in Asia/Kolkata at minute resolution. Text from `GateInfoRenderer`. Contains no address or other personal data. In Stalling_Mode the result is the fictitious gate from `FictitiousGate`, and the call is logged as fictitious. |
 | `get_delivery_directions` | `{ "language": "hi"\|"en"\|"other" }` | `{ "status": "OK", "speak_exactly": "<gate info, then steps in order, {map_location} replaced>", "repetition": n, "repetitions_left": m }`; after the third repetition `{ "status": "REPETITION_LIMIT", "speak_exactly": "<no further repetitions>", "then": "end_call" }` | `DeliveryDirectionsRenderer`. Language `other` uses the default language setting. The first call is repetition 0; at most 3 repetitions follow. When the Map_Location is missing the text has no location reference and an alert is queued (Requirement 10 criterion 6). A step with one language only is returned with the note to speak it in the Caller's language (Requirement 7 criterion 8). |
-| `send_map_sms` | `{}` | `{ "status": "QUEUED" }` or `SKIPPED_UNKNOWN_NUMBER`, `SKIPPED_NOT_MOBILE`, `ALREADY_SENT`, `NOT_CONFIGURED` | At most once per call. The Caller number comes from the call state, never from the model. The send runs in the background through the Exotel SMS API, and failure raises an alert and a Call_Log note and keeps the call open. |
-| `request_takeover` | `{}` | `{ "status": "ALERT_SENT" }` or `ALREADY_REQUESTED`, `ALERT_UNDELIVERED_SMS_SENT` | Starts the 30-second wait and the 15-second "please wait" timer, sends the Takeover_Alert, and starts the 5-second acknowledgment wait. A second request while one is pending changes nothing. |
+| `send_map_sms` | `{}` | `{ "status": "SENT" }`, or `SAY_VERBALLY` with `reason` `SKIPPED_UNKNOWN_NUMBER`, `SKIPPED_NOT_MOBILE`, `NOT_CONFIGURED`, `FAILED`, `NO_PERMISSION`, `NO_ACK`, `NO_DEVICE`, or `ALREADY_SENT` | At most once per call. The server sends no SMS. It renders the text from the Map_Location and a fixed template in the Caller's language (`hi` or `en`; the default language otherwise), sends a high-priority FCM data message `send_map_sms` with `callId`, the Caller number, and the text to every device of the call owner, and waits up to 20 seconds for `POST /calls/{id}/map-sms-result`. The Caller number comes from the call state, never from the model. A hidden or non-mobile number sends nothing. On `FAILED`, `NO_PERMISSION`, or no acknowledgment the result tells Sonic to say the location verbally (`speak_exactly`), a `MAP_SMS_FAILED` alert is raised, and the call stays open. |
+| `request_takeover` | `{}` | `{ "status": "ALERT_SENT" }` or `ALREADY_REQUESTED`, `ALERT_UNDELIVERED` | Starts the 30-second wait and the 15-second "please wait" timer, sends the Takeover_Alert, and starts the 10-second acknowledgment wait. With no acknowledgment the status becomes `ALERT_UNDELIVERED`, and the Agent takes the nobody-available path and offers to take a message. A second request while one is pending changes nothing. |
 | `end_call` | `{ "reason": "DELIVERY_DONE"\|"CALLER_DONE"\|"UNKNOWN_AFTER_CLARIFY"\|"CALLER_SILENCE"\|"REPEATS_EXHAUSTED"\|"MAX_DURATION"\|"ABUSIVE_LANGUAGE" }` | `{ "status": "ENDING" }` | The server closes the stream after the Agent audio in the queue has played (the final `mark` returned) or after 10 seconds, whichever is earlier. The reason is stored. |
 | `log_note` | `{ "kind": "INTENT"\|"LANGUAGE"\|"MESSAGE"\|"NOTE", "value": string }` | `{ "status": "OK" }` or `{ "status": "REJECTED", "error": "INVALID_INTENT", "current": "<previous>" }` | `INTENT` must be one of the four categories (Requirement 8 criterion 10); the category is stored within 2 seconds and the phase changes through the call policy. `LANGUAGE` is `hi` or `en`. `MESSAGE` (at most 500 characters) is the Caller's message for the UNKNOWN category. `NOTE` is free text of at most 200 characters. |
 | `get_stalling_persona` | `{}` | `{ "status": "OK", "persona": { "name", "city", "gate", ... } }` | Added tool. A fictitious but consistent identity seeded by the call identifier from `FictitiousReplyLibrary`, so that fictitious answers stay consistent over a long call. Contains no Protected_Term (checked by the PII_Guard at build time of each result). |
@@ -410,6 +412,7 @@ Base path `/api/v1`, TLS at the ALB, `Authorization: Bearer <Cognito ID token>`.
 | `GET /settings` | Returns `{ "version": n, "settings": {...} }`; version 0 and defaults when none is stored. |
 | `PUT /settings` | Body `{ "expectedVersion": n, "settings": {...} }`. 200 with `{version, settings}` on success; 400 `{field, message}` on validation failure; 409 `{currentVersion, settings}` on a version conflict. Answer within 3 seconds. |
 | `POST /consent`, `DELETE /consent` | Accept (stores version and time) or withdraw the Privacy_Consent. |
+| `POST /calls/{id}/map-sms-result` | Body `{status: SENT\|FAILED\|NO_PERMISSION}` from a device of the call owner; stored in the call state and the Call_Log; a foreign call identifier answers 404; a second result for the same call is ignored. |
 | `PUT /devices/{deviceId}`, `DELETE /devices/{deviceId}` | Store or remove an FCM token (up to 5 per User). |
 | `GET /admin/users`, `GET /admin/numbers` | Admin only (group `admins`): list Users and Number_Assignments. |
 | `PUT /admin/numbers/{e164}` | Admin only: body `{ "userId": "<sub>" }`; assigns the number; 409 when the number or the User is already assigned. |
@@ -426,9 +429,21 @@ Rate limit: 60 requests per minute per identity, HTTP 429 beyond that (the WebSo
 
 ### Push notifications
 
-Decision: Firebase Cloud Messaging through the HTTP v1 API, with the service account key in Secrets Manager. Amazon SNS mobile push also sends through FCM and adds a platform application and a topic hop for one device, so it has no benefit here (open question 2). Messages are data messages with high priority so that the app builds the notification and its sound. Types: `CALL_STARTED`, `TAKEOVER_ALERT`, `CALL_ENDED`, `UNKNOWN_CALLER_SUMMARY`, `SILENT_CALLER`, `MAP_SMS_FAILED`, `MAP_LOCATION_MISSING`, `PII_EVENT`, `NOT_LOGGED`, `COST_80`, `COST_100`.
+Decision: Firebase Cloud Messaging through the HTTP v1 API, with the service account key in Secrets Manager. Amazon SNS mobile push also sends through FCM and adds a platform application and a topic hop for one device, so it has no benefit here (open question 2). Messages are data messages with high priority so that the app builds the notification and its sound. Types: `CALL_STARTED`, `TAKEOVER_ALERT`, `CALL_ENDED`, `UNKNOWN_CALLER_SUMMARY`, `SILENT_CALLER`, `send_map_sms` (the Map_SMS_Request: `callId`, Caller number, text), `MAP_SMS_FAILED`, `MAP_LOCATION_MISSING`, `PII_EVENT`, `NOT_LOGGED`, `COST_80`, `COST_100`.
 
-FCM reports acceptance, not delivery to the device. For the Takeover_Alert the app answers with `POST /calls/{id}/alert-ack`. If the token is missing, FCM rejects the message, or no acknowledgment arrives within 5 seconds, `AlertService` sends an SMS with the Caller number to the User_Mobile through Exotel and writes the failure to the trace (Requirement 11 criterion 8, Requirement 19 criterion 8). The SMS needs an approved DLT template (spike C-6).
+FCM reports acceptance, not delivery to the device. For the Takeover_Alert the app answers with `POST /calls/{id}/alert-ack`. If the token is missing, FCM rejects the message, or no device acknowledges within 10 seconds, `AlertService` records the failure in the trace and the Agent takes the nobody-available path and offers to take a message (Requirement 11 criterion 8, Requirement 19 criterion 8). No SMS fallback exists (resolved decision). The full-screen notification of the app plus high-priority FCM is the only alert channel. Future option: an Exotel outbound call to the User_Mobile as an alert.
+
+#### Map_SMS from the device
+
+The Map_SMS is sent by the Companion_App, never by the server (User decision: SMS from the device only). Flow: Sonic calls `send_map_sms`, `MapSmsService` sends the `send_map_sms` FCM data message to the owner's devices, the app sends the text with `SmsManager` from the User's SIM and reports `SENT`, `FAILED`, or `NO_PERMISSION` through `POST /calls/{id}/map-sms-result`, and the tool result carries the outcome. With no result within 20 seconds the tool result tells Sonic to say the location verbally.
+
+- **Sender.** `MapSmsSender` in `:app` uses `SmsManager` (`getSmsManagerForSubscriptionId`) with `sentIntent` and `deliveryIntent` PendingIntents. The `sentIntent` result decides SENT or FAILED, and the `deliveryIntent` result is written to the local log only. Long texts use `divideMessage` and `sendMultipartTextMessage`.
+- **SIM choice.** The default SMS subscription (`SubscriptionManager.getDefaultSmsSubscriptionId()`) is used, which needs no `READ_PHONE_STATE` permission. A SIM picker in the settings lists the active subscriptions through `SubscriptionManager.getActiveSubscriptionInfoList()`, which needs `READ_PHONE_STATE`; this permission is requested only when more than one SIM is active and the User opens the picker. Without it the default subscription is used.
+- **Permission.** `SEND_SMS` is a runtime permission requested in onboarding with a plain explanation (own phone, own SIM, carrier rates). With no permission the app reports `NO_PERMISSION`.
+- **Distribution.** The app is sideloaded, so the Google Play SMS permission policy does not block it. A Play release would need the policy exception process or another approach.
+- **Privacy.** The Caller number travels only to the User's own devices, which already show it.
+- **Cost.** No Exotel SMS charge; the carrier plan of the User pays.
+- **Idempotence.** The app ignores a second `send_map_sms` message with the same `callId`.
 
 ### Security
 
@@ -507,7 +522,7 @@ A `RetentionSweeper` coroutine runs at start and every 6 hours. For each active 
 | Area | Decision |
 | --- | --- |
 | Kept | Cognito sign-in (`auth/`), Room settings and call log as a local cache (`data/`) with the existing outbox for offline retry (Requirement 20 criterion 6), the spam report flow (`report/`, `core.report`), notification channels, and the Compose UI in `ui/`. |
-| Archived | `a11y/`, `audio/`, `asr/`, `tts/`, `translate/`, `cloudtts/` (Polly), `nlg/`, `telecom/` (CallScreener), `recording/` (folder linking), `service/` (on-device call pipeline, overlay), and `sms/` (on-device Map_SMS). They move to a Gradle module `:archive-ondevice` that is not a dependency of `:app`, so the release build does not include them. The `RECORD_AUDIO`, `ANSWER_PHONE_CALLS`, `SEND_SMS`, `SYSTEM_ALERT_WINDOW`, microphone foreground-service permissions, the accessibility service, and the call screening service entries are removed from the manifest (Requirement 24 criteria 3 and 4). Packages are archived by moving, after a dependency scan shows what `ui/` still uses (`ui` screens that referenced the on-device pipeline are adapted). |
+| Archived | `a11y/`, `audio/`, `asr/`, `tts/`, `translate/`, `cloudtts/` (Polly), `nlg/`, `telecom/` (CallScreener), `recording/` (folder linking), `service/` (on-device call pipeline, overlay), and `sms/` (on-device Map_SMS). They move to a Gradle module `:archive-ondevice` that is not a dependency of `:app`, so the release build does not include them. The on-device Map_SMS code is archived, and a new `MapSmsSender` is added to `:app`. The `RECORD_AUDIO`, `ANSWER_PHONE_CALLS`, `SYSTEM_ALERT_WINDOW`, microphone foreground-service permissions, the accessibility service, and the call screening service entries are removed from the manifest (Requirement 24 criteria 3 and 4). `SEND_SMS` is declared again for the new `MapSmsSender` (Requirement 10 criteria 13 to 15); `READ_PHONE_STATE` is requested at runtime only for the SIM picker. Packages are archived by moving, after a dependency scan shows what `ui/` still uses (`ui` screens that referenced the on-device pipeline are adapted). |
 | New: consent | Privacy_Consent screen after first sign-in; the Agent stays off and the forwarding codes stay hidden until accepted (Requirement 17). |
 | New: forwarding setup | Screen built from `ForwardingCodes`, showing `**61*<number>**20#` (no answer with a 20-second ring), `**67*<number>#`, and `**62*<number>#`, each with a button that opens the dialer (`ACTION_DIAL`, with `#` encoded as `%23`) and never dials by itself. A turn-off screen with `##61#`, `##67#`, `##62#`, and `##002#`. The unconditional option `**21*` with a warning. A "Send test call" button with a 10-minute countdown and a result. Text that Airtel may charge for forwarded calls and that Wi-Fi calling can change the behavior (to be firmed up by spike C-4). |
 | New: live call | A high-priority notification for `TAKEOVER_ALERT` with a "Take over" action that calls `POST /calls/{id}/takeover` from a short-lived worker, and a full-screen live call screen (Caller number, intent, language, elapsed time, live transcript from the `/live` WebSocket, "Take over", "End call", Quick_Replies, bridge status). The screen shows an ended call as ended and disables Take over (Requirement 19 criterion 9). |
@@ -553,7 +568,7 @@ For any number n of `get_delivery_directions` calls in one call, the first 4 cal
 
 ### Property 6: Map SMS is sent at most once to an eligible number
 
-For any sequence of `send_map_sms` calls in one call and any Caller number value (valid mobile, landline, malformed, or unknown), at most one SMS request is made, and none is made when the number is unknown or not a mobile number; every later call returns `ALREADY_SENT`.
+For any sequence of `send_map_sms` calls in one call and any Caller number value (valid mobile, landline, malformed, or unknown), at most one Map_SMS_Request is made, and none is made when the number is unknown or not a mobile number; every later call returns `ALREADY_SENT`.
 
 **Validates: Requirements 10.5, 10.7, 10.10**
 
@@ -698,8 +713,8 @@ For any set of Users and any set of stored records owned by those Users (call lo
 | Sonic stream error in a call | Stream failure or `sessionEnd` not requested by the server | Open a replacement session once within 2 seconds (Requirement 14 criterion 5). If it fails, treat as the previous row. |
 | Time to first audio above 3 seconds | Timer at stream start | Play the Fallback_Message greeting, keep Sonic running, and write the delay to the trace. |
 | Tool exception or timeout | 2-second tool timeout | Return `{status: ERROR}` to Sonic, log it, and keep the call open. |
-| Exotel SMS rejected or not delivered | HTTP error or status callback | Alert `MAP_SMS_FAILED`; the call stays open. |
-| FCM rejected, no token, or no acknowledgment in 5 seconds | FCM response and `alert-ack` timer | SMS to the User_Mobile with the Caller number; trace entry. |
+| Map_SMS failed, no permission, or no result in 20 seconds | `map-sms-result` of `FAILED` or `NO_PERMISSION`, or the 20-second timer | Tool result `SAY_VERBALLY`; Sonic says the location; alert `MAP_SMS_FAILED`; the call stays open. |
+| FCM rejected, no token, or no acknowledgment in 10 seconds | FCM response and `alert-ack` timer | Trace entry; the Agent takes the nobody-available path and offers to take a message. No SMS is sent. |
 | Invalid media frame | Length or encoding does not match the announced format | Discard and count in the trace. |
 | No media from Exotel for 10 seconds | Timer | End the call and record the interruption with its start and duration. |
 | DynamoDB write failure | SDK exception | Retry 3 times at 1-second intervals; then alert `NOT_LOGGED` and write the entry to the structured log in a redacted form (call identifier, outcome, times only). |
@@ -772,7 +787,7 @@ These answers were not given. The plan uses them until the User says otherwise.
 | --- | --- | --- |
 | Push channel | FCM direct (HTTP v1). The User creates a Firebase project. | Say so before task 8. |
 | Exotel features | Voicebot, Passthru, and Connect dynamic URLs, and the Legs and Bridge APIs are assumed available and are confirmed with Exotel support after KYC. | Spike C-1 and C-3 results. |
-| DLT | An Exotel-provided template under Exotel's entity until the User confirms a DLT entity. | Spike C-6 result. |
+| SMS | Sent from the User's phone with SmsManager; no DLT and no Exotel SMS (decided by the User). | Not planned. |
 | Voices | `kiara` (female) and `arjun` (male). `tiffany` and `matthew` are alternatives, selectable in settings. | Settings and spike C-2. |
 | Cognito | The existing user pool in ap-south-1 is kept. | Not planned. |
 
@@ -790,11 +805,12 @@ Open questions:
 1. **Domain name.** The ALB needs an ACM certificate for a domain name that the User owns, for example `agent.<domain>`. Which domain, and is it in Route 53?
 2. **Push channel.** This design uses FCM directly. Confirm, and create the Firebase project for the app.
 3. **Exotel account features.** Are the Voicebot applet, the Passthru and Connect applets with dynamic URLs, and (for alternative B) the Legs and Bridge APIs enabled on the account? What is the plan and trial limit?
-4. **DLT.** Does the User have a DLT entity, or will Exotel provide a template under its own entity for the Map_SMS and alert SMS (spike C-6)?
+4. **DLT.** Resolved: not needed, because the SMS is sent from the device (spike C-6 is obsolete).
+9. **Device SMS questions.** Open: does carrier filtering block links in SMS from the User's own SIM to unknown numbers (device test), which SIM the User wants on a dual-SIM phone, and what the carrier charges per SMS.
 5. **Default Sonic voice.** `kiara` (female) and `arjun` (male) support Indian English and Hindi; `tiffany` and `matthew` are the polyglot voices. Spike C-2 decides; which does the User prefer if both are acceptable?
 6. **Cognito region.** The existing user pool is in ap-south-1 and stays there; the Agent_Server in Tokyo validates its tokens through the pool's JWKS. Confirm that no new pool is wanted.
 7. **Spikes decide six facts:** Exotel stream details (C-1), Sonic quality (C-2), Take_Over mechanism (C-3), Airtel and Wi-Fi calling forwarding (C-4), Sonic session behavior (C-5), and whether any forwarding hint reaches Exotel (C-7).
-8. **Multi-user questions** (requirements open questions 14 to 20). Resolved: the server-down fallback passes the call to the User through one Number_Flow per ExoPhone with a static User_Mobile (question 16), sign-up is admin-created only (question 17), and account deletion and data export are out of scope (question 19). Still open: ExoPhone price and limits per account, the Global_Call_Cap default, and a shared SMS sender.
+8. **Multi-user questions** (requirements open questions 14 to 20). Resolved: the server-down fallback passes the call to the User through one Number_Flow per ExoPhone with a static User_Mobile (question 16), sign-up is admin-created only (question 17), and account deletion and data export are out of scope (question 19). Still open: ExoPhone price and limits per account, the Global_Call_Cap default, and the Takeover_Alert without an SMS fallback (decided by default; an Exotel outbound alert call is a future option). The shared SMS sender question no longer applies.
 
 ## References
 
@@ -805,7 +821,7 @@ Content was rephrased for compliance with licensing restrictions.
 - Exotel Passthru applet (`From`, `To`, and the deprecated `ForwardedFrom`): https://docs.exotel.com/voice-apis/working-with-passthru-applet
 - Exotel Connect applet with a dynamic URL: https://support.exotel.com/en/support/solutions/articles/3000096873
 - Exotel Legs and Bridge APIs: https://docs.exotel.com/voice-apis/bridge-apis-introduction and https://developer.exotel.com/docs/legs/api-reference/manage-legs
-- Exotel SMS and DLT: https://developer.exotel.com/docs/faqs/sms-faqs and https://docs.exotel.com/messaging-apis/how-to-send-sms-using-exotel-with-dlt-template-scrubbing
+- Android `SmsManager` (sent and delivery PendingIntents, subscription-specific managers): https://developer.android.com/reference/android/telephony/SmsManager
 - Nova 2 Sonic input events: https://docs.aws.amazon.com/nova/latest/nova2-userguide/sonic-input-events.html
 - Nova 2 Sonic output events: https://docs.aws.amazon.com/nova/latest/nova2-userguide/sonic-output-events.html
 - Nova 2 Sonic tool configuration: https://docs.aws.amazon.com/nova/latest/nova2-userguide/sonic-tool-configuration.html

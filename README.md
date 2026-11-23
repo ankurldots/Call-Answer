@@ -1,8 +1,8 @@
 # Call-Answer
-A call-answering AI agent for one household in India. Calls from unknown numbers that you don't answer are forwarded to a cloud Agent that talks to the caller in Hindi or English, gives delivery directions, keeps sales callers busy, and lets you take over from an Android companion app.
+A call-answering AI agent for people in India. Calls you don't answer are forwarded to a cloud Agent that talks to the caller in Hindi or English, gives delivery directions, keeps sales callers busy, and lets you take over from an Android companion app. Anyone can run it with their own [Exotel](https://exotel.com) account and AWS account. One deployment serves several users.
 
 ## What it does
-When you don't pick up (or are busy or unreachable), your carrier forwards the call to an Exotel number. The Agent answers, greets the caller, and works out what they want:
+When you don't pick up (or are busy or unreachable), your carrier forwards the call to your Exotel number. The Agent answers, greets the caller, and works out what they want:
 
 | Caller intent | What the Agent does |
 |---|---|
@@ -13,13 +13,13 @@ When you don't pick up (or are busy or unreachable), your carrier forwards the c
 | **Repeat caller** | If the same number called within a few minutes (default 15), the call rings through to your mobile instead of the Agent, with a ringing alert in the app. The window and ring time are configurable. |
 
 - **Languages:** Hindi and English (Indian), replying in the caller's language, with a female or male voice.
-- **Gate info:** By default only Gate 3 is open from 22:30 to 05:30, and Gate 1 at other times. Gates, times and delivery steps are configurable. Gate info and directions come from server code, not from the AI model.
+- **Directions:** Gate names, open times, the map location and the delivery steps are settings you configure for your own address. The defaults (Gate 3 from 22:30 to 05:30, Gate 1 otherwise) come from the original household and are only examples. Gate info and directions come from server code, not from the AI model.
 - **Companion app:** live alert with Take over, ringing alert for repeat callers, live transcript, call log with cost, settings (gates, ring-through, SMS SIM), and spam reports to 1909 (TRAI).
 
 ## Status and scope
-This is a personal project, being re-architected.
+This project started for one household and is now meant for anyone to run. It is being re-architected.
 
-- **Current direction (cloud Agent):** carrier call forwarding (Airtel) to an [Exotel](https://exotel.com) number, Exotel AgentStream streaming the call audio over a WebSocket to an Agent service in AWS Tokyo (`ap-northeast-1`), and [Amazon Nova 2 Sonic](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-conversational-speech.html) as the speech-to-speech model. Call audio is processed in Tokyo, outside India. The spec is in `.kiro/specs/cloud-call-agent/`. Spikes are tracked in `docs/cloud-spikes.md`; the task list is in `.kiro/specs/cloud-call-agent/tasks.md`.
+- **Current direction (cloud Agent):** carrier call forwarding (tested with Airtel) to your [Exotel](https://exotel.com) number, Exotel AgentStream streaming the call audio over a WebSocket to an Agent service in AWS Tokyo (`ap-northeast-1`), and [Amazon Nova 2 Sonic](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-conversational-speech.html) as the speech-to-speech model. Call audio is processed in Tokyo, outside India. The spec is in `.kiro/specs/cloud-call-agent/`. Spikes are tracked in `docs/cloud-spikes.md`; the task list is in `.kiro/specs/cloud-call-agent/tasks.md`.
 - **Why the pivot:** on the target phone (Samsung Galaxy M34 5G) an on-device Agent can't work. Android silences call-time microphone capture for normal apps (only an accessibility service could capture, and UPI apps refuse to run while one is on), and the phone's echo cancellation removes the Agent's loudspeaker audio, so the caller never hears it. The original on-device spec is kept as history in `.kiro/specs/ai-call-screening-agent/`.
 
 > Consider local laws on call recording and on automated call answering. The cloud Agent plays a spoken recording notice and can disclose that it is an AI.
@@ -41,6 +41,13 @@ This is a personal project, being re-architected.
 | `docs` | Spike runbooks and results, E2E scenarios, network test matrix |
 
 Cloud setup notes (Cognito, DNS, Bedrock access) are in `docs/cloud/`. Progress on the Agent and its infrastructure is tracked in `.kiro/specs/cloud-call-agent/tasks.md`.
+
+## What you need to run your own
+- An Exotel account with one Exotel number (ExoPhone) per user, and call forwarding from each user's mobile carrier to that user's number. The Agent identifies the user from the Exotel number the call arrived on, so two users cannot share one number. The Agent speaks Exotel's AgentStream protocol; another telephony service would need new code.
+- An AWS account with Amazon Bedrock access to Nova 2 Sonic in `ap-northeast-1`, and a domain name for the Agent endpoint. The reference setup uses `agent.leadingdots.com`; replace it with your own via the template parameters in `infra/cloud-agent/template.yaml`.
+- A Cognito user pool for app sign-in (see `docs/cloud/cognito.md`). Each user signs in to the app with their own account and sees only their own settings, call log and recordings.
+- An admin (the deployment owner) who creates each user and assigns their Exotel number by hand with `scripts/admin/callagent-admin`. There is no self-service sign-up or admin screen.
+- An Android phone (Android 10 or newer) for the companion app, which you build and sideload.
 
 ## Running locally
 

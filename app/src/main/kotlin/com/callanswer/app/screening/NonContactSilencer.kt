@@ -75,17 +75,21 @@ class NonContactSilencer(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            false
+            // The Ringing_Alert may depend on this check, so a failure leaves the ringer on.
+            return false
         }
         return !repeat
     }
 }
 
 /** Reads the contact numbers with the `READ_CONTACTS` permission; null without it or when the query fails. */
-class AndroidContactNumbers(private val context: Context) : ContactNumberSource {
-    override suspend fun numbers(): List<String>? {
-        if (context.checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return null
-        return try {
+class AndroidContactNumbers internal constructor(
+    private val hasPermission: () -> Boolean,
+    private val query: () -> List<String>?,
+) : ContactNumberSource {
+    constructor(context: Context) : this(
+        hasPermission = { context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED },
+        query = {
             context.contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
@@ -95,21 +99,46 @@ class AndroidContactNumbers(private val context: Context) : ContactNumberSource 
                 while (c.moveToNext()) c.getString(0)?.let(out::add)
                 out
             }
+        },
+    )
+
+    override suspend fun numbers(): List<String>? {
+        if (!hasPermission()) return null
+        return try {
+            query()
         } catch (e: RuntimeException) {
-            Log.w("CallAnswer", "contacts lookup failed: ${e.javaClass.simpleName}")
+            logWarning("contacts lookup failed: ${e.javaClass.simpleName}")
             null
         }
     }
 }
 
+/** Logs a warning; a missing logger (plain JVM unit tests) must never change the outcome. */
+internal fun logWarning(message: String) {
+    runCatching { Log.w("CallAnswer", message) }
+}
+
+/** A single boolean kept on this device. */
+internal interface BooleanStore {
+    fun get(key: String, default: Boolean): Boolean
+    fun set(key: String, value: Boolean)
+}
+
 /** The "Silence calls from numbers not in my contacts" setting. It stays on this device and is never sent to the server. */
-class LocalScreeningSettings(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences("screening_local", Context.MODE_PRIVATE)
+class LocalScreeningSettings internal constructor(private val store: BooleanStore) {
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences("screening_local", Context.MODE_PRIVATE).let { prefs ->
+            object : BooleanStore {
+                override fun get(key: String, default: Boolean) = prefs.getBoolean(key, default)
+                override fun set(key: String, value: Boolean) = prefs.edit { putBoolean(key, value) }
+            }
+        },
+    )
 
     /** Default off. */
     var silenceNonContacts: Boolean
-        get() = prefs.getBoolean(KEY_SILENCE, false)
-        set(value) = prefs.edit { putBoolean(KEY_SILENCE, value) }
+        get() = store.get(KEY_SILENCE, false)
+        set(value) = store.set(KEY_SILENCE, value)
 
     private companion object {
         const val KEY_SILENCE = "silence_non_contacts"

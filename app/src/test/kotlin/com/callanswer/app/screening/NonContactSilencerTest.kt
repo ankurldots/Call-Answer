@@ -78,8 +78,9 @@ class NonContactSilencerTest {
         assertEquals(1, unavailable)
     }
 
-    @Test fun failedRepeatCheckStillSilencesNonContact() {
+    @Test fun failedRepeatCheckLeavesRingerOn() {
         val s = NonContactSilencer({ true }, { contacts }, { throw IllegalStateException() }, { unavailable++ })
-        assertTrue(silence(s, "+919000000000"))
+        assertFalse(silence(s, "+919000000000"))
+        assertEquals(0, unavailable)
     }
 }

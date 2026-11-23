@@ -18,11 +18,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 class RepeatCallerScreeningService : CallScreeningService() {
     override fun onScreenCall(callDetails: Call.Details) {
         val incoming = callDetails.callDirection == Call.Details.DIRECTION_INCOMING
-        val number = if (incoming && callDetails.handlePresentation == TelecomManager.PRESENTATION_ALLOWED) {
-            callDetails.handle?.schemeSpecificPart?.takeIf { it.isNotBlank() }
-        } else {
-            null
-        }
+        val number = ScreeningNumbers.of(incoming, callDetails.handlePresentation, callDetails.handle?.schemeSpecificPart)
         val app = applicationContext as? CallAnswerApp
         val silencer = app?.nonContactSilencer
         if (app == null || silencer == null || !incoming || !silencer.isEnabled()) {
@@ -31,9 +27,7 @@ class RepeatCallerScreeningService : CallScreeningService() {
         } else {
             app.appScope.launch {
                 // The contact lookup is bounded; on a timeout or any failure the ringer stays on.
-                val silence = runCatching { withTimeoutOrNull(LOOKUP_TIMEOUT_MS) { silencer.shouldSilence(number) } }
-                    .onFailure { Log.w("CallAnswer", "silence check failed: ${it.javaClass.simpleName}") }
-                    .getOrNull() ?: false
+                val silence = silenceWithin(LOOKUP_TIMEOUT_MS) { silencer.shouldSilence(number) }
                 respondToCall(callDetails, CallResponse.Builder().setSilenceCall(silence).build())
             }
         }
@@ -50,6 +44,18 @@ class RepeatCallerScreeningService : CallScreeningService() {
         const val LOOKUP_TIMEOUT_MS = 3_000L
     }
 }
+
+/** The incoming number the Screening_Observer may use; null for a non-incoming call, a hidden number or a blank one. */
+internal object ScreeningNumbers {
+    fun of(incoming: Boolean, presentation: Int, schemeSpecificPart: String?): String? =
+        if (incoming && presentation == TelecomManager.PRESENTATION_ALLOWED) schemeSpecificPart?.takeIf { it.isNotBlank() } else null
+}
+
+/** Runs [decide] for at most [timeoutMs]; a timeout or any failure means "do not silence" (the ringer stays on). */
+internal suspend fun silenceWithin(timeoutMs: Long, decide: suspend () -> Boolean): Boolean =
+    runCatching { withTimeoutOrNull(timeoutMs) { decide() } }
+        .onFailure { logWarning("silence check failed: ${it.javaClass.simpleName}") }
+        .getOrNull() ?: false
 
 /** Matches an incoming number and hands a Repeat_Caller to the alerter. Nothing else. */
 class ScreeningObserver(

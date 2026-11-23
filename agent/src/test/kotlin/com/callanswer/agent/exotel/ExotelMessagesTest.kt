@@ -30,6 +30,16 @@ class ExotelMessagesTest : FunSpec({
         for (e in events) ExotelMessages.decode(ExotelMessages.encode(e)) shouldBe e
     }
 
+    test("start custom_parameters accept strings and numbers and round trip") {
+        val text = """{"event":"start","start":{"call_sid":"c1","custom_parameters":{"a":"x","b":42}}}"""
+        val e = ExotelMessages.decode(text) as ExotelEvent.Start
+        e.customParameters shouldBe mapOf("a" to "x", "b" to "42")
+        (ExotelMessages.decode("""{"event":"start","start":{"call_sid":"c1"}}""") as ExotelEvent.Start)
+            .customParameters shouldBe emptyMap()
+        val withParams = ExotelEvent.Start("s", "c", "f", "t", StreamFormat(), 1, mapOf("k" to "v"))
+        ExotelMessages.decode(ExotelMessages.encode(withParams)) shouldBe withParams
+    }
+
     test("malformed and unknown messages decode to null") {
         ExotelMessages.decode("not json") shouldBe null
         ExotelMessages.decode("""{"event":"weird"}""") shouldBe null

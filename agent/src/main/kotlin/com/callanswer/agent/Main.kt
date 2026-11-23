@@ -25,9 +25,14 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 
-fun Application.agentModule(config: Config, companion: (Route.() -> Unit)? = null) {
+fun Application.agentModule(
+    config: Config,
+    companion: (Route.() -> Unit)? = null,
+    exotel: (Route.() -> Unit)? = null,
+) {
     routing {
         companion?.invoke(this)
+        exotel?.invoke(this)
         get("/health") {
             call.respondText("""{"status":"UP"}""", ContentType.Application.Json)
         }

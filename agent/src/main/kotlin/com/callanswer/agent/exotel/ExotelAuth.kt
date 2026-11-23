@@ -12,6 +12,9 @@ fun interface SecretSource {
     fun get(name: String): String?
 }
 
+/** The verified contents of a call token. */
+data class CallTokenClaims(val callSid: String, val userId: String)
+
 /**
  * Authenticates Exotel requests (HTTP Basic on the WebSocket handshake and the Exotel webhooks)
  * and issues and verifies the call token of the Voice_Stream URL.
@@ -48,6 +51,15 @@ class ExotelAuth(
 
     /** Returns the User_Id of a valid, unexpired token for [callSid], or null. */
     fun verifyCallToken(token: String, callSid: String): String? {
+        val claims = inspectCallToken(token) ?: return null
+        if (!constantTimeEquals(claims.callSid.toByteArray(Charsets.UTF_8), callSid.toByteArray(Charsets.UTF_8))) {
+            return null
+        }
+        return claims.userId
+    }
+
+    /** Checks MAC, expiry and shape of [token] without a call id and returns its claims, or null. */
+    fun inspectCallToken(token: String): CallTokenClaims? {
         val parts = token.split('.')
         if (parts.size != 4) return null
         val body = "${parts[0]}.${parts[1]}.${parts[2]}"
@@ -72,10 +84,7 @@ class ExotelAuth(
         } catch (_: IllegalArgumentException) {
             return null
         }
-        if (!constantTimeEquals(tokenCallSid.toByteArray(Charsets.UTF_8), callSid.toByteArray(Charsets.UTF_8))) {
-            return null
-        }
-        return userId
+        return CallTokenClaims(tokenCallSid, userId)
     }
 
     private fun mac(body: String): ByteArray {

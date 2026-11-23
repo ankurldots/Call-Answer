@@ -33,6 +33,17 @@ class ExotelAuthTest : FunSpec({
         clock.now = 1_000_000L
     }
 
+    test("inspectCallToken returns claims and rejects expired, tampered and garbage tokens") {
+        val t = auth.createCallToken("CA1", "user-1")
+        auth.inspectCallToken(t) shouldBe CallTokenClaims("CA1", "user-1")
+        auth.inspectCallToken(t.dropLast(2) + "AA") shouldBe null
+        auth.inspectCallToken("garbage") shouldBe null
+        auth.inspectCallToken("a.b.c.d") shouldBe null
+        clock.now += 60_000
+        auth.inspectCallToken(t) shouldBe null
+        clock.now = 1_000_000L
+    }
+
     test("token fails for other call, other secret, or tampering") {
         val t = auth.createCallToken("CA1", "user-1")
         auth.verifyCallToken(t, "CA2") shouldBe null

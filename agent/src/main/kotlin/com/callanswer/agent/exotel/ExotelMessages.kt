@@ -16,9 +16,11 @@ import kotlinx.serialization.json.put
 /**
  * Exotel stream (Voicebot / AgentStream) events.
  *
- * ASSUMPTIONS (spike C-1 not run), based on the documented Exotel format:
- *  - every message is a JSON object with an `event` field and, after `connected`, a `stream_sid`;
- *  - `start` nests `stream_sid`, `call_sid`, `from`, `to`, and `media_format` under `start`;
+ * ASSUMPTIONS (spike C-1 not run), based on the documented Exotel format (Voicebot applet page):
+ *  - every message is a JSON object with an `event` field, a `sequence_number` and, after `connected`, a `stream_sid`;
+ *  - `start` nests `stream_sid`, `call_sid`, `from`, `to`, `media_format` and `custom_parameters` under `start`;
+ *  - `custom_parameters` (at most 3 values, 256 characters) may hold strings or numbers; they are
+ *    only logged, never used for authentication (the token is in the URL path);
  *  - `media_format.sample_rate` may be a string or a number; `encoding` is "base64";
  *  - `media` nests `chunk`, `timestamp`, `payload` (base64) under `media`;
  *  - `mark` nests `name` under `mark`; `dtmf` nests `digit` (and `duration`) under `dtmf`;
@@ -35,6 +37,7 @@ sealed interface ExotelEvent {
         val to: String?,
         val format: StreamFormat,
         val sequenceNumber: Long? = null,
+        val customParameters: Map<String, String> = emptyMap(),
     ) : ExotelEvent
 
     /** [payload] is the base64 text exactly as on the wire; decode with PcmCodec/FrameValidator. */
@@ -88,7 +91,13 @@ object ExotelMessages {
                     sampleRate = mf?.int("sample_rate") ?: defaults.sampleRate,
                     frameBytes = mf?.int("frame_bytes"),
                 )
-                ExotelEvent.Start(s.str("stream_sid") ?: streamSid, s.str("call_sid"), s.str("from"), s.str("to"), format, seq)
+                val custom = s.obj("custom_parameters")
+                    ?.mapNotNull { (k, v) -> (v as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content?.let { k to it } }
+                    ?.toMap()
+                    ?: emptyMap()
+                ExotelEvent.Start(
+                    s.str("stream_sid") ?: streamSid, s.str("call_sid"), s.str("from"), s.str("to"), format, seq, custom,
+                )
             }
             "media" -> {
                 val m = root.obj("media") ?: return null
@@ -134,6 +143,9 @@ object ExotelMessages {
                         put("sample_rate", e.format.sampleRate.toString())
                         e.format.frameBytes?.let { put("frame_bytes", it) }
                     })
+                    if (e.customParameters.isNotEmpty()) {
+                        put("custom_parameters", buildJsonObject { e.customParameters.forEach { (k, v) -> put(k, v) } })
+                    }
                 })
             }
             is ExotelEvent.Media -> {

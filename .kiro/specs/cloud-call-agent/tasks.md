@@ -731,42 +731,44 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
 
 ## Task Dependency Graph
 
-Waves are ordered by prerequisites, not by checkpoint. Phase A (waves 0 to 3) holds only spike-independent code and its tests, so it can run while the User waits on Exotel, DLT, and Firebase. Phase B (waves 4 to 17) holds every USER task, the spikes, and everything gated by them. Completed tasks (0.4 to 0.7, 1.1, 1.4, 3.1, 3.2, 3.7, 12.1) are omitted. Checkpoints 2, 7, 11, 13, and 15 are not in the graph.
+Waves are ordered by prerequisites, not by checkpoint. Phase A (waves 0 to 3) holds every incomplete task that does not depend, directly or through other tasks, on the Exotel account (0.1, 0.2), the Airtel spike 1.3, or the Exotel spikes 1.5 to 1.8, so it can run while the User waits on Exotel. Phase B (waves 4 to 18) holds 0.1, 0.2, 1.3, the Exotel spikes, and everything gated by them. Completed tasks (0.3 to 0.7, 1.1, 1.4, 3.1 to 3.5, 3.7, 12.1 and others marked `[x]`) are omitted. Task 1.2 is obsolete but still unchecked, so it stays in wave 0 as a no-op. Checkpoints 2, 7, 11, 13, and 15 are not in the graph.
 
 Depends on (gated tasks):
+- 0.3 (Firebase) is complete; 10.8, 12.7, and the tasks that follow them are in Phase A.
 - 0.1, 0.2: gate the Exotel spike 1.5 and deployment 14.1.
-- 0.3 (Firebase): gates 10.8 and 12.7 (and through 10.8 also 10.9, 10.10) and 14.3.
-- 1.5 (C-1 stream format): gates 4.10, 4.11, 4.12, 5.8, and through them 8.7, 8.8, 8.9, 10.4, 10.5, 10.6.
-- 1.2 (C-6) is obsolete and gates nothing. 6.8 depends on 10.8 (FCM), which depends on 0.3 (Firebase); 6.9 depends on 6.8; 10.13 depends on 10.8 and 6.8; 12.17 has no external dependency and runs in Phase A.
-- 6.8 gates 8.7 and 10.9.
-- 1.7 (C-3 takeover): gates 8.9 and through it 8.10.
+- 1.5 (C-1 stream format): gates 4.10, 4.11, 4.12, 5.8, 1.6, 1.7, 1.8, and through them 8.7, 8.8, 8.9, 8.15, 10.4, 10.5, 10.6, 10.9.
+- 1.3 (C-4 Airtel forwarding): gates 1.8 and checkpoint 2.
+- 1.7 (C-3 takeover): gates 8.9 and 8.15, and through them 8.10 and 8.16.
+- 10.8 depends only on the completed Firebase task. 6.8 depends on 10.8; 6.9 on 6.8; 10.13 on 10.8 and 6.8; 10.14 on 10.13; 10.16 on 10.8 and 9.18; 10.17 on 10.16 and 10.15; 10.10 on 10.8; 12.26 on 12.7 and 10.16.
+- 10.9 sends notifications from the call session, so it depends on 8.7 (and through it on 4.10); 10.12 covers `/live` and the live actions, so it depends on 10.4 and 10.5.
+- 8.7 depends on 4.10, 4.11, 5.8, and 6.8 (no 6.8 dependency on the Exotel stream). 8.8, 8.9, and 8.10 follow 8.7. 10.4 follows 8.7; 10.5 follows 10.4 and 8.9; 10.6 follows 4.10; 10.7 follows 10.6.
 - Checkpoint 2 (after 1.2, 1.3, 1.5, 1.6, 1.7, 1.8) must pass before 14.1; checkpoint 11 (after all of tasks 3 to 10) before all of task 14; checkpoint 13 (after task 12) before 14.6.
 - 3.3 uses manual Cloudflare DNS records per `docs/cloud/dns.md`.
-- 3.3 and 3.4 write the same template, so they are in different waves.
-- 12.14 does not depend on 12.7 and stays in Phase A.
-- Ring-through: 8.15 depends on 1.5 (C-1), 1.7 (C-3), 8.7, 8.9, 8.14, and 9.18, and gates 8.16. 10.16 depends on 10.8 (FCM) and 9.18; 12.26 depends on 12.7 and 10.16's message type. 8.11 to 8.14, 9.18, 9.19, 10.15, and 12.19 to 12.25 have no spike dependency and run in Phase A. 12.22 depends on 10.15 and 12.20; 12.19 depends on 12.9 and 8.11.
+- Ring-through: 8.15 depends on 1.5, 1.7, 8.7, 8.9, 8.14, and 9.18, and gates 8.16. 8.11 to 8.14, 9.18, 9.19, 10.15, 12.19 to 12.25 are complete or have no Exotel dependency.
+- 14.8 precedes 14.3 and 14.7 in practice (the checklist is referenced), so it is in the first deployment wave.
 
 ```json
 {
   "waves": [
-    { "id": 0, "tasks": ["3.3", "3.5", "4.1", "4.3", "4.7", "4.8", "5.1", "5.3", "6.1", "6.12", "8.1", "8.3", "9.1", "9.8", "10.1", "12.2", "12.17", "8.11"] },
-    { "id": 1, "tasks": ["3.4", "4.2", "4.4", "4.5", "4.9", "5.2", "5.4", "5.5", "6.2", "6.5", "6.10", "6.13", "8.2", "8.4", "8.5", "9.2", "9.3", "9.4", "9.9", "9.12", "9.14", "12.3", "12.18", "8.12", "8.13", "8.14", "9.18", "12.20", "12.23"] },
-    { "id": 2, "tasks": ["3.6", "4.6", "5.6", "6.3", "6.4", "6.6", "6.7", "6.11", "6.14", "8.6", "9.5", "9.6", "9.10", "9.13", "9.15", "9.17", "10.2", "10.3", "10.11", "12.4", "12.5", "12.8", "12.9", "12.10", "12.11", "9.19", "10.15", "12.21", "12.24"] },
-    { "id": 3, "tasks": ["5.7", "6.15", "9.7", "9.11", "9.16", "12.6", "12.12", "12.13", "12.14", "12.15", "12.16", "12.19", "12.22", "12.25"] },
-    { "id": 4, "tasks": ["0.1", "0.2", "0.3", "1.3"] },
-    { "id": 5, "tasks": ["1.5", "10.8", "12.7"] },
-    { "id": 6, "tasks": ["1.6", "1.7", "1.8", "4.10", "4.11", "6.8", "10.10", "10.16", "12.26"] },
-    { "id": 7, "tasks": ["4.12", "5.8", "6.9", "10.6", "10.17"] },
-    { "id": 8, "tasks": ["8.7", "10.7", "10.13"] },
-    { "id": 9, "tasks": ["8.8", "10.4", "10.9", "10.14"] },
-    { "id": 10, "tasks": ["8.9", "10.5"] },
-    { "id": 11, "tasks": ["8.10", "10.12", "8.15"] },
-    { "id": 12, "tasks": ["14.1", "14.4", "14.8", "8.16"] },
-    { "id": 13, "tasks": ["14.2"] },
-    { "id": 14, "tasks": ["14.3"] },
-    { "id": 15, "tasks": ["14.7"] },
-    { "id": 16, "tasks": ["14.5"] },
-    { "id": 17, "tasks": ["14.6"] }
+    { "id": 0, "tasks": ["1.2", "3.6", "4.2", "4.4", "4.6", "4.9", "5.2", "5.4", "5.7", "6.3", "6.4", "6.6", "6.7", "6.11", "6.13", "6.15", "8.2", "8.4", "8.6", "8.12", "8.13", "9.2", "9.5", "9.7", "9.9", "9.11", "9.13", "9.15", "9.16", "9.19", "10.8", "12.6", "12.7", "12.12", "12.13", "12.16", "12.18", "12.24", "12.25"] },
+    { "id": 1, "tasks": ["6.8", "10.16"] },
+    { "id": 2, "tasks": ["6.9", "10.10", "10.13", "10.17", "12.26"] },
+    { "id": 3, "tasks": ["10.14"] },
+    { "id": 4, "tasks": ["0.1", "0.2", "1.3"] },
+    { "id": 5, "tasks": ["1.5"] },
+    { "id": 6, "tasks": ["1.6", "1.7", "1.8", "4.10", "4.11"] },
+    { "id": 7, "tasks": ["4.12", "5.8", "10.6"] },
+    { "id": 8, "tasks": ["8.7", "10.7"] },
+    { "id": 9, "tasks": ["8.8", "10.4"] },
+    { "id": 10, "tasks": ["8.9"] },
+    { "id": 11, "tasks": ["8.10", "8.15", "10.5", "10.9"] },
+    { "id": 12, "tasks": ["8.16", "10.12"] },
+    { "id": 13, "tasks": ["14.1", "14.4", "14.8"] },
+    { "id": 14, "tasks": ["14.2"] },
+    { "id": 15, "tasks": ["14.3"] },
+    { "id": 16, "tasks": ["14.7"] },
+    { "id": 17, "tasks": ["14.5"] },
+    { "id": 18, "tasks": ["14.6"] }
   ]
 }
 ```

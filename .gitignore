@@ -44,3 +44,6 @@ archive-ondevice/src/main/assets/models/vad/*.onnx
 
 # AWS SAM build output
 .aws-sam/
+
+# Firebase config (task 0.3)
+app/google-services.json

@@ -536,7 +536,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `PUT /settings` returns 200, 400 with the field name, and 409 with the stored document; the Admin_API returns 403 without the group and 409 on a duplicate; a foreign call identifier returns 404 on every call route and on takeover, end, quick-reply, and recording; a Take_Over request accepts no destination number; `/live` delivers only the events of the authenticated User
     - _Requirements: 26.3, 26.7, 27.3, 27.4, 27.6, 28.3, 28.6, 30.5, 30.6_
 
-  - [-] 10.13 Implement the `map-sms-result` route
+  - [x] 10.13 Implement the `map-sms-result` route
     - `POST /calls/{id}/map-sms-result` with `{status: SENT|FAILED|NO_PERMISSION}` through `UserScopedRepository` of the token's `sub`: a foreign call identifier answers 404, an invalid status 400, a second result for the same call is ignored; store the result in the call state, the Call_Log, and the trace, and complete the wait of `MapSmsService` (task 6.8)
     - _Requirements: 10.8, 10.16, 28.3_
   - [ ]* 10.14 Write unit tests for the `map-sms-result` route and the push-and-await
@@ -555,7 +555,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - Run `./gradlew :core:test :agent:test` and confirm that the server code and all property tests pass locally
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. Update the Companion_App
+- [x] 12. Update the Companion_App
   - [x] 12.1 Archive the on-device audio path
     - Run a dependency scan of what `ui/` still uses from `a11y/`, `audio/`, `asr/`, `tts/`, `translate/`, `cloudtts/`, `nlg/`, `telecom/`, `recording/`, `service/`, and `sms/`
     - Move those packages to a Gradle module `:archive-ondevice` that `:app` does not depend on (a note in `README.md` records that the on-device path is archived and not shipped; a git tag `archive/ondevice-audio` marks the last commit that contained it in `:app`)
@@ -662,7 +662,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - [ ]* 12.25 Write Compose and notification tests for the Ringing_Alert
     - Heads-up and full-screen variants, the text for each intent, and the removal after 25 seconds and at call end
     - _Requirements: 33.3, 33.4, 33.5, 33.7_
-  - [-] 12.26 Handle the `recent_caller` push message
+  - [x] 12.26 Handle the `recent_caller` push message
     - Extend the Firebase Messaging service of task 12.7 to store the record in `RecentCallCache` without showing a notification
     - _Requirements: 33.8_
 - [~] 13. Checkpoint - App complete

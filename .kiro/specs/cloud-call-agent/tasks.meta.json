@@ -1366,6 +1366,11 @@
         "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795410938901
+      },
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795411089590
       }
     ],
     "12.26 Handle the `recent_caller` push message": [
@@ -1373,6 +1378,18 @@
         "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795410939666
+      },
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795411090596
+      }
+    ],
+    "12. Update the Companion_App": [
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795411090644
       }
     ]
   }

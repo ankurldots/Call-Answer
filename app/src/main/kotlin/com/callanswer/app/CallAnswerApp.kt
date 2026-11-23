@@ -78,12 +78,13 @@ class CallAnswerApp : Application() {
         com.callanswer.app.push.PushRegistration(this) { id, token -> companionApi.registerDevice(id, token) }
     }
     val pushNotifier: com.callanswer.app.push.AndroidPushNotifier by lazy { com.callanswer.app.push.AndroidPushNotifier(this) }
-    /** Acts on the FCM data messages (task 12.7). The `recent_caller` hook is filled by task 12.26. */
+    /** Acts on the FCM data messages (task 12.7). The `recent_caller` hook stores the record in the cache (task 12.26). */
     val pushHandler: com.callanswer.app.push.PushHandler by lazy {
         com.callanswer.app.push.PushHandler(
             notifier = pushNotifier,
             alertAck = { companionApi.alertAck(it) },
             sendMapSms = { callId, number, text -> mapSmsSender.onSendMapSms(callId, number, text) },
+            recentCaller = { com.callanswer.app.push.RecentCallerPush(recentCallCache).handle(it) },
         )
     }
     /** Recent calls for the Screening_Observer (tasks 12.20, 12.22, 12.26). */

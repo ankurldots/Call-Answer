@@ -21,7 +21,7 @@ class PushHandler(
     private val notifier: PushNotifier,
     private val alertAck: suspend (callId: String) -> Unit,
     private val sendMapSms: suspend (callId: String, number: String, text: String) -> Unit,
-    /** Task 12.26 stores the record in `RecentCallCache`; no notification is shown. */
+    /** Stores the record in `RecentCallCache` (see `RecentCallerPush`); no notification is shown. */
     private val recentCaller: suspend (data: Map<String, String>) -> Unit = {},
 ) {
     suspend fun handle(message: PushMessage) {

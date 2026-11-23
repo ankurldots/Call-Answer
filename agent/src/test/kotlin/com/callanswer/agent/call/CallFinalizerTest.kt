@@ -15,10 +15,12 @@ import com.callanswer.core.engine.ConversationState
 import com.callanswer.core.model.CostRates
 import com.callanswer.core.model.EndReason
 import com.callanswer.core.model.FrozenSettings
+import com.callanswer.core.model.IntentCategory
 import com.callanswer.core.model.Language
 import com.callanswer.core.model.Outcome
 import com.callanswer.core.model.Speaker
 import com.callanswer.core.model.Utterance
+import com.callanswer.core.tenant.E164
 import com.callanswer.core.tenant.Keys
 import com.callanswer.core.tenant.UserId
 import io.kotest.core.spec.style.FunSpec
@@ -83,5 +85,44 @@ class CallFinalizerTest : FunSpec({
         r.gateMismatches shouldBe listOf("7")
         trace.events().map { it.errorCode } shouldContain "GATE_NUMBER_MISMATCH"
         r.entry.recordingKey shouldBe null
+    }
+
+    context("recent calls") {
+        val num = "+919812345678"
+        fun run(
+            intent: IntentCategory, number: String?, outcome: Outcome = Outcome.DELIVERY_DIRECTIONS_GIVEN,
+            pushes: MutableList<String>,
+        ): suspend () -> Pair<UserScopedRepository, FinalizeResult> = {
+            val items = InMemoryItemStore(); val blobs = InMemoryBlobStore()
+            val repo = UserScopedRepository(user, items, blobs, pause = {})
+            val fin = CallFinalizer(
+                user, repo, CostCounter(repo, noNotify), RecordingStore(blobs, RecordingSigner { k, _ -> k }),
+                recentNotifier = { _, n, end, i, id -> pushes += "$n|$end|${i.name}|$id" },
+                recentRetryPause = {},
+            )
+            val trace = CallTrace(user.sub, "c1", TestClock(start))
+            val base = input(trace, ConversationState(intent = intent), null)
+            val inp = FinalizeInput(
+                session = CallSession("c1", number, Instant.ofEpochMilli(start), ZoneId.of("Asia/Kolkata"), FrozenSettings()),
+                state = base.state, trace = trace, endedAtMs = 60_000, outcome = outcome, endReason = base.endReason,
+                rates = base.rates, monthlyLimitInr = null,
+            )
+            repo to fin.finalize(inp)
+        }
+        test("an Agent-handled delivery call is recorded and pushed") {
+            val pushes = mutableListOf<String>()
+            val (repo, _) = run(IntentCategory.DELIVERY, num, pushes = pushes)()
+            repo.lastNonSolicitation(E164(num), start + 60_000, 30)?.intent shouldBe IntentCategory.DELIVERY
+            pushes shouldBe listOf("$num|${start + 60_000}|DELIVERY|c1")
+        }
+        test("SOLICITATION, hidden numbers and ring-through calls write and push nothing") {
+            val pushes = mutableListOf<String>()
+            val (r1, _) = run(IntentCategory.SOLICITATION, num, pushes = pushes)()
+            r1.lastNonSolicitation(E164(num), start + 60_000, 30) shouldBe null
+            run(IntentCategory.DELIVERY, null, pushes = pushes)()
+            val (r3, _) = run(IntentCategory.DELIVERY, num, Outcome.RING_THROUGH_ANSWERED, pushes = pushes)()
+            r3.lastNonSolicitation(E164(num), start + 60_000, 30) shouldBe null
+            pushes shouldBe emptyList()
+        }
     }
 })

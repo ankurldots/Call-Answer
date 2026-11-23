@@ -21,7 +21,12 @@ import com.callanswer.core.model.SonicSessionRecord
 import com.callanswer.core.model.Speaker
 import com.callanswer.core.model.VoiceSubstitution
 import com.callanswer.core.tenant.UserId
+import com.callanswer.core.model.IntentCategory
+import com.callanswer.core.tenant.E164
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -29,6 +34,11 @@ import kotlinx.serialization.json.Json
 /** Sends the call-end event (FCM `CALL_ENDED` and the live `call_ended` event). Carries identifiers only. */
 fun interface CallEndNotifier {
     suspend fun callEnded(userId: UserId, callId: String, outcome: Outcome, durationSec: Int)
+}
+
+/** Sends the `recent_caller` FCM data message (number, endMs, intent, callId) to the User's devices. Best effort. */
+fun interface RecentCallerNotifier {
+    suspend fun recentCaller(userId: UserId, number: String, endMs: Long, intent: IntentCategory, callId: String)
 }
 
 /** Everything the finalizer needs from the ended call. No raw audio or text other than the transcript in [state]. */
@@ -105,6 +115,11 @@ class CallFinalizer(
     private val notifier: CallEndNotifier = CallEndNotifier { _, _, _, _ -> },
     private val uploadTimeoutMs: Long = 2_000,
     private val notifyTimeoutMs: Long = 1_000,
+    private val recentNotifier: RecentCallerNotifier = RecentCallerNotifier { _, _, _, _, _ -> },
+    /** Bound for recording the recent call, including its retries (3 retries at 1-second intervals). */
+    private val recentRecordTimeoutMs: Long = 3_500,
+    private val recentPushTimeoutMs: Long = 3_000,
+    private val recentRetryPause: suspend (Long) -> Unit = { delay(it) },
 ) {
     suspend fun finalize(input: FinalizeInput): FinalizeResult {
         val s = input.session
@@ -159,6 +174,7 @@ class CallFinalizer(
         )
 
         val stored = repo.putCall(entry)
+        val tracedCount = trace.events().size
         try {
             val doc = StoredTrace(trace.events(), latency, mismatches.size)
             repo.putTrace(s.id, TRACE_JSON.encodeToString(StoredTrace.serializer(), doc), trace.ttlEpochSeconds())
@@ -174,17 +190,76 @@ class CallFinalizer(
         } catch (e: Exception) {
             // The retention sweeper clears stale markers.
         }
-        try {
-            withTimeoutOrNull(notifyTimeoutMs) { notifier.callEnded(userId, s.id, entry.outcome, entry.durationSec) }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // The end event is best effort.
+        coroutineScope {
+            // The recent-call work runs beside the end event, so it adds nothing to the finalization budget.
+            val recent = async { recordRecent(entry, nowMs, trace) }
+            try {
+                withTimeoutOrNull(notifyTimeoutMs) { notifier.callEnded(userId, s.id, entry.outcome, entry.durationSec) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The end event is best effort.
+            }
+            recent.await()
+        }
+        if (trace.events().size > tracedCount) {
+            // Recent-call errors were recorded after the first trace write; store the trace again.
+            try {
+                val doc = StoredTrace(trace.events(), latency, mismatches.size)
+                repo.putTrace(s.id, TRACE_JSON.encodeToString(StoredTrace.serializer(), doc), trace.ttlEpochSeconds())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+            }
         }
         return FinalizeResult(entry, stored, mismatches)
     }
 
+    /**
+     * Requirements 32.6, 33.8: records the recent call and pushes `recent_caller`, for Agent-handled calls that are not
+     * SOLICITATION and have a visible number. Each step is its own try block; neither can fail the Call_Log.
+     */
+    private suspend fun recordRecent(entry: CallLogEntry, endMs: Long, trace: CallTrace) = coroutineScope {
+        if (entry.outcome == Outcome.RING_THROUGH_ANSWERED || entry.outcome == Outcome.RING_THROUGH_UNANSWERED || entry.dialLegs != null) return@coroutineScope
+        if (entry.intent == IntentCategory.SOLICITATION) return@coroutineScope
+        val number = entry.callerNumber?.let { n -> try { E164(n) } catch (e: IllegalArgumentException) { null } }
+            ?: return@coroutineScope
+        val push = async {
+            try {
+                withTimeoutOrNull(recentPushTimeoutMs) { recentNotifier.recentCaller(userId, number.value, endMs, entry.intent, entry.id) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                trace.recordError("recent_push", "PUSH_FAILED")
+            }
+        }
+        val ok = try {
+            withTimeoutOrNull(recentRecordTimeoutMs) {
+                var done = false
+                for (attempt in 0..RECENT_RETRIES) {
+                    if (attempt > 0) recentRetryPause(RECENT_RETRY_INTERVAL_MS)
+                    try {
+                        repo.recordEnded(number, endMs, entry.intent, entry.id)
+                        done = true
+                        break
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // retry
+                    }
+                }
+                done
+            } ?: false
+        } catch (e: CancellationException) {
+            throw e
+        }
+        if (!ok) trace.recordError("recent_call", "RECENT_RECORD_FAILED")
+        push.await()
+    }
+
     private companion object {
+        const val RECENT_RETRIES = 3
+        const val RECENT_RETRY_INTERVAL_MS = 1_000L
         val TRACE_JSON = Json { encodeDefaults = true }
     }
 }

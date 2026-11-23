@@ -1329,6 +1329,51 @@
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795410320708
       }
+    ],
+    "6.8 Implement `MapSmsService` and `send_map_sms` (push-and-await)": [
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410679631
+      },
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410930895
+      }
+    ],
+    "10.16 Record recent calls and push `recent_caller` at call end": [
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410679718
+      },
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410931359
+      }
+    ],
+    "6. Implement the Agent_Tools on the `:core` rules": [
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410930932
+      }
+    ],
+    "10.13 Implement the `map-sms-result` route": [
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410938901
+      }
+    ],
+    "12.26 Handle the `recent_caller` push message": [
+      {
+        "executionId": "0f81ed27-1b24-49af-ae33-f5c8a272f1d6",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795410939666
+      }
     ]
   }
 }

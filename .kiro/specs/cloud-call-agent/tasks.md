@@ -259,7 +259,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Test with fake Exotel and Sonic ports
     - _Requirements: 3.2, 3.3, 5.1, 5.5_
 
-- [ ] 6. Implement the Agent_Tools on the `:core` rules
+- [x] 6. Implement the Agent_Tools on the `:core` rules
   - [x] 6.1 Implement `AgentTool`, argument validation, and the tool context
     - A common interface (`name`, schema, `execute(args, callState) -> JSON result`), JSON schema validation plus code validation, and a call state view holding the User_Id, the Frozen_Settings of that User, language, stalling mode, and counters
     - Tools are plain classes; they are registered in `ToolRegistry` in task 8.7
@@ -289,7 +289,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - **Property 5: Directions repetition limit**
     - **Validates: Requirements 10.3, 10.4**
 
-  - [~] 6.8 Implement `MapSmsService` and `send_map_sms` (push-and-await)
+  - [x] 6.8 Implement `MapSmsService` and `send_map_sms` (push-and-await)
     - Render the Map_SMS text server-side from the User's Map_Location and a fixed template in the Caller's language (`hi`, `en`, default language otherwise); send the high-priority FCM data message `send_map_sms` (`callId`, Caller number, text) through `FcmClient` to every device of the call owner; wait up to 20 seconds for the Map_SMS_Result from the route of task 10.13
     - Send at most once per call and never for an unknown (hidden) or non-mobile number (record the reason); return `ALREADY_SENT` afterwards; return `SENT`, or `SAY_VERBALLY` with the reason (`FAILED`, `NO_PERMISSION`, `NO_ACK`, `NO_DEVICE`, skipped reasons) so that Sonic says the location verbally; raise a `MAP_SMS_FAILED` alert on failure while the call stays open; the server sends no SMS and uses no Exotel SMS
     - _Requirements: 10.5, 10.7, 10.8, 10.10, 10.12, 10.16_
@@ -536,7 +536,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `PUT /settings` returns 200, 400 with the field name, and 409 with the stored document; the Admin_API returns 403 without the group and 409 on a duplicate; a foreign call identifier returns 404 on every call route and on takeover, end, quick-reply, and recording; a Take_Over request accepts no destination number; `/live` delivers only the events of the authenticated User
     - _Requirements: 26.3, 26.7, 27.3, 27.4, 27.6, 28.3, 28.6, 30.5, 30.6_
 
-  - [ ] 10.13 Implement the `map-sms-result` route
+  - [-] 10.13 Implement the `map-sms-result` route
     - `POST /calls/{id}/map-sms-result` with `{status: SENT|FAILED|NO_PERMISSION}` through `UserScopedRepository` of the token's `sub`: a foreign call identifier answers 404, an invalid status 400, a second result for the same call is ignored; store the result in the call state, the Call_Log, and the trace, and complete the wait of `MapSmsService` (task 6.8)
     - _Requirements: 10.8, 10.16, 28.3_
   - [ ]* 10.14 Write unit tests for the `map-sms-result` route and the push-and-await
@@ -545,7 +545,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - [x] 10.15 Add the `GET /recent-callers` route
     - Return the User's Recent_Call_Records for the last `minutes` (1 to 60, default 60) with normalized number, `endMs`, and intent; a foreign User never appears; 400 for an invalid `minutes`
     - _Requirements: 33.9_
-  - [ ] 10.16 Record recent calls and push `recent_caller` at call end
+  - [x] 10.16 Record recent calls and push `recent_caller` at call end
     - In the finalizer of an Agent-handled call, call `RecentCallStore.recordEnded` after the Call_Log write in a separate try block (3 retries at 1-second intervals, then a Call_Trace entry), and send the `recent_caller` FCM data message (number, `endMs`, intent) to the User's devices within 5 seconds; add the message type to `AlertService`
     - _Requirements: 32.6, 33.8_
   - [ ]* 10.17 Write unit tests for the recent-call route and push
@@ -662,7 +662,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - [ ]* 12.25 Write Compose and notification tests for the Ringing_Alert
     - Heads-up and full-screen variants, the text for each intent, and the removal after 25 seconds and at call end
     - _Requirements: 33.3, 33.4, 33.5, 33.7_
-  - [ ] 12.26 Handle the `recent_caller` push message
+  - [-] 12.26 Handle the `recent_caller` push message
     - Extend the Firebase Messaging service of task 12.7 to store the record in `RecentCallCache` without showing a notification
     - _Requirements: 33.8_
 - [~] 13. Checkpoint - App complete

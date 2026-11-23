@@ -73,6 +73,12 @@ class AlertService(
         return if (outcome.delivered) outcome else fail(trace, message, outcome)
     }
 
+    /** Sends the data-only `recent_caller` message (number, endMs, intent, callId) to every device of [userId]. */
+    suspend fun sendRecentCaller(
+        userId: UserId, number: String, endMs: Long, intent: com.callanswer.core.model.IntentCategory, callId: String,
+        trace: CallTrace? = null,
+    ): PushOutcome = send(userId, PushMessages.recentCaller(number, endMs, intent.name, callId), trace)
+
     /** Sends the Takeover_Alert and waits for an acknowledgment of any device of the owner. */
     suspend fun sendTakeoverAlert(userId: UserId, message: PushMessage, callId: String, trace: CallTrace? = null): TakeoverAlertStatus {
         require(message.type == PushType.TAKEOVER_ALERT) { "Not a takeover alert" }

@@ -42,7 +42,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Record the answers; spikes C-1 and C-3 depend on them
     - _Requirements: 1.1, 5.2, 11.4, 16.11_
 
-  - [~] 0.3 **USER** Create the Firebase project for push notifications
+  - [x] 0.3 **USER** Create the Firebase project for push notifications
     - Create a Firebase project and add the Android app with the application id of `:app`
     - Download `google-services.json` (kept out of git, see 12.7) and create a service account key for FCM HTTP v1 (stored in Secrets Manager in 14.3)
     - The repository has a Firebase power available that can help with this step
@@ -681,7 +681,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - _Requirements: 4.7, 1.4_
 
   - [~] 14.3 **USER** Set the secrets and the Exotel flow
-    - Put the Exotel credentials, the stream Basic credentials, the token HMAC secret, and the FCM service account key into Secrets Manager (`aws secretsmanager put-secret-value --profile ldots --region ap-northeast-1`)
+    - Put the Exotel credentials, the stream Basic credentials, and the token HMAC secret into Secrets Manager (`aws secretsmanager put-secret-value --profile ldots --region ap-northeast-1`); the FCM service account key is already stored in `callagent/fcm`, created outside the stack and referenced by the `FcmSecretArn` parameter
     - In the Exotel dashboard create the template Number_Flow of the design (Passthru route with the Out_Of_Service branch, Voicebot with the resolve URL at `sample-rate` 8000, Connect with the `/exotel/next` URL, and the Fallback_Route) and set the dial timeout to 15 seconds; link the flow to every assigned ExoPhone
     - Create the Number_Flow of each assigned ExoPhone from this template with the owner's User_Mobile as the static fallback number, following `docs/admin-number-assignment-checklist.md` (task 14.8); the server-down behavior is decided: the call is passed to the User (requirements open question 16)
     - _Requirements: 16.2, 16.5, 1.5, 15.9, 25.4_

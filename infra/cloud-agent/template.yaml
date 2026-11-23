@@ -78,6 +78,11 @@ Parameters:
     Description: E-mail address subscribed to the FallbackCount alarm (the subscription must be confirmed from the mailbox)
     AllowedPattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
 
+  FcmSecretArn:
+    Type: String
+    Default: arn:aws:secretsmanager:ap-northeast-1:517223944896:secret:callagent/fcm-iYvBDg
+    Description: ARN of the existing FCM service account secret (callagent/fcm), created outside this stack with the default aws/secretsmanager key
+
 Conditions:
   CreateCertificate: !Equals [!Ref CertificateArn, ""]
 
@@ -433,13 +438,7 @@ Resources:
       GenerateSecretString:
         PasswordLength: 64
         ExcludePunctuation: true
-  FcmSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: callagent/fcm
-      Description: Firebase service account key JSON for FCM HTTP v1 (set by hand after deploy)
-      KmsKeyId: !GetAtt DataKey.Arn
-      SecretString: '{"CHANGE_ME":"paste the service account JSON with put-secret-value"}'
+  # The FCM service account secret (callagent/fcm) was created outside CloudFormation; see FcmSecretArn.
   # ---------- Container registry, cluster, logs ----------
   Repository:
     Type: AWS::ECR::Repository
@@ -491,7 +490,7 @@ Resources:
                   - !Ref ExotelAccountSecret
                   - !Ref ExotelStreamSecret
                   - !Ref CallTokenSecret
-                  - !Ref FcmSecret
+                  - !Ref FcmSecretArn
               - Effect: Allow
                 Action: kms:Decrypt
                 Resource: !GetAtt DataKey.Arn
@@ -506,6 +505,14 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+      Policies:
+        - PolicyName: read-fcm-secret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref FcmSecretArn
 
   # ---------- Service ----------
   TaskDefinition:

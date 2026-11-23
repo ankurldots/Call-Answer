@@ -10,15 +10,16 @@ When you don't pick up (or are busy or unreachable), your carrier forwards the c
 | **Door not answered** | Says "please wait" and alerts you in the app; **Take over** connects the caller to your mobile. |
 | **Solicitation** (loan, property, other sales pitches) | Keeps the caller busy with fictitious, plausible-sounding replies. No real personal, financial or location data is used. |
 | **Unknown** | Asks the reason, then takes a message. |
+| **Repeat caller** | If the same number called within a few minutes (default 15), the call rings through to your mobile instead of the Agent, with a ringing alert in the app. The window and ring time are configurable. |
 
 - **Languages:** Hindi and English (Indian), replying in the caller's language, with a female or male voice.
 - **Gate info:** By default only Gate 3 is open from 22:30 to 05:30, and Gate 1 at other times. Gates, times and delivery steps are configurable. Gate info and directions come from server code, not from the AI model.
-- **Companion app:** live alert with Take over, live transcript, call log, settings, and spam reports to 1909 (TRAI).
+- **Companion app:** live alert with Take over, ringing alert for repeat callers, live transcript, call log with cost, settings (gates, ring-through, SMS SIM), and spam reports to 1909 (TRAI).
 
 ## Status and scope
 This is a personal project, being re-architected.
 
-- **Current direction (cloud Agent):** carrier call forwarding (Airtel) to an [Exotel](https://exotel.com) number, Exotel AgentStream streaming the call audio over a WebSocket to an Agent service in AWS Tokyo (`ap-northeast-1`), and [Amazon Nova 2 Sonic](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-conversational-speech.html) as the speech-to-speech model. Call audio is processed in Tokyo, outside India. The spec is in `.kiro/specs/cloud-call-agent/`. Spikes are tracked in `docs/cloud-spikes.md`.
+- **Current direction (cloud Agent):** carrier call forwarding (Airtel) to an [Exotel](https://exotel.com) number, Exotel AgentStream streaming the call audio over a WebSocket to an Agent service in AWS Tokyo (`ap-northeast-1`), and [Amazon Nova 2 Sonic](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-conversational-speech.html) as the speech-to-speech model. Call audio is processed in Tokyo, outside India. The spec is in `.kiro/specs/cloud-call-agent/`. Spikes are tracked in `docs/cloud-spikes.md`; the task list is in `.kiro/specs/cloud-call-agent/tasks.md`.
 - **Why the pivot:** on the target phone (Samsung Galaxy M34 5G) an on-device Agent can't work. Android silences call-time microphone capture for normal apps (only an accessibility service could capture, and UPI apps refuse to run while one is on), and the phone's echo cancellation removes the Agent's loudspeaker audio, so the caller never hears it. The original on-device spec is kept as history in `.kiro/specs/ai-call-screening-agent/`.
 
 > Consider local laws on call recording and on automated call answering. The cloud Agent plays a spoken recording notice and can disclose that it is an AI.
@@ -29,14 +30,17 @@ This is a personal project, being re-architected.
 |---|---|
 | `app` | Android companion app (`com.callanswer.app`, minSdk 29, targetSdk 36). It answers no calls, captures no call audio and never enables an accessibility service. |
 | `archive-ondevice` | Archived on-device call audio path (accessibility capture, on-device speech models, call screening answering, overlay). **Archived and not shipped:** `:app` does not depend on it and Gradle does not compile it. The last commit that held this code in `:app` is tagged `archive/ondevice-audio`. See `archive-ondevice/ARCHIVE.md`. |
-| `core` | Shared call-handling rules (gates, directions, PII guard, spam report, call log). JVM tests run without a device. To be reused by the cloud Agent service. |
+| `core` | Shared call-handling rules (gates, directions, PII guard, spam report, call log, route decisions). JVM tests run without a device. Used by `app` and `agent`. |
+| `agent` | Cloud Agent service (JVM, runs as a container on ECS Fargate): Exotel AgentStream WebSocket, Nova 2 Sonic sessions, tools, ring-through. Has a `Dockerfile`. |
+| `infra/cloud-agent` | AWS SAM/CloudFormation template for the Agent (network, ALB, certificate, ECS service). DNS is on Cloudflare; see `docs/cloud/dns.md`. |
+| `scripts` | `build-push-agent.sh` (build and push the Agent image), `check-16kb.sh` (16 KB page-size check for the app), `admin/` |
 | `spike-cloud` | JVM harness for the cloud spikes (results in `spike-cloud/results/`, git-ignored) |
 | `spike` | On-device feasibility spikes (history; see `docs/spike-s1-s3-runbook.md`) |
 | `lambda/polly_tts` | AWS Lambda for Polly text-to-speech (see its README) |
 | `tools` | Scripts for models, voices, traces and test suites |
 | `docs` | Spike runbooks and results, E2E scenarios, network test matrix |
 
-The cloud Agent service (`agent` module) and its infrastructure are planned in `.kiro/specs/cloud-call-agent/tasks.md`.
+Cloud setup notes (Cognito, DNS, Bedrock access) are in `docs/cloud/`. Progress on the Agent and its infrastructure is tracked in `.kiro/specs/cloud-call-agent/tasks.md`.
 
 ## Running locally
 
@@ -61,7 +65,7 @@ On the device, open the app and follow onboarding (sign-in, then notifications).
 
 ### Tests
 ```
-./gradlew :core:test :app:testDebugUnitTest :spike-cloud:test
+./gradlew :core:test :agent:test :app:testDebugUnitTest :spike-cloud:test
 ```
 
 ### Debugging a call

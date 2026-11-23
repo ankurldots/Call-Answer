@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="channel_repeat_caller_alert">Repeat caller alerts</string>
+    <string name="ringing_alert_title">Repeat caller %1$s</string>
+    <!-- %1$s is the earlier intent (Delivery, Door, Unknown), %2$d the minutes since the earlier call. -->
+    <string name="ringing_alert_text">%1$s caller from %2$d min ago - pick up</string>
+    <string name="ringing_alert_intent_delivery">Delivery</string>
+    <string name="ringing_alert_intent_door">Door</string>
+    <string name="ringing_alert_intent_unknown">Unknown</string>
+</resources>

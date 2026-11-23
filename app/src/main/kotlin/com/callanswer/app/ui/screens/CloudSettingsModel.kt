@@ -63,6 +63,9 @@ data class AgentDraft(
     val fallbackRoute: FallbackRoute,
     val defaultLanguage: Language,
     val recordingEnabled: Boolean,
+    val ringThroughEnabled: Boolean = true,
+    val ringThroughWindowMinutes: String = "15",
+    val ringThroughMaxSeconds: String = "180",
 ) {
     companion object {
         fun from(s: Settings) = AgentDraft(
@@ -76,6 +79,9 @@ data class AgentDraft(
             fallbackRoute = s.fallbackRoute,
             defaultLanguage = s.defaultLanguage,
             recordingEnabled = s.recordingEnabled,
+            ringThroughEnabled = s.ringThroughEnabled,
+            ringThroughWindowMinutes = s.ringThroughWindowMinutes.toString(),
+            ringThroughMaxSeconds = s.ringThroughMaxSeconds.toString(),
         )
     }
 
@@ -102,6 +108,14 @@ data class AgentDraft(
         if (limitText.isNotEmpty() && (limit == null || limit < 0)) {
             errors[AgentField.MONTHLY_LIMIT] = "Enter a whole number of rupees, 0 or more, or leave empty for no limit"
         }
+        val window = ringThroughWindowMinutes.trim().toIntOrNull()
+        if (window == null || !SettingsValidator.validateRingThroughWindow(window).isValid) {
+            errors[AgentField.RING_THROUGH_WINDOW] = "Enter a whole number of minutes from 1 to 60"
+        }
+        val cap = ringThroughMaxSeconds.trim().toIntOrNull()
+        if (cap == null || !SettingsValidator.validateRingThroughMax(cap).isValid) {
+            errors[AgentField.RING_THROUGH_MAX] = "Enter a whole number of seconds from 30 to 600"
+        }
         if (errors.isNotEmpty()) return AgentDraftResult.Invalid(errors)
         return AgentDraftResult.Ok(
             base.copy(
@@ -113,12 +127,15 @@ data class AgentDraft(
                 fallbackRoute = fallbackRoute,
                 defaultLanguage = defaultLanguage,
                 recordingEnabled = recordingEnabled,
+                ringThroughEnabled = ringThroughEnabled,
+                ringThroughWindowMinutes = window!!,
+                ringThroughMaxSeconds = cap!!,
             ),
         )
     }
 }
 
-enum class AgentField { USER_MOBILE, RETENTION, RATE_EXOTEL, RATE_SONIC_IN, RATE_SONIC_OUT, MONTHLY_LIMIT }
+enum class AgentField { USER_MOBILE, RETENTION, RATE_EXOTEL, RATE_SONIC_IN, RATE_SONIC_OUT, MONTHLY_LIMIT, RING_THROUGH_WINDOW, RING_THROUGH_MAX }
 
 sealed interface AgentDraftResult {
     data class Ok(val settings: Settings) : AgentDraftResult

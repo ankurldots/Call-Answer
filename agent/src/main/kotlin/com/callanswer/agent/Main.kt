@@ -9,6 +9,7 @@ import com.callanswer.agent.api.CallLogRouteDeps
 import com.callanswer.agent.api.callLogRoutes
 import com.callanswer.agent.api.companionApi
 import com.callanswer.agent.api.profileActiveCheck
+import com.callanswer.agent.api.recentCallersRoutes
 import com.callanswer.agent.api.settingsRoutes
 import com.callanswer.agent.store.AwsStores
 import com.callanswer.agent.store.DirectoryRepository
@@ -52,6 +53,7 @@ fun main() {
             val recordings = AwsStores.recordingStore(config.region, config.recordingsBucket, blobs)
             val sweeper = com.callanswer.agent.store.RetentionSweeper(directory, settingsStore, items, blobs, recordings)
             callLogRoutes(CallLogRouteDeps(repoFor, settingsStore, recordings, sweeper, SystemClock))
+            recentCallersRoutes(repoFor, SystemClock)
             adminRoutes(com.callanswer.agent.api.AdminRouteDeps(com.callanswer.agent.store.NumberAssignmentService(items), directory, repoFor))
         }
     }) }.start(wait = true)

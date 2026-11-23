@@ -24,7 +24,7 @@ class RepeatCallerMatcher(
     }
 }
 
-/** Receives a Repeat_Caller match while the phone rings. The Ringing_Alert (task 12.21) implements it. */
+/** Receives a Repeat_Caller match while the phone rings. [RingingAlert] implements it. */
 fun interface RepeatCallerAlerter {
     fun onRepeatCaller(match: RepeatMatch)
 }

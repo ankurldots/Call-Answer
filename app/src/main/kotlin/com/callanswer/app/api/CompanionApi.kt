@@ -59,6 +59,10 @@ class CompanionApi(
     /** `GET /usage/month`. */
     suspend fun usageMonth(): MonthUsage = decode(MonthUsage.serializer(), send("GET", "/usage/month"))
 
+    /** `GET /recent-callers?minutes=n` (1 to 60): the User's Recent_Call_Records of the last n minutes. */
+    suspend fun recentCallers(minutes: Int = 60): List<RecentCaller> =
+        decode(RecentCallersResponse.serializer(), send("GET", "/recent-callers", query = mapOf("minutes" to minutes.coerceIn(1, 60).toString()))).callers
+
     /** `POST /calls/{id}/report-status`: the server stores the spam report status of one call (204). */
     suspend fun reportStatus(id: String, status: com.callanswer.core.model.ReportStatus) {
         send("POST", "/calls/${enc(id)}/report-status", "{\"status\":\"${status.name}\"}")

@@ -83,6 +83,7 @@ fun CallLogScreen(resumeTick: Int, onOpenEntry: (String) -> Unit, onBack: () -> 
     LaunchedEffect(resumeTick) {
         entries = CallLogFormat.newestFirst(dao.list())
         val app = context.callAnswerApp()
+        runCatching { app.recentCallSync.sync() }
         while (true) {
             try {
                 entries = CallLogFormat.newestFirst(app.callLogRepository.refresh())

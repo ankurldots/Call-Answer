@@ -84,4 +84,14 @@ class CloudSettingsModelTest {
         assertEquals(EditOutcome.NeedsChoice, SyncResult.NeedsResolution(emptyList(), doc).toOutcome())
         assertEquals(EditOutcome.Rejected("userMobile", "m"), SyncResult.Invalid("userMobile", "m").toOutcome())
     }
+
+    @Test fun ringThroughFieldsAreValidatedAndSaved() {
+        val bad = AgentDraft.from(base).copy(ringThroughWindowMinutes = "61", ringThroughMaxSeconds = "29").applyTo(base) as AgentDraftResult.Invalid
+        assertTrue(AgentField.RING_THROUGH_WINDOW in bad.errors && AgentField.RING_THROUGH_MAX in bad.errors)
+        val ok = AgentDraft.from(base).copy(ringThroughEnabled = false, ringThroughWindowMinutes = "60", ringThroughMaxSeconds = "600")
+            .applyTo(base) as AgentDraftResult.Ok
+        assertFalse(ok.settings.ringThroughEnabled)
+        assertEquals(60, ok.settings.ringThroughWindowMinutes)
+        assertEquals(600, ok.settings.ringThroughMaxSeconds)
+    }
 }

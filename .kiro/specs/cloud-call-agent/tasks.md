@@ -542,7 +542,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
   - [ ]* 10.14 Write unit tests for the `map-sms-result` route and the push-and-await
     - SENT, FAILED, NO_PERMISSION, no acknowledgment after 20 seconds (`SAY_VERBALLY`), hidden number (nothing sent), a foreign call identifier (404), and a duplicate result
     - _Requirements: 10.7, 10.8, 10.16_
-  - [ ] 10.15 Add the `GET /recent-callers` route
+  - [x] 10.15 Add the `GET /recent-callers` route
     - Return the User's Recent_Call_Records for the last `minutes` (1 to 60, default 60) with normalized number, `endMs`, and intent; a foreign User never appears; 400 for an invalid `minutes`
     - _Requirements: 33.9_
   - [ ] 10.16 Record recent calls and push `recent_caller` at call end
@@ -640,17 +640,17 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Fake `SmsManager` and `SubscriptionManager`: SENT and FAILED from the sent PendingIntent, NO_PERMISSION without `SEND_SMS`, multipart for a long text, the selected SIM and the default SIM, a repeated `callId` sends once, and the result report is queued when offline
     - Update the release manifest test of task 12.14 expectations: `SEND_SMS` is allowed, `RECORD_AUDIO`, call screening, and accessibility stay forbidden
     - _Requirements: 10.13, 10.14, 10.15_
-  - [ ] 12.19 Add the ring-through fields to the settings screen
+  - [x] 12.19 Add the ring-through fields to the settings screen
     - Switch for Ring_Through, Repeat_Window (1 to 60 minutes, default 15), and Ring_Through_Cap (30 to 600 seconds, default 180), validated with `SettingsValidator`, saved with `PUT /settings` and `expectedVersion`; add the strings to `strings_settings.xml`; add the call screening role row with its explanation (the role only reads the incoming number) and the request through `RoleManager`
     - _Requirements: 32.17, 33.12_
   - [x] 12.20 Implement the Screening_Observer, the recent-call cache, and the matcher
     - `RepeatCallerScreeningService` (`CallScreeningService`) that always calls `respondToCall` with the default `CallResponse` (no reject, silence, skip of the call log, or skip of the notification) and hands the number to `RepeatCallerAlerter`; declare it in the manifest with `BIND_SCREENING_SERVICE`
     - `RecentCallCache` as a JSON `DataStore` (no Room migration) with a purge after 60 minutes; `RepeatCallerMatcher` that normalizes with `PhoneNumbers.normalize` and applies `RingThroughPolicy.isRepeat` with the cached window; no accessibility, no `RECORD_AUDIO`, no `READ_CALL_LOG`, no auto-answer
     - _Requirements: 33.1, 33.2, 33.3, 33.6, 33.10, 33.11_
-  - [ ] 12.21 Implement the Ringing_Alert
+  - [x] 12.21 Implement the Ringing_Alert
     - `REPEAT_CALLER_ALERT` channel (high importance), heads-up notification with a full-screen intent when allowed, text "Delivery caller from 5 min ago - pick up" built from the intent and the minutes since the earlier call, shown within 1 second, removed after 25 seconds or when the call ends
     - _Requirements: 33.3, 33.4, 33.5, 33.7_
-  - [ ] 12.22 Sync the recent-call cache from the server
+  - [x] 12.22 Sync the recent-call cache from the server
     - Fetch `GET /recent-callers?minutes=60` at app start and when the call log opens, through the existing API client with the outbox rules unchanged, and replace the cache entries from the response
     - _Requirements: 33.9_
   - [x] 12.23 Update the release manifest guard for the Screening_Observer

@@ -37,8 +37,11 @@ class RepeatCallerScreeningService : CallScreeningService() {
 class ScreeningObserver(
     private val matcher: RepeatCallerMatcher,
     private val alerter: RepeatCallerAlerter,
+    /** Ring_Through setting; no alert while it is off (Requirement 33.3). */
+    private val enabled: suspend () -> Boolean = { true },
 ) {
     suspend fun onIncomingNumber(rawNumber: String?) {
+        if (!enabled()) return
         matcher.match(rawNumber)?.let(alerter::onRepeatCaller)
     }
 }

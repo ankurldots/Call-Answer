@@ -128,4 +128,13 @@
     <string name="conflicts_offline">You are offline. Your changes stay on this phone.</string>
     <string name="conflicts_rejected">The server did not accept your change. The saved value was kept.</string>
     <string name="conflicts_retry_later">The settings changed again while saving. Try again.</string>
+    <string name="ring_through_enabled">Ring me when a recent caller calls again</string>
+    <string name="ring_through_explanation">When the same caller (not a sales call) calls again within the repeat window, your phone rings instead of the Agent answering.</string>
+    <string name="ring_through_window">Repeat window in minutes (1 to 60)</string>
+    <string name="ring_through_max">Longest ring time in seconds (30 to 600)</string>
+    <string name="screening_role_title">Call screening role</string>
+    <string name="screening_role_explanation">Android gives the app the incoming number only if it holds the call screening role. The app only reads the number to warn you about a repeat caller. It never blocks, silences or answers a call.</string>
+    <string name="screening_role_granted">The role is granted.</string>
+    <string name="screening_role_missing">The role is not granted, so repeat caller alerts are off.</string>
+    <string name="screening_role_request">Allow call screening role</string>
 </resources>

@@ -66,3 +66,11 @@ data class RecordingUrl(val url: String, val expiresInSeconds: Long)
 /** `GET /usage/month`: the Cost_Estimate total of the current month in paise and the limit in INR (null when unset). */
 @Serializable
 data class MonthUsage(val month: String, val totalPaise: Long, val monthlyLimitInr: Long? = null)
+
+/** One caller of `GET /recent-callers`: the normalized number, the end of the last call, and its intent. */
+@Serializable
+data class RecentCaller(val number: String, val endMs: Long, val intent: com.callanswer.core.model.IntentCategory)
+
+/** `GET /recent-callers`, newest call first. */
+@Serializable
+data class RecentCallersResponse(val callers: List<RecentCaller> = emptyList())

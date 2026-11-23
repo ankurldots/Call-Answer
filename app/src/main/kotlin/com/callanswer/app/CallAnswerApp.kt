@@ -22,10 +22,11 @@ import com.callanswer.app.sms.MapSmsReporter
 import com.callanswer.app.sms.MapSmsSender
 import com.callanswer.app.sms.SmsManagerTransport
 import com.callanswer.app.screening.RecentCallCache
-import com.callanswer.app.screening.RepeatCallerAlerter
+import com.callanswer.app.screening.RingingAlert
 import com.callanswer.app.screening.RepeatCallerMatcher
 import com.callanswer.app.screening.ScreeningObserver
 import com.callanswer.core.cloud.RingThroughPolicy
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.coroutines.CoroutineScope
@@ -74,8 +75,13 @@ class CallAnswerApp : Application() {
     /** Recent calls for the Screening_Observer (tasks 12.20, 12.22, 12.26). */
     val recentCallCache: RecentCallCache by lazy { RecentCallCache.create(this) }
 
-    /** Replaced by the Ringing_Alert notification in task 12.21; until then a match is only logged. */
-    var repeatCallerAlerter: RepeatCallerAlerter = RepeatCallerAlerter { Log.i("CallAnswer", "repeat caller matched") }
+    /** The Ringing_Alert notification for a Repeat_Caller (Requirement 33). */
+    val ringingAlert: RingingAlert by lazy { RingingAlert(this) }
+
+    /** Replaces the recent-call cache from the server at app start and when the call log opens (task 12.22). */
+    val recentCallSync: com.callanswer.app.screening.RecentCallSync by lazy {
+        com.callanswer.app.screening.RecentCallSync(companionApi, recentCallCache)
+    }
 
     val screeningObserver: ScreeningObserver by lazy {
         ScreeningObserver(
@@ -87,7 +93,13 @@ class CallAnswerApp : Application() {
                         ?: RingThroughPolicy.DEFAULT_WINDOW_MINUTES
                 },
             ),
-        ) { repeatCallerAlerter.onRepeatCaller(it) }
+            alerter = ringingAlert,
+            enabled = {
+                runCatching { settingsRepository.effective() }.getOrNull()
+                    ?.get("ringThroughEnabled")?.jsonPrimitive?.booleanOrNull
+                    ?: true
+            },
+        )
     }
 
     override fun onCreate() {
@@ -98,6 +110,7 @@ class CallAnswerApp : Application() {
         // Results that could not be reported before (offline) go out now.
         appScope.launch { runCatching { mapSmsReporter.flush() } }
         if (authConfig.isConfigured) {
+            appScope.launch { runCatching { recentCallSync.sync() } }
             appScope.launch { authRepository.state.collect { Log.i("CallAnswer", "Auth state: ${if (it is AuthState.SignedIn) "SignedIn" else "SignedOut"}") } }
         }
     }

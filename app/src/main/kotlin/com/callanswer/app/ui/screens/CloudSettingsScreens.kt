@@ -147,6 +147,19 @@ private fun AgentForm(state: CloudSettingsState, initial: Settings, consent: Con
         errorMessage = errors[AgentField.MONTHLY_LIMIT],
     )
 
+    AppSwitchRow(stringResource(R.string.ring_through_enabled), draft.ringThroughEnabled, { draft = draft.copy(ringThroughEnabled = it) })
+    Text(stringResource(R.string.ring_through_explanation), style = MaterialTheme.typography.bodySmall)
+    AppTextField(
+        draft.ringThroughWindowMinutes, { draft = draft.copy(ringThroughWindowMinutes = it) },
+        stringResource(R.string.ring_through_window),
+        errorMessage = errors[AgentField.RING_THROUGH_WINDOW],
+    )
+    AppTextField(
+        draft.ringThroughMaxSeconds, { draft = draft.copy(ringThroughMaxSeconds = it) },
+        stringResource(R.string.ring_through_max),
+        errorMessage = errors[AgentField.RING_THROUGH_MAX],
+    )
+    ScreeningRoleRow()
     SaveStatus(outcome, toggleFailed)
     AppButton(stringResource(R.string.settings_save), onClick = {
         scope.launch {
@@ -168,6 +181,9 @@ private fun fieldLabel(field: String): String = when (field) {
     "recordingEnabled" -> stringResource(R.string.agent_recording)
     "retentionDays" -> stringResource(R.string.agent_retention_short)
     "costRates" -> stringResource(R.string.agent_rates_title)
+    "ringThroughEnabled" -> stringResource(R.string.ring_through_enabled)
+    "ringThroughWindowMinutes" -> stringResource(R.string.ring_through_window)
+    "ringThroughMaxSeconds" -> stringResource(R.string.ring_through_max)
     "monthlyLimitInr" -> stringResource(R.string.agent_monthly_limit)
     "voiceGender", "voiceId" -> stringResource(R.string.settings_voice)
     "disclosureEnabled" -> stringResource(R.string.settings_disclosure)

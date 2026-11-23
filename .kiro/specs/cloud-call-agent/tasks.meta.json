@@ -1239,6 +1239,54 @@
         "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
         "timestamp": 1795404077664
       }
+    ],
+    "10.15 Add the `GET /recent-callers` route": [
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404092240
+      },
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404222701
+      }
+    ],
+    "12.21 Implement the Ringing_Alert": [
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404092652
+      },
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404223430
+      }
+    ],
+    "12.19 Add the ring-through fields to the settings screen": [
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404230161
+      },
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404347928
+      }
+    ],
+    "12.22 Sync the recent-call cache from the server": [
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404230786
+      },
+      {
+        "executionId": "1513ea28-81b9-4669-8127-1d449dcf6f0c",
+        "chatSessionId": "sess_daccd114-5359-41ae-81af-2b904e587250",
+        "timestamp": 1795404348871
+      }
     ]
   }
 }

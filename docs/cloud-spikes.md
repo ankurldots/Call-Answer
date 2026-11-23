@@ -32,9 +32,34 @@ Driver: `./gradlew :spike-cloud:c5 -Pscenario=basic|interrupt|inject|history|lon
 | 2026-11-22 | SDK version / model or inference profile id | AWS SDK for Java v2 `bedrockruntime` **2.31.50**, model id **`amazon.nova-2-sonic-v1:0`** used directly in `ap-northeast-1`. No inference profile needed. Sonic output at 24 kHz; input at 16 kHz. | Build needs `software.amazon.awssdk:netty-nio-client` (HTTP/2) and Reactive Streams `Publisher` for the input; set Netty read and write timeouts above 8 minutes. `usageEvent` carries `details.delta` and `details.total` with `speechTokens` and `textTokens` for input and output (used by the Cost_Estimate). Extra events seen: `userSpeechStart`, `userSpeechEnd`, `completionStart`, `completionEnd`. |
 | 2026-11-22 | **Decision** | **GO** for the Sonic design, with four design notes. | (1) Renewal at 80 percent and abrupt-close handling are mandatory. (2) The `INTERRUPTED` target of 200 ms is not met from here (about 330 to 430 ms, 180 to 280 ms net of the round trip): the server should clear the Outbound queue on `userSpeechStart` or `INTERRUPTED`, and the figure must be re-measured from the Tokyo task. (3) Injected text is reliable (10 of 10), so the fixed-audio fallback for "please wait", silence prompts, and goodbyes is not needed; the stored Fallback_Message audio stays only for Bedrock failure. (4) Speculative text precedes audio, so no 300 ms look-ahead buffer. Also: keep silence frames flowing (55 s idle limit), and build history from `FINAL` text only after it has arrived. |
 ## C-1 Exotel stream protocol via echo server behind ALB (task 1.5)
+Runbook (a USER step: it needs a real Exotel account and a phone):
+1. Start the echo server: `./gradlew :spike-cloud:c1 -Pport=8080`. Optional env: `ECHO_PUBLIC_HOST` (public host name, no scheme), `ECHO_SAMPLE_RATE` (8000, 16000 or 24000), `ECHO_CHUNK_BYTES` (multiple of 320, default 3200), `ECHO_SCHEME` (default `wss`; use `ws` only for local tests).
+2. Expose it over TLS: `ngrok http 8080` and set `ECHO_PUBLIC_HOST=<name>.ngrok-free.app` before step 1, or use an ALB with an ACM certificate (the template `infra/cloud-agent/spike-echo.yaml` is not built yet).
+3. In the Exotel flow, add a Voicebot applet. Choose the dynamic URL option and enter `https://<key>:<token>@<host>/exotel/resolve` (Basic credentials in the URL). Untick the record option. Test `sample-rate` 8000, 16000 and 24000 in turn (set `ECHO_SAMPLE_RATE`, or add `?sample-rate=` to the resolve URL).
+4. Call the ExoPhone, speak, and listen to the echo. Press `#` while the echo plays to send `clear`. Press other digits to see DTMF. Hang up from the phone once, and once let the server close the socket, to compare `stop.reason`.
+5. Repeat with `ECHO_CHUNK_BYTES=1600` and `960` to see whether Exotel accepts chunks below the documented 3200 minimum. (The agent itself rejects values below 3200 unless `EXOTEL_ALLOW_SMALL_CHUNKS=true`.)
+6. Repeat once with the Caller ID hidden, and once with a Passthru applet in front that the server answers with different HTTP statuses.
+7. Read the logs in `spike-cloud/results/c1.jsonl`. Every frame is saved in `spike-cloud/results/frames/exotel/` for the fixtures of task 4.1/4.12. The `Authorization` header is logged only as `absent` or `present:<scheme>`; the value is never written.
+8. Fill the table below, then write the decision row.
+
 | Date | Measurement | Result | Notes |
 |---|---|---|---|
-| | | | |
+| | Start event fields, including `custom_parameters` and `account_sid` | | |
+| | Basic `Authorization` header on `/exotel/resolve` | | |
+| | Basic `Authorization` header on the WebSocket handshake | | |
+| | `/stream/<token>` path and `?sample-rate=` query survive to the server | | |
+| | Chunk sizes Exotel sends (bytes per `media`, per sample rate) | | |
+| | Outbound chunk size 3200 accepted (plays without gaps) | | |
+| | Outbound chunk size 1600 accepted (`ECHO_CHUNK_BYTES=1600`) | | |
+| | Outbound chunk size 960 accepted (`ECHO_CHUNK_BYTES=960`) | | |
+| | `clear` takes effect within 200 ms (press `#` while echo plays) | | |
+| | `mark` echoed back by Exotel, and when | | |
+| | DTMF event shape (`digit`, `duration`) | | |
+| | `stop.reason` values (`stopped`, `callended`, others) | | |
+| | Hidden Caller number: `from` value in start and `CallFrom` in resolve | | |
+| | `To`, `From`, `ForwardedFrom` in resolve and in start | | |
+| | Failure of the stream: does the flow move to the next applet | | |
+| | Passthru status branching (HTTP status to branch) | | |
 | | **Decision** | | |
 
 ## C-2 Sonic quality for Hindi, English, Hinglish (task 1.6)

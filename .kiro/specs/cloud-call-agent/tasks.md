@@ -101,6 +101,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Also record the `To`, `From`, and any `ForwardedFrom` or diversion fields that the Passthru and Voicebot start events carry
     - Save the frames as fixtures for 4.1 and update `docs/cloud-spikes.md`
     - _Requirements: 1.2, 1.3, 3.1, 5.2, 16.2, 16.11, 25.1_
+    - Status: Echo server harness (`:spike-cloud:c1`, `EchoServer.kt`) and the C-1 runbook in `docs/cloud-spikes.md` are done; the real Exotel call and the measurements are a USER step. `infra/cloud-agent/spike-echo.yaml` is not built.
 
   - [~] 1.6 Run spike C-2: Sonic quality for Hindi, English, and Hinglish
     - Replay the 30-utterance corpus (`src/main/assets/s7/wav`) resampled to 8 kHz, as 8 kHz and as upsampled 16 kHz input, with voices `kiara`, `arjun`, `tiffany`, and `matthew`
@@ -214,14 +215,16 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - `/exotel/next` takes the Take_Over destination from the call state of the owning User and never from a request parameter
     - Record the Caller number from the start event (or `unknown` when hidden), end the call after 10 seconds without media and record the interruption, and close the stream on stop
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 3.8, 16.3, 25.1, 25.4, 25.8, 30.4_
+    - Status: `/exotel/resolve` and the `/stream/<callToken>` WebSocket are done; `/exotel/route`, `/exotel/next` and `/exotel/passthru` remain.
 
   - [~] 4.11 Implement `CallRecorder`
     - Mix Caller and Agent audio into one 8 kHz mono WAV and write it to S3 as a multipart upload that starts when the Recording_Notice has finished (or at the start when the Disclosure_Setting is off) and is not written during a Take_Over; retry the upload at call end on failure
     - _Requirements: 17.8, 18.4, 18.5_
 
-  - [ ]* 4.12 Write contract and unit tests for the stream handler
+  - [x]* 4.12 Write contract and unit tests for the stream handler
     - Parse the recorded Exotel fixtures from spike C-1 (start event, media, mark, clear) and test the handler with a fake call session: hidden Caller number, 10-second media timeout, mismatched frames
     - _Requirements: 1.3, 3.5, 3.8_
+    - Status: done for the cases tested (hidden Caller number, 10-second media timeout, mismatched `call_sid`/`to`, token rejection, chunking, `clear`); parsing of the real C-1 fixtures waits for the user's spike run.
 
 - [ ] 5. Implement the Nova 2 Sonic client
   - [x] 5.1 Implement `SonicEvents`, `ToolSpecs`, `SystemPrompt`, and `HistoryBuilder`
@@ -258,6 +261,7 @@ Tasks marked **USER** are done by the User, not by a coding agent. A coding agen
     - Connect Exotel media to the resampler and `audioInput` within 100 ms, and `audioOutput` to the resampler and the pacer; do not forward Caller audio during the Recording_Notice; clear on `INTERRUPTED`; accumulate Caller and Agent audio durations
     - Test with fake Exotel and Sonic ports
     - _Requirements: 3.2, 3.3, 5.1, 5.5_
+    - Status: The bridge between Exotel and Sonic is done; Recording_Notice gating of Caller audio remains.
 
 - [x] 6. Implement the Agent_Tools on the `:core` rules
   - [x] 6.1 Implement `AgentTool`, argument validation, and the tool context

@@ -12,7 +12,8 @@ import kotlin.coroutines.coroutineContext
  * flushes the queue with exactly one `clear` on an interruption or PII hit.
  *
  * ASSUMPTIONS (spike C-1 not run): chunk size 3200 bytes (a multiple of 320, Exotel minimum) and a 300 ms
- * send-ahead. If the spike requires small chunks, construct with e.g. chunkBytes = 320 and maxSendAheadMillis = 100.
+ * send-ahead (config: EXOTEL_CHUNK_BYTES, EXOTEL_SEND_AHEAD_MS; sizes below 3200 need EXOTEL_ALLOW_SMALL_CHUNKS=true).
+ * If the spike requires small chunks, construct with e.g. chunkBytes = 320 and maxSendAheadMillis = 100.
  *
  * Time comes from the injected [Clock]; nothing here sleeps except [run], whose delay is also injectable,
  * so tests drive [pump] directly with a manual clock. All public methods are thread-safe.
